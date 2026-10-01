@@ -163,9 +163,11 @@ struct ShotListView: View {
                         Text("\(shot.number) · \(shot.aspect.label) · \(Format.mm(shot.lensMM))mm · \(Format.time(shot.plannedTime))")
                             .font(.osData)
                             .foregroundStyle(Palette.graphite)
-                        Text(shot.caption.isEmpty ? "untitled" : shot.caption)
-                            .font(Fonts.sans(22, .medium))
-                            .lineLimit(3)
+                        // Tap the caption to rewrite it; the export uses whatever's here.
+                        EditableName(text: shot.caption, font: Fonts.sans(22, .medium), lineLimit: 3, emptyLabel: "untitled") {
+                            store.setCaption(shot.id, to: $0)
+                        }
+                        .id(shot.id)
                         HStack(spacing: 0) {
                             EditableName(text: item.scene.name, font: .osSupport, color: Palette.graphite) {
                                 store.renameScene(item.scene.id, to: $0)

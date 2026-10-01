@@ -250,6 +250,19 @@ final class ScoutStore {
         save()
     }
 
+    func setCaption(_ id: UUID, to caption: String) {
+        let trimmed = caption.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !trimmed.isEmpty else { return }
+        for p in projects.indices {
+            for s in projects[p].scenes.indices {
+                if let i = projects[p].scenes[s].shots.firstIndex(where: { $0.id == id }) {
+                    projects[p].scenes[s].shots[i].caption = trimmed
+                }
+            }
+        }
+        save()
+    }
+
     func deleteShot(_ id: UUID) {
         for p in projects.indices {
             for s in projects[p].scenes.indices {
