@@ -5,11 +5,14 @@ import UIKit
 /// Scrolling lists use this instead, so a row being renamed near the bottom
 /// can still scroll up into view above the keyboard.
 struct KeyboardPadding: ViewModifier {
+    @Environment(ScoutStore.self) private var store
     @State private var height: CGFloat = 0
 
     func body(content: Content) -> some View {
         content
-            .safeAreaPadding(.bottom, height)
+            // The floating name bar sits above the keyboard on its own. Padding here as well
+            // would make the panel taller than the screen and shove everything up.
+            .safeAreaPadding(.bottom, store.rename == nil ? height : 0)
             .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillChangeFrameNotification)) { note in
                 guard let end = note.userInfo?[UIResponder.keyboardFrameEndUserInfoKey] as? CGRect,
                       let screen = (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.screen

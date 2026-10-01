@@ -41,7 +41,7 @@ struct SheetField: View {
     var onSubmit: () -> Void = {}
 
     var body: some View {
-        TextField(placeholder, text: $text)
+        TextField("", text: $text, prompt: Text(placeholder).foregroundStyle(Palette.graphite))
             .font(.osRow)
             .textInputAutocapitalization(.never)
             .submitLabel(.done)
@@ -182,7 +182,7 @@ struct LocationPermissionCard: View {
         store.locationChoice = choice
         store.askingLocation = false
         location.request(choice)
-        store.addScene()
+        if store.locationAskAddsScene { store.addScene() }
     }
 }
 

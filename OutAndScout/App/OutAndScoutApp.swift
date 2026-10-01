@@ -135,6 +135,7 @@ struct RootView: View {
             await camera.start()
             location.start()
             motion.start()
+            store.askForLocationIfNeverAsked()
         }
     }
 }

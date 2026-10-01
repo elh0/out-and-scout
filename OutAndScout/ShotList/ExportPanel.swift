@@ -26,13 +26,13 @@ struct ExportPanel: View {
         SidePanel(edge: .trailing, width: 440) {
             PanelHeader(
                 title: "export shot list",
-                sub: "\(project.name) · \(target?.name ?? "all scenes") · \(shots) shots",
+                sub: "\(project.name) · \(target?.name ?? "all scenes") · \(ShotListView.shots(shots))",
                 action: ("done", { store.showingExport = false })
             )
 
             HStack(spacing: Space.xs) {
                 option("this scene", (scene ?? store.currentScene).name, selected: !allScenes) { allScenes = false }
-                option("all scenes", "\(project.scenes.count) scenes", selected: allScenes) { allScenes = true }
+                option("all scenes", project.scenes.count == 1 ? "1 scene" : "\(project.scenes.count) scenes", selected: allScenes) { allScenes = true }
             }
 
             HStack(spacing: Space.xs) {

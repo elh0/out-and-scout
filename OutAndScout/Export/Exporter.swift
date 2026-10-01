@@ -146,7 +146,7 @@ enum Exporter {
         y += 12
         for scene in scenes {
             text(scene.name, font: sans(14, medium: true)).draw(at: CGPoint(x: margin, y: y))
-            let right = text("\(scene.shots.count) shots", font: mono(10), color: graphite)
+            let right = text(ShotListView.shots(scene.shots.count), font: mono(10), color: graphite)
             right.draw(at: CGPoint(x: page.width - margin - right.size().width, y: y + 3))
             if let loc = scene.location?.label {
                 text(loc, font: mono(10), color: graphite).draw(at: CGPoint(x: margin + 200, y: y + 3))
@@ -195,14 +195,7 @@ enum Exporter {
             var x = margin
             if options.frames {
                 let rect = CGRect(x: x, y: y, width: thumbW, height: thumbH)
-                // Downsample to ~2x the printed size: keeps the PDF small and memory low.
-                // Ratios narrower than the 16:9 still use only part of its width, so scale up.
-                let scale = max(1, AspectRatio.viewfinderValue / shot.aspect.value)
-                if let full = ThumbCache.full(for: shot), full.size.width > 0,
-                   let image = full.preparingThumbnail(of: CGSize(
-                       width: thumbW * 2 * scale,
-                       height: thumbW * 2 * scale * full.size.height / full.size.width
-                   )) {
+                if let image = ThumbCache.full(for: shot).flatMap({ printable($0, for: rect) }) {
                     ctx.cgContext.saveGState()
                     UIBezierPath(roundedRect: rect, cornerRadius: 3).addClip()
                     image.draw(in: aspectFill(image.size, in: rect))
@@ -255,6 +248,15 @@ enum Exporter {
             y += rowH
             line(at: y - 8)
         }
+    }
+
+    /// Shrinks a 12MP still to what the thumbnail needs at print resolution and makes it a
+    /// JPEG, which the PDF embeds as is. Drawing the full still made each page tens of MB.
+    private static func printable(_ image: UIImage, for rect: CGRect) -> UIImage? {
+        let fill = aspectFill(image.size, in: rect).size
+        let target = CGSize(width: fill.width * 3, height: fill.height * 3)
+        let small = image.size.width > target.width ? (image.preparingThumbnail(of: target) ?? image) : image
+        return small.jpegData(compressionQuality: 0.8).flatMap(UIImage.init(data:))
     }
 
     private static func aspectFill(_ size: CGSize, in rect: CGRect) -> CGRect {

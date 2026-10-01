@@ -53,6 +53,8 @@ final class ScoutStore {
     var showingExport = false
     var showingCustomAspect = false
     var askingLocation = false
+    /// The location card was opened by "+ scene", so a scene is added once it's answered.
+    var locationAskAddsScene = true
     /// The scene the Name-this-scene card is open for.
     var namingSceneID: UUID?
     /// True when the bar was opened by tapping the scene name, so it starts with the keyboard up.
@@ -180,6 +182,7 @@ final class ScoutStore {
     /// Adds a scene to the current project. The first time, ask about location first.
     func requestNewScene() {
         if locationChoice == nil {
+            locationAskAddsScene = true
             askingLocation = true
         } else {
             addScene()
@@ -229,6 +232,14 @@ final class ScoutStore {
         guard !trimmed.isEmpty else { return }
         updateProject(id) { $0.name = trimmed }
         save()
+    }
+
+    /// Asked once, on launch, if it's never been answered: projects made from the Projects
+    /// panel skip "+ scene", so otherwise no shot would ever carry a location.
+    func askForLocationIfNeverAsked() {
+        guard locationChoice == nil, !askingLocation else { return }
+        locationAskAddsScene = false
+        askingLocation = true
     }
 
     func addProject(named name: String) {
