@@ -57,6 +57,8 @@ final class ScoutStore {
     var namingSceneID: UUID?
     /// True when the bar was opened by tapping the scene name, so it starts with the keyboard up.
     var namingByTyping = false
+    /// True when the name bar is renaming the current project rather than a scene.
+    var namingProject = false
     var pending: PendingShot?
     var toast: String?
 
@@ -185,6 +187,7 @@ final class ScoutStore {
         updateProject(currentProjectID) { $0.scenes.append(scene) }
         currentSceneID = scene.id
         namingByTyping = false
+        namingProject = false
         namingSceneID = scene.id
         save()
         return scene.id
@@ -193,6 +196,14 @@ final class ScoutStore {
     /// Opens the name bar on the current scene, ready to type.
     func startRenamingCurrentScene() {
         namingByTyping = true
+        namingProject = false
+        namingSceneID = currentSceneID
+    }
+
+    /// Opens the same name bar on the current project.
+    func startRenamingCurrentProject() {
+        namingByTyping = true
+        namingProject = true
         namingSceneID = currentSceneID
     }
 

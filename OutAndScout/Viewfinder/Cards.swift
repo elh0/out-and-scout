@@ -200,7 +200,7 @@ struct NameSceneCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Space.xxs) {
             HStack {
-                Text(store.namingByTyping ? "rename scene" : "name this scene")
+                Text(store.namingProject ? "rename project" : store.namingByTyping ? "rename scene" : "name this scene")
                     .font(.osDataSmall)
                     .foregroundStyle(Palette.nightMuted)
                 Spacer()
@@ -225,7 +225,7 @@ struct NameSceneCard: View {
                     .frame(width: 200, height: ButtonHeight.chip)
                     .overlay(Capsule().strokeBorder(Palette.nightRule, lineWidth: 1))
 
-                if typing {
+                if typing || store.namingProject {
                     Chip(label: "done") { done() }
                 } else {
                     ScrollView(.horizontal, showsIndicators: false) {
@@ -247,7 +247,7 @@ struct NameSceneCard: View {
         .ignoresSafeArea(.keyboard)
         .task {
             if store.namingByTyping {
-                text = store.currentScene.name
+                text = store.namingProject ? store.currentProject.name : store.currentScene.name
                 // Focus once the bar has slid in, or iOS drops the request.
                 try? await Task.sleep(for: .milliseconds(150))
                 typing = true
@@ -262,8 +262,12 @@ struct NameSceneCard: View {
     }
 
     private func done() {
-        if let id = store.namingSceneID, !text.trimmingCharacters(in: .whitespaces).isEmpty {
-            store.renameScene(id, to: text)
+        if !text.trimmingCharacters(in: .whitespaces).isEmpty {
+            if store.namingProject {
+                store.renameProject(store.currentProjectID, to: text)
+            } else if let id = store.namingSceneID {
+                store.renameScene(id, to: text)
+            }
         }
         store.namingSceneID = nil
     }

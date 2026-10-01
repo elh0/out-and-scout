@@ -19,14 +19,20 @@ struct TopBar: View {
             .buttonStyle(.plain)
             .accessibilityLabel("switch project or scene")
 
-            // Tap either name to rename it.
+            // Tap either name to rename it in the name bar, which floats over the viewfinder,
+            // so typing never pushes the top bar about.
             HStack(spacing: Space.xxs) {
-                EditableName(text: store.currentProject.name, font: .osRow, color: Palette.nightMuted) {
-                    store.renameProject(store.currentProjectID, to: $0)
+                Button { store.startRenamingCurrentProject() } label: {
+                    Text(store.currentProject.name)
+                        .font(.osRow)
+                        .foregroundStyle(Palette.nightMuted)
+                        .lineLimit(1)
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                .accessibilityHint("tap to rename")
                 Text("/").font(.osRow).foregroundStyle(Palette.nightMuted)
-                // Renaming happens in the name bar, which floats over the viewfinder,
-                // so typing never pushes the top bar about.
                 Button { store.startRenamingCurrentScene() } label: {
                     Text(store.currentScene.name)
                         .font(.osRow)
