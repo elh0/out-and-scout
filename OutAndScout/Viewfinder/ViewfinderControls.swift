@@ -250,7 +250,8 @@ struct RightRail: View {
     }
 
     private var shutter: some View {
-        VStack(spacing: 2) {
+        // A little air between the shutter ring and the "next 4A" label.
+        VStack(spacing: Space.xs) {
             Button(action: onShutter) {
                 ZStack {
                     Circle().strokeBorder(Palette.paper, lineWidth: 3).frame(width: 64, height: 64)
