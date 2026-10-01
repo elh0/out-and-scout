@@ -8,6 +8,8 @@ struct ShotListView: View {
     @State private var sceneFilter: UUID?
     @State private var selectedID: UUID?
     @State private var confirmDelete = false
+    /// The shot shown full screen, for holding the phone up to a director.
+    @State private var enlarged: Shot?
 
     var body: some View {
         ZStack {
@@ -33,7 +35,14 @@ struct ShotListView: View {
                 }
             }
             .animation(.snappy(duration: 0.28), value: store.showingExport)
+
+            if let shot = enlarged {
+                ShotViewer(shot: shot) { enlarged = nil }
+                    .transition(.opacity)
+                    .zIndex(2)
+            }
         }
+        .animation(.easeOut(duration: 0.2), value: enlarged?.id)
         .onAppear {
             sceneFilter = store.currentSceneID
             selectedID = store.currentScene.shots.last?.id
@@ -158,6 +167,9 @@ struct ShotListView: View {
                     ShotThumb(shot: shot)
                         .aspectRatio(shot.aspect.value, contentMode: .fit)
                         .frame(maxWidth: 300, maxHeight: 130)
+                        .onTapGesture { enlarged = shot }
+                        .accessibilityAddTraits(.isButton)
+                        .accessibilityHint("tap to see it full screen")
 
                     VStack(alignment: .leading, spacing: Space.xs) {
                         Text("\(shot.number) · \(shot.aspect.label) · \(Format.mm(shot.lensMM))mm · \(Format.time(shot.plannedTime))")
@@ -286,5 +298,42 @@ struct ShotRow: View {
         .background(selected ? Palette.ink.opacity(0.05) : .clear, in: RoundedRectangle(cornerRadius: Radius.readout))
         .overlay(alignment: .bottom) { Rule() }
         .contentShape(Rectangle())
+    }
+}
+
+/// One still, as big as the screen allows, cropped to its frame lines. Tap to close.
+struct ShotViewer: View {
+    let shot: Shot
+    let onClose: () -> Void
+
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+
+            Color(hex: 0x2B2B28)
+                .overlay {
+                    if let image = ThumbCache.full(for: shot) {
+                        Image(uiImage: image).resizable().scaledToFill()
+                    }
+                }
+                .aspectRatio(shot.aspect.value, contentMode: .fit)
+                .clipped()
+                .padding(.vertical, Space.xs)
+
+            VStack {
+                Spacer()
+                Text("\(shot.number) · \(shot.caption.isEmpty ? "untitled" : shot.caption) · \(Format.mm(shot.lensMM))mm · \(shot.aspect.label)")
+                    .font(.osData)
+                    .foregroundStyle(Palette.paper)
+                    .padding(.horizontal, Space.xs)
+                    .padding(.vertical, Space.xxs + 1)
+                    .background(Palette.hud, in: RoundedRectangle(cornerRadius: Radius.readout))
+                    .padding(.bottom, Space.s)
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture(perform: onClose)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityLabel("close full screen")
     }
 }
