@@ -393,14 +393,15 @@ struct ShotThumb: View {
     let shot: Shot
 
     var body: some View {
-        Group {
-            if let image = ThumbCache.image(for: shot) {
-                Image(uiImage: image).resizable().scaledToFill()
-            } else {
-                Color(hex: 0x2B2B28)
+        // The placeholder takes the frame it's given and the photo fills it, so a tall
+        // still is cropped to the box instead of spilling over neighbouring rows.
+        Color(hex: 0x2B2B28)
+            .overlay {
+                if let image = ThumbCache.image(for: shot) {
+                    Image(uiImage: image).resizable().scaledToFill()
+                }
             }
-        }
-        .clipShape(RoundedRectangle(cornerRadius: Radius.readout, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: Radius.readout, style: .continuous))
     }
 }
 
