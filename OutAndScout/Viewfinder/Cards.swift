@@ -155,8 +155,8 @@ struct LocationPermissionCard: View {
                 reason("03", "Works out the sun for that exact spot.")
             }
 
-            // TODO: privacy line still to be written and confirmed true (see project to-dos).
-            Text("[privacy line: e.g. stays on your phone unless you share a shot list]")
+            // Confirmed by Elliot, 1 Oct 2026. True while nothing is uploaded; revisit if live links ship.
+            Text("Your locations stay on your phone unless you share a shot list.")
                 .font(.osSupport)
                 .foregroundStyle(Palette.graphite)
 
