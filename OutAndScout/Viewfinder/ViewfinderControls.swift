@@ -161,6 +161,7 @@ struct RightRail: View {
     @Environment(CameraController.self) private var camera
     let capturing: Bool
     let onShutter: () -> Void
+    @State private var dragNotches = 0
 
     var body: some View {
         VStack(spacing: Space.xs) {
@@ -173,6 +174,9 @@ struct RightRail: View {
         .frame(maxHeight: .infinity)
     }
 
+    /// Up and down step through the kit's focal lengths. Tap the big number to go up
+    /// (wrapping back to the widest), tap the small ones or the arrows, or drag.
+    /// Dragging steps once per notch as you move, not just when you let go.
     private var lensWheel: some View {
         let focals = store.focalLengths
         let i = focals.firstIndex { $0 >= store.lensMM } ?? 0
@@ -180,38 +184,69 @@ struct RightRail: View {
         let prev = i > 0 ? focals[i - 1] : nil
 
         return VStack(spacing: 0) {
-            Button { store.stepLens(1) } label: {
-                Text(next.map(Format.mm) ?? " ").font(.osData).foregroundStyle(Palette.nightMuted)
-                    .frame(width: 60, height: 28).contentShape(Rectangle())
+            stepButton(icon: "chevron.up", label: next, delta: 1)
+
+            Button { stepUpWrapping() } label: {
+                VStack(spacing: 0) {
+                    HStack(alignment: .firstTextBaseline, spacing: 1) {
+                        Text(Format.mm(store.lensMM)).font(Fonts.sans(28, .medium))
+                        Text("mm").font(.osDataSmall)
+                    }
+                    .foregroundStyle(Palette.paper)
+
+                    // Which iPhone lens is live. Greys out when the digital crop gets soft.
+                    Text(camera.lensLabel)
+                        .font(.osDataSmall)
+                        .foregroundStyle(camera.cropIsSoft ? Palette.nightMuted.opacity(0.4) : Palette.nightMuted)
+                }
+                .frame(width: 84)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .disabled(next == nil)
+            .accessibilityLabel("lens \(Format.mm(store.lensMM)) millimetres, iphone \(camera.readout)")
+            .accessibilityHint("tap for the next lens")
 
-            HStack(alignment: .firstTextBaseline, spacing: 1) {
-                Text(Format.mm(store.lensMM)).font(Fonts.sans(28, .medium))
-                Text("mm").font(.osDataSmall)
-            }
-            .foregroundStyle(Palette.paper)
-
-            // Which iPhone lens is live. Greys out when the digital crop gets soft.
-            Text(camera.lensLabel)
-                .font(.osDataSmall)
-                .foregroundStyle(camera.cropIsSoft ? Palette.nightMuted.opacity(0.4) : Palette.nightMuted)
-                .accessibilityLabel("which iphone lens is live: \(camera.readout)")
-
-            Button { store.stepLens(-1) } label: {
-                Text(prev.map(Format.mm) ?? " ").font(.osData).foregroundStyle(Palette.nightMuted)
-                    .frame(width: 60, height: 28).contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .disabled(prev == nil)
+            stepButton(icon: "chevron.down", label: prev, delta: -1)
         }
         .contentShape(Rectangle())
-        .gesture(
-            DragGesture(minimumDistance: 12).onEnded { v in
-                store.stepLens(v.translation.height < 0 ? 1 : -1)
-            }
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 8)
+                .onChanged { v in
+                    let notches = Int((-v.translation.height / 28).rounded(.towardZero))
+                    if notches != dragNotches {
+                        store.stepLens(notches - dragNotches)
+                        dragNotches = notches
+                    }
+                }
+                .onEnded { _ in dragNotches = 0 }
         )
+        .sensoryFeedback(.selection, trigger: store.lensMM)
+    }
+
+    private func stepButton(icon: String, label: Double?, delta: Int) -> some View {
+        Button { store.stepLens(delta) } label: {
+            VStack(spacing: 0) {
+                if delta < 0 { Text(label.map(Format.mm) ?? " ").font(.osData) }
+                Image(systemName: icon).font(.system(size: 11, weight: .semibold))
+                if delta > 0 { Text(label.map(Format.mm) ?? " ").font(.osData) }
+            }
+            .foregroundStyle(Palette.nightMuted)
+            .opacity(label == nil ? 0.25 : 1)
+            .frame(width: 60, height: 40)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(label == nil)
+        .accessibilityLabel(delta > 0 ? "longer lens" : "wider lens")
+    }
+
+    private func stepUpWrapping() {
+        let focals = store.focalLengths
+        if let last = focals.last, store.lensMM >= last {
+            store.stepLens(-(focals.count - 1))
+        } else {
+            store.stepLens(1)
+        }
     }
 
     private var shutter: some View {
