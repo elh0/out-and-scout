@@ -257,8 +257,8 @@ struct ShotListView: View {
                     HStack(spacing: Space.xxs) {
                         Text("frame lines").font(.osDataSmall).foregroundStyle(Palette.graphite)
                             .padding(.trailing, Space.xxs)
-                        ForEach([AspectRatio.full] + store.aspectStrip) { a in
-                            Chip(label: a.label, selected: a == shot.aspect, onDark: false) {
+                        ForEach([AspectRatio.full(shot.stillAspect ?? AspectRatio.viewfinderValue)] + store.aspectStrip) { a in
+                            Chip(label: a.label, selected: a.label == shot.aspect.label, onDark: false) {
                                 store.setShotAspect(shot.id, to: a)
                             }
                         }

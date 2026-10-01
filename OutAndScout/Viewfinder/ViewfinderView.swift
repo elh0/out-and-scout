@@ -26,7 +26,7 @@ struct ViewfinderView: View {
 
             HStack(spacing: Space.xs) {
                 LeftRail()
-                    .frame(width: 52)
+                    .frame(width: 88)
 
                 VStack(spacing: Space.xs) {
                     TopBar(heading: location.heading, sunAzimuth: sun.azimuth)
@@ -34,7 +34,7 @@ struct ViewfinderView: View {
 
                     // Always 16:9, like a monitor; frame lines for the chosen ratio sit inside it.
                     ViewfinderFrame(sun: sun, sunDay: sunDay, planned: planned, frameFraction: $frameFraction)
-                        .aspectRatio(AspectRatio.viewfinderValue, contentMode: .fit)
+                        .aspectRatio(store.kit.frameAspect, contentMode: .fit)
                         .clipShape(RoundedRectangle(cornerRadius: Radius.viewfinder, style: .continuous))
 
                     BottomBar(sunDay: sunDay, planned: planned, sun: sun)
@@ -44,7 +44,7 @@ struct ViewfinderView: View {
                 RightRail(capturing: capturing) {
                     Task { await pin() }
                 }
-                .frame(width: 92)
+                .frame(width: 80)
             }
             .padding(.vertical, Space.xs)
             // The keyboard slides over the viewfinder rather than shoving it off the top.
@@ -123,9 +123,10 @@ struct ViewfinderView: View {
 
         let number = store.nextShotNumber
         let lens = store.lensMM
-        // Keep the whole 16:9 frame; the frame lines are applied when the shot is shown or
-        // exported, so they can be changed afterwards.
-        let photo = await camera.capturePhoto(aspect: AspectRatio.viewfinderValue, frameFraction: 1)
+        // Keep the whole sensor-mode frame; the frame lines are applied when the shot is shown
+        // or exported, so they can be changed afterwards.
+        let stillAspect = store.kit.frameAspect
+        let photo = await camera.capturePhoto(aspect: stillAspect, frameFraction: 1)
 
         let planned = store.plannedDate()
         let coord = location.coordinate
@@ -138,7 +139,7 @@ struct ViewfinderView: View {
         if let heading = location.heading, sun.elevation > -2 {
             let hfov = store.kit.horizontalFOV(focal: lens)
             sunInFrame = abs(Bearing.difference(sun.azimuth, heading)) < hfov / 2
-                && abs(sun.elevation - motion.cameraElevation) < hfov / store.aspect.value / 2
+                && abs(sun.elevation - motion.cameraElevation) < hfov / (store.aspect.isFull ? stillAspect : store.aspect.value) / 2
         }
 
         async let seen = VisionLabels.see(photo)
@@ -161,7 +162,8 @@ struct ViewfinderView: View {
             sun: sun,
             light: light,
             bearing: location.heading,
-            location: await place
+            location: await place,
+            stillAspect: stillAspect
         )
     }
 

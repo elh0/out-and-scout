@@ -20,7 +20,7 @@ struct ViewfinderFrame: View {
     var body: some View {
         GeometryReader { geo in
             let size = geo.size
-            let frame = FrameMath.fit(aspect: store.aspect.value, in: size)
+            let frame = store.aspect.isFull ? CGRect(origin: .zero, size: size) : FrameMath.fit(aspect: store.aspect.value, in: size)
 
             ZStack(alignment: .topLeading) {
                 cameraLayer

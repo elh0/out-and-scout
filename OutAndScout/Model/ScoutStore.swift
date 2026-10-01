@@ -13,6 +13,7 @@ struct PendingShot: Identifiable {
     var light: LightPhase
     var bearing: Double?
     var location: ShotLocation?
+    var stillAspect: Double = AspectRatio.viewfinderValue
 }
 
 enum LocationChoice: String, Codable {
@@ -273,7 +274,7 @@ final class ScoutStore {
             number: p.number,
             caption: caption.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
             lensMM: p.lensMM,
-            aspect: aspect,
+            aspect: aspect.isFull ? .full(p.stillAspect) : aspect,
             cameraName: kit.camera.name,
             lensSeries: kit.lenses.name,
             plannedTime: p.plannedTime,
@@ -283,7 +284,8 @@ final class ScoutStore {
             light: p.light,
             bearing: p.bearing,
             location: p.location,
-            photoFile: photoFile
+            photoFile: photoFile,
+            stillAspect: p.stillAspect
         )
         updateScene(currentSceneID) { $0.shots.append(shot) }
         pending = nil

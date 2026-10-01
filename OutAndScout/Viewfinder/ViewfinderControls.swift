@@ -119,65 +119,31 @@ struct LeftRail: View {
     @Environment(ScoutStore.self) private var store
 
     var body: some View {
-        VStack(spacing: Space.m) {
-            RailToggle(symbol: "sun.horizon", label: "sun path", on: store.overlays.sunPath) { store.toggle(\.sunPath) }
-            RailToggle(symbol: "grid", label: "grid", on: store.overlays.grid) { store.toggle(\.grid) }
-            RailToggle(symbol: "level", label: "level", on: store.overlays.level) { store.toggle(\.level) }
-        }
-        .frame(maxHeight: .infinity)
-    }
-}
-
-struct RailToggle: View {
-    let symbol: String
-    let label: String
-    let on: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 3) {
-                Image(systemName: symbol)
-                    .font(.system(size: 17, weight: .regular))
-                    .frame(width: 36, height: 28)
-                Text(label)
-                    .font(.osDataSmall)
-                    .lineLimit(1)
-                    .fixedSize()
-            }
-            .foregroundStyle(on ? Palette.paper : Palette.nightMuted.opacity(0.7))
-            .frame(minWidth: 44, minHeight: 44)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(on ? .isSelected : [])
-    }
-}
-
-// MARK: - Right rail: lens wheel, shutter, shot stack
-
-struct RightRail: View {
-    @Environment(ScoutStore.self) private var store
-    @Environment(CameraController.self) private var camera
-    let capturing: Bool
-    let onShutter: () -> Void
-    @State private var dragNotches = 0
-
-    var body: some View {
         VStack(spacing: Space.xs) {
             Spacer(minLength: 0)
-            lensWheel
-            shutter
+            LensWheel()
             Spacer(minLength: 0)
-            shotStack
+            VStack(spacing: Space.xxs) {
+                RailToggle(symbol: "sun.horizon", label: "sun path", on: store.overlays.sunPath) { store.toggle(\.sunPath) }
+                RailToggle(symbol: "grid", label: "grid", on: store.overlays.grid) { store.toggle(\.grid) }
+                RailToggle(symbol: "level", label: "level", on: store.overlays.level) { store.toggle(\.level) }
+            }
         }
         .frame(maxHeight: .infinity)
     }
+}
+
+// MARK: - Lens wheel (left rail)
+
+struct LensWheel: View {
+    @Environment(ScoutStore.self) private var store
+    @Environment(CameraController.self) private var camera
+    @State private var dragNotches = 0
 
     /// Up and down step through the kit's focal lengths. Tap the big number to go up
     /// (wrapping back to the widest), tap the small ones or the arrows, or drag.
     /// Dragging steps once per notch as you move, not just when you let go.
-    private var lensWheel: some View {
+    var body: some View {
         let focals = store.focalLengths
         let i = focals.firstIndex { $0 >= store.lensMM } ?? 0
         let next = i + 1 < focals.count ? focals[i + 1] : nil
@@ -247,6 +213,53 @@ struct RightRail: View {
         } else {
             store.stepLens(1)
         }
+    }
+}
+
+struct RailToggle: View {
+    let symbol: String
+    let label: String
+    let on: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 3) {
+                Image(systemName: symbol)
+                    .font(.system(size: 17, weight: .regular))
+                    .frame(width: 36, height: 28)
+                Text(label)
+                    .font(.osDataSmall)
+                    .lineLimit(1)
+                    .fixedSize()
+            }
+            .foregroundStyle(on ? Palette.paper : Palette.nightMuted.opacity(0.7))
+            .frame(minWidth: 44, minHeight: 44)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(on ? .isSelected : [])
+    }
+}
+
+// MARK: - Right rail: shutter, shot stack
+
+struct RightRail: View {
+    @Environment(ScoutStore.self) private var store
+    @Environment(CameraController.self) private var camera
+    let capturing: Bool
+    let onShutter: () -> Void
+
+    var body: some View {
+        // The shutter sits dead centre, where a thumb expects it; the shot stack below.
+        ZStack {
+            shutter
+            VStack {
+                Spacer(minLength: 0)
+                shotStack
+            }
+        }
+        .frame(maxHeight: .infinity)
     }
 
     private var shutter: some View {

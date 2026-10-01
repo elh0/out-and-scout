@@ -42,6 +42,8 @@ struct Shot: Identifiable, Codable, Hashable {
     var location: ShotLocation?
     /// File name of the still in the app's shots folder.
     var photoFile: String?
+    /// Shape of the saved still (the sensor mode's shape when it was taken).
+    var stillAspect: Double? = nil
 
     var isGolden: Bool { light == .goldenHour }
 
@@ -82,12 +84,13 @@ struct AspectRatio: Codable, Hashable, Identifiable {
     static let flat = AspectRatio(value: 1.85, label: "1.85")
     static let hd = AspectRatio(value: 16.0 / 9.0, label: "16:9")
     static let vertical = AspectRatio(value: 9.0 / 16.0, label: "9:16")
-    /// No frame lines: the whole 16:9 viewfinder.
+    /// No frame lines: the whole sensor mode, whatever its shape.
     static let full = AspectRatio(value: 16.0 / 9.0, label: "full")
-    /// The viewfinder and every saved still are this shape; frame lines sit inside it.
+    static func full(_ value: Double) -> AspectRatio { AspectRatio(value: value, label: "full") }
+    /// Shape of stills taken before the viewfinder followed the sensor mode.
     static let viewfinderValue = 16.0 / 9.0
 
-    var isFull: Bool { self == .full }
+    var isFull: Bool { label == "full" }
 
     static let strip: [AspectRatio] = [.scope, .flat, .hd, .vertical]
     /// Offered on the Custom aspect card.
