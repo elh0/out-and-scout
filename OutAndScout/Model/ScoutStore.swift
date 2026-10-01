@@ -257,7 +257,7 @@ final class ScoutStore {
         save()
     }
 
-    static func photoURL(for shot: Shot) -> URL? {
+    nonisolated static func photoURL(for shot: Shot) -> URL? {
         shot.photoFile.map { shotsFolder.appendingPathComponent($0) }
     }
 
