@@ -162,6 +162,13 @@ struct ShotListView: View {
                         ForEach(visible) { item in
                             ShotRow(shot: item.shot, sceneName: sceneFilter == nil ? item.scene.name : nil, selected: item.shot.id == selected?.shot.id)
                                 .onTapGesture { selectedID = item.shot.id }
+                                // Press and hold a shot to delete it; it still asks first.
+                                .contextMenu {
+                                    Button("delete \(item.shot.number)", systemImage: "trash", role: .destructive) {
+                                        selectedID = item.shot.id
+                                        confirmDelete = true
+                                    }
+                                }
                         }
                     }
                 }
