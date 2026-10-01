@@ -157,7 +157,7 @@ struct ShotListView: View {
                 HStack(alignment: .top, spacing: Space.l) {
                     ShotThumb(shot: shot)
                         .aspectRatio(shot.aspect.value, contentMode: .fit)
-                        .frame(maxWidth: 300, maxHeight: 170)
+                        .frame(maxWidth: 300, maxHeight: 130)
 
                     VStack(alignment: .leading, spacing: Space.xs) {
                         Text("\(shot.number) · \(shot.aspect.label) · \(Format.mm(shot.lensMM))mm · \(Format.time(shot.plannedTime))")
@@ -188,6 +188,20 @@ struct ShotListView: View {
                     readout("sun", "\(Int(shot.sunAzimuth.rounded()))° / \(Int(shot.sunElevation.rounded()))°")
                 }
                 Rule()
+
+                // Frame lines can be changed after the shot; "full" shows the whole frame.
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: Space.xxs) {
+                        Text("frame lines").font(.osDataSmall).foregroundStyle(Palette.graphite)
+                            .padding(.trailing, Space.xxs)
+                        ForEach([AspectRatio.full] + store.aspectStrip) { a in
+                            Chip(label: a.label, selected: a == shot.aspect, onDark: false) {
+                                store.setShotAspect(shot.id, to: a)
+                            }
+                        }
+                    }
+                }
+                .fixedSize(horizontal: false, vertical: true)
 
                 HStack(spacing: Space.xs) {
                     Button("delete") { confirmDelete = true }

@@ -32,7 +32,9 @@ struct ViewfinderView: View {
                     TopBar(heading: location.heading, sunAzimuth: sun.azimuth)
                         .frame(height: 44)
 
+                    // Always 16:9, like a monitor; frame lines for the chosen ratio sit inside it.
                     ViewfinderFrame(sun: sun, sunDay: sunDay, planned: planned, frameFraction: $frameFraction)
+                        .aspectRatio(AspectRatio.viewfinderValue, contentMode: .fit)
                         .clipShape(RoundedRectangle(cornerRadius: Radius.viewfinder, style: .continuous))
 
                     BottomBar(sunDay: sunDay, planned: planned, sun: sun)
@@ -121,7 +123,9 @@ struct ViewfinderView: View {
 
         let number = store.nextShotNumber
         let lens = store.lensMM
-        let photo = await camera.capturePhoto(aspect: store.aspect.value, frameFraction: frameFraction)
+        // Keep the whole 16:9 frame; the frame lines are applied when the shot is shown or
+        // exported, so they can be changed afterwards.
+        let photo = await camera.capturePhoto(aspect: AspectRatio.viewfinderValue, frameFraction: 1)
 
         let planned = store.plannedDate()
         let coord = location.coordinate

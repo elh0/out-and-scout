@@ -77,6 +77,12 @@ struct AspectRatio: Codable, Hashable, Identifiable {
     static let flat = AspectRatio(value: 1.85, label: "1.85")
     static let hd = AspectRatio(value: 16.0 / 9.0, label: "16:9")
     static let vertical = AspectRatio(value: 9.0 / 16.0, label: "9:16")
+    /// No frame lines: the whole 16:9 viewfinder.
+    static let full = AspectRatio(value: 16.0 / 9.0, label: "full")
+    /// The viewfinder and every saved still are this shape; frame lines sit inside it.
+    static let viewfinderValue = 16.0 / 9.0
+
+    var isFull: Bool { self == .full }
 
     static let strip: [AspectRatio] = [.scope, .flat, .hd, .vertical]
     /// Offered on the Custom aspect card.

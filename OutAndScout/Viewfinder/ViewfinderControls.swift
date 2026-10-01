@@ -311,7 +311,10 @@ struct BottomBar: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: Space.xxs) {
                     ForEach(store.aspectStrip) { a in
-                        Chip(label: a.label, selected: a == store.aspect) { store.setAspect(a) }
+                        // Tap the selected ratio again to drop the frame lines and see the full frame.
+                        Chip(label: a.label, selected: a == store.aspect) {
+                            store.setAspect(a == store.aspect ? .full : a)
+                        }
                     }
                     Chip(label: "+") { store.showingCustomAspect = true }
                         .accessibilityLabel("custom aspect")
@@ -451,7 +454,9 @@ enum ThumbCache {
         let key = url.lastPathComponent as NSString
         if let hit = cache.object(forKey: key) { return hit }
         guard let full = UIImage(contentsOfFile: url.path) else { return nil }
-        let thumb = full.preparingThumbnail(of: CGSize(width: 480, height: 480 / max(shot.aspect.value, 0.3))) ?? full
+        // Keep the still's own shape; frame lines crop it when it's drawn, and can change.
+        let size = full.size.width > 0 ? CGSize(width: 480, height: 480 * full.size.height / full.size.width) : full.size
+        let thumb = full.preparingThumbnail(of: size) ?? full
         cache.setObject(thumb, forKey: key)
         return thumb
     }

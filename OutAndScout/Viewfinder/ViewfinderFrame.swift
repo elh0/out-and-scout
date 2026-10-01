@@ -25,7 +25,9 @@ struct ViewfinderFrame: View {
             ZStack(alignment: .topLeading) {
                 cameraLayer
 
-                AspectMask(frame: frame)
+                if !store.aspect.isFull {
+                    AspectMask(frame: frame)
+                }
 
                 if store.overlays.grid {
                     ThirdsGrid().frame(width: frame.width, height: frame.height).offset(x: frame.minX, y: frame.minY)

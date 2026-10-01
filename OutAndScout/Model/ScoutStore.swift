@@ -283,6 +283,18 @@ final class ScoutStore {
         save()
     }
 
+    /// Frame lines can change after the fact; the still keeps the whole 16:9 frame.
+    func setShotAspect(_ id: UUID, to aspect: AspectRatio) {
+        for p in projects.indices {
+            for s in projects[p].scenes.indices {
+                if let i = projects[p].scenes[s].shots.firstIndex(where: { $0.id == id }) {
+                    projects[p].scenes[s].shots[i].aspect = aspect
+                }
+            }
+        }
+        save()
+    }
+
     func deleteShot(_ id: UUID) {
         for p in projects.indices {
             for s in projects[p].scenes.indices {
