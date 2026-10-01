@@ -282,8 +282,11 @@ struct BottomBar: View {
                         .accessibilityLabel("custom aspect")
                 }
             }
-            .frame(maxWidth: 250)
+            .frame(maxWidth: 300)
             .fixedSize(horizontal: false, vertical: true)
+            // Keep the strip's chips inside its own box, clear of the time readout.
+            .clipped()
+            .layoutPriority(1)
 
             Button { store.plannedMinutes = nil } label: {
                 VStack(alignment: .leading, spacing: 0) {

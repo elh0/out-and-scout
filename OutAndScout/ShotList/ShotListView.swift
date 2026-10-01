@@ -15,7 +15,7 @@ struct ShotListView: View {
 
             HStack(spacing: 0) {
                 listPane
-                    .frame(width: 360)
+                    .frame(width: 300)
                 Palette.rule.frame(width: 1).ignoresSafeArea()
                 detailPane
                     .frame(maxWidth: .infinity)
@@ -197,7 +197,7 @@ struct ShotListView: View {
                     Spacer()
                     Button("export list") { store.showingExport = true }
                         .buttonStyle(PillButtonStyle(kind: .primary))
-                        .frame(width: 200)
+                        .frame(maxWidth: 200)
                 }
                 Spacer(minLength: 0)
             }
