@@ -66,6 +66,11 @@ struct ShotLocation: Codable, Hashable {
         if let label { return "\(label) · \(coords)" }
         return coords
     }
+
+    /// Opens on any phone or computer, so it suits a crew shot list.
+    var mapURL: URL? {
+        URL(string: String(format: "https://www.google.com/maps/search/?api=1&query=%.6f,%.6f", latitude, longitude))
+    }
 }
 
 struct AspectRatio: Codable, Hashable, Identifiable {

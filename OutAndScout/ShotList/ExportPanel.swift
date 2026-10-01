@@ -36,9 +36,9 @@ struct ExportPanel: View {
             }
 
             HStack(spacing: Space.xs) {
-                option("pdf", "for the crew", selected: format == .pdf) { format = .pdf }
-                option("csv", "for spreadsheets", selected: format == .csv) { format = .csv }
-                option("link", "view-only · soon", selected: format == .link) { format = .link }
+                option("pdf", nil, selected: format == .pdf) { format = .pdf }
+                option("csv", nil, selected: format == .csv) { format = .csv }
+                option("link", "soon", selected: format == .link) { format = .link }
                     .opacity(0.5)
                     .disabled(true) // Needs outandscout.com/s/<project> to exist first.
             }
@@ -78,11 +78,13 @@ struct ExportPanel: View {
         }
     }
 
-    private func option(_ label: String, _ sub: String, selected: Bool, action: @escaping () -> Void) -> some View {
+    private func option(_ label: String, _ sub: String?, selected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(label).font(.osRow)
-                Text(sub).font(.osDataSmall).foregroundStyle(Palette.graphite).lineLimit(1)
+                if let sub {
+                    Text(sub).font(.osDataSmall).foregroundStyle(Palette.graphite).lineLimit(1)
+                }
             }
             .padding(Space.s)
             .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)

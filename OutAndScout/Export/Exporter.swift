@@ -45,7 +45,7 @@ enum Exporter {
     static func csv(project: Project, scenes: [ScoutScene], options: Options) -> String {
         var header = ["project", "scene", "shot", "caption", "lens_mm", "aspect", "camera", "lens_set", "time", "light"]
         if options.sunTimes { header += ["sun_azimuth", "sun_elevation"] }
-        header += ["bearing", "location", "postcode", "latitude", "longitude", "pinned_at"]
+        header += ["bearing", "location", "postcode", "latitude", "longitude", "map_link", "pinned_at"]
 
         let iso = ISO8601DateFormatter()
         var lines = [header.joined(separator: ",")]
@@ -65,6 +65,7 @@ enum Exporter {
                     shot.location?.postcode ?? "",
                     shot.location.map { String(format: "%.6f", $0.latitude) } ?? "",
                     shot.location.map { String(format: "%.6f", $0.longitude) } ?? "",
+                    shot.location?.mapURL?.absoluteString ?? "",
                     iso.string(from: shot.capturedAt),
                 ]
                 lines.append(row.map(escape).joined(separator: ","))
@@ -186,7 +187,7 @@ enum Exporter {
         let thumbW: CGFloat = options.frames ? 168 : 0
         for shot in scene.shots {
             let thumbH = options.frames ? thumbW / max(shot.aspect.value, 0.5) : 0
-            let rowH = max(thumbH, 58) + 16
+            let rowH = max(thumbH, 78) + 16
             if y + rowH > page.height - margin { header() }
 
             var x = margin
@@ -212,8 +213,22 @@ enum Exporter {
             if options.sunTimes { meta += " · sun \(Int(shot.sunAzimuth.rounded()))° / \(Int(shot.sunElevation.rounded()))°" }
             text(meta, font: mono(9), color: graphite)
                 .draw(with: CGRect(x: x, y: y + 36, width: textW, height: 24), options: .usesLineFragmentOrigin, context: nil)
-            if let loc = shot.location?.label {
-                text(loc, font: mono(9), color: graphite).draw(at: CGPoint(x: x, y: y + 50))
+            // Where it was shot: place, coordinates and which way the camera faced, plus a
+            // tappable map link.
+            if let loc = shot.location {
+                var whereText = loc.display
+                if let bearing = shot.bearing { whereText += " · facing \(Format.bearing(bearing))" }
+                let place = text(whereText, font: mono(9), color: graphite)
+                let placeRect = CGRect(x: x, y: y + 50, width: textW, height: 12)
+                place.draw(with: placeRect, options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], context: nil)
+                if let url = loc.mapURL {
+                    let link = text("open in maps ↗", font: mono(9), color: ink)
+                    let linkRect = CGRect(origin: CGPoint(x: x, y: y + 63), size: link.size())
+                    link.draw(at: linkRect.origin)
+                    ctx.setURL(url, for: linkRect)
+                }
+            } else if let bearing = shot.bearing {
+                text("facing \(Format.bearing(bearing))", font: mono(9), color: graphite).draw(at: CGPoint(x: x, y: y + 50))
             }
 
             // Light dot
