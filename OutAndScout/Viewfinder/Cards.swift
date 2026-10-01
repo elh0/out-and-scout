@@ -157,7 +157,7 @@ struct LocationPermissionCard: View {
 
             // Agreed with Elliot, 1 Oct 2026. True while the app has no server (street names come from
             // Apple's on-device-requested geocoder). Revisit if live links ship.
-            Text("Saved only on your phone. We never upload them; they leave only when you share a shot list.")
+            Text("Saved only on your phone. We never upload them; you choose when to share a shot list.")
                 .font(.osSupport)
                 .foregroundStyle(Palette.graphite)
 
