@@ -42,19 +42,40 @@ struct OutAndScoutApp: App {
 /// Hosts the app with the keyboard taken out of its safe area. SwiftUI's
 /// .ignoresSafeArea(.keyboard) still let the whole screen ride up when a name
 /// field took focus; at this level the keyboard simply slides over the top.
-/// The notch and home-indicator insets still apply as normal.
 struct KeyboardProofHost<Content: View>: UIViewControllerRepresentable {
     @ViewBuilder let content: () -> Content
 
-    func makeUIViewController(context: Context) -> UIHostingController<Content> {
-        let host = UIHostingController(rootView: content())
+    func makeUIViewController(context: Context) -> KeyboardProofController<Content> {
+        let host = KeyboardProofController(rootView: content())
         host.safeAreaRegions = .container
         host.view.backgroundColor = UIColor(Palette.night)
         return host
     }
 
-    func updateUIViewController(_ host: UIHostingController<Content>, context: Context) {
+    func updateUIViewController(_ host: KeyboardProofController<Content>, context: Context) {
         host.rootView = content()
+    }
+}
+
+/// Nested inside SwiftUI, this controller doesn't inherit the notch and
+/// home-indicator insets, so it tops them up from the window's own.
+final class KeyboardProofController<Content: View>: UIHostingController<Content> {
+    override func viewWillLayoutSubviews() {
+        super.viewWillLayoutSubviews()
+        guard let window = view.window else { return }
+        let want = window.safeAreaInsets
+        let current = view.safeAreaInsets
+        let extra = additionalSafeAreaInsets
+        // What the view gets without our top-up, then whatever's missing from the window's.
+        let base = UIEdgeInsets(
+            top: current.top - extra.top, left: current.left - extra.left,
+            bottom: current.bottom - extra.bottom, right: current.right - extra.right
+        )
+        let needed = UIEdgeInsets(
+            top: max(0, want.top - base.top), left: max(0, want.left - base.left),
+            bottom: max(0, want.bottom - base.bottom), right: max(0, want.right - base.right)
+        )
+        if needed != extra { additionalSafeAreaInsets = needed }
     }
 }
 
