@@ -107,7 +107,7 @@ struct ProjectsPanel: View {
 
     private func projectRow(_ project: Project) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: Space.xs) {
-            EditableName(text: project.name, font: .osRow) { store.renameProject(project.id, to: $0) }
+            EditableName(text: project.name, font: .osRow, title: "rename project") { store.renameProject(project.id, to: $0) }
             if !project.kind.isEmpty {
                 Text(project.kind).font(.osSupport).foregroundStyle(Palette.graphite)
             }
@@ -125,7 +125,7 @@ struct ProjectsPanel: View {
     private func sceneRow(project: Project, scene: ScoutScene) -> some View {
         let current = scene.id == store.currentSceneID
         return HStack(alignment: .firstTextBaseline, spacing: Space.xs) {
-            EditableName(text: scene.name, font: current ? .osRow : .osSupport) { store.renameScene(scene.id, to: $0) }
+            EditableName(text: scene.name, font: current ? .osRow : .osSupport, title: "rename scene") { store.renameScene(scene.id, to: $0) }
             Text(scene.note).font(.osData).foregroundStyle(Palette.graphite)
             Spacer()
             Text("\(scene.shots.count)").font(.osData).foregroundStyle(Palette.graphite)

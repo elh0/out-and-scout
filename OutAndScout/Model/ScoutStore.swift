@@ -60,6 +60,8 @@ final class ScoutStore {
     /// True when the name bar is renaming the current project rather than a scene.
     var namingProject = false
     var pending: PendingShot?
+    /// A name being edited in the floating name bar.
+    var rename: RenameRequest?
     var toast: String?
 
     private let fileURL: URL

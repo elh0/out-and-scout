@@ -96,6 +96,18 @@ struct RootView: View {
                     .zIndex(1)
             }
 
+            if let request = store.rename {
+                Color.black.opacity(0.3)
+                    .ignoresSafeArea()
+                    .onTapGesture { store.rename = nil }
+                    .transition(.opacity)
+                    .zIndex(3)
+                FloatingNameBar(request: request)
+                    .id(request.id)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .zIndex(4)
+            }
+
             if let toast = store.toast {
                 Text(toast)
                     .font(.osData)
@@ -116,6 +128,7 @@ struct RootView: View {
         .ignoresSafeArea(.keyboard)
         .animation(.snappy(duration: 0.28), value: store.showingShotList)
         .animation(.easeOut(duration: 0.2), value: store.toast)
+        .animation(.snappy(duration: 0.25), value: store.rename?.id)
         .statusBarHidden()
         .persistentSystemOverlays(.hidden)
         .task {

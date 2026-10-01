@@ -63,7 +63,7 @@ struct ExportPanel: View {
             let defaultName = Exporter.filename(project: project, scene: target, format: format == .csv ? .csv : .pdf)
                 .replacingOccurrences(of: ".\(ext)", with: "")
             HStack(spacing: 0) {
-                EditableName(text: customName ?? defaultName, font: .osData, color: Palette.graphite) {
+                EditableName(text: customName ?? defaultName, font: .osData, color: Palette.graphite, title: "file name") {
                     customName = Exporter.cleanName($0)
                 }
                 Text(".\(ext)").font(.osData).foregroundStyle(Palette.graphite)

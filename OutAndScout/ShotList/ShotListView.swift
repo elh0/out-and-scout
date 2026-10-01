@@ -97,12 +97,12 @@ struct ShotListView: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 0) {
                     Text("shot list · ").font(.osData).foregroundStyle(Palette.graphite)
-                    EditableName(text: project.name, font: .osData, color: Palette.graphite) {
+                    EditableName(text: project.name, font: .osData, color: Palette.graphite, title: "rename project") {
                         store.renameProject(project.id, to: $0)
                     }
                 }
                 if let s = sceneFilter.flatMap(scene(for:)) {
-                    EditableName(text: s.name, font: .osTitle) { store.renameScene(s.id, to: $0) }
+                    EditableName(text: s.name, font: .osTitle, title: "rename scene") { store.renameScene(s.id, to: $0) }
                 } else {
                     Text("all scenes").font(.osTitle).lineLimit(1)
                 }
@@ -176,12 +176,12 @@ struct ShotListView: View {
                             .font(.osData)
                             .foregroundStyle(Palette.graphite)
                         // Tap the caption to rewrite it; the export uses whatever's here.
-                        EditableName(text: shot.caption, font: Fonts.sans(22, .medium), lineLimit: 3, emptyLabel: "untitled") {
+                        EditableName(text: shot.caption, font: Fonts.sans(22, .medium), lineLimit: 3, emptyLabel: "untitled", title: "edit caption") {
                             store.setCaption(shot.id, to: $0)
                         }
                         .id(shot.id)
                         HStack(spacing: 0) {
-                            EditableName(text: item.scene.name, font: .osSupport, color: Palette.graphite) {
+                            EditableName(text: item.scene.name, font: .osSupport, color: Palette.graphite, title: "rename scene") {
                                 store.renameScene(item.scene.id, to: $0)
                             }
                             Text(" · \(shot.cameraName)").font(.osSupport).foregroundStyle(Palette.graphite)
