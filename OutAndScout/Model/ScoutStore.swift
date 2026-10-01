@@ -194,6 +194,13 @@ final class ScoutStore {
         save()
     }
 
+    func renameProject(_ id: UUID, to name: String) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        guard !trimmed.isEmpty else { return }
+        updateProject(id) { $0.name = trimmed }
+        save()
+    }
+
     func addProject(named name: String) {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         guard !trimmed.isEmpty else { return }

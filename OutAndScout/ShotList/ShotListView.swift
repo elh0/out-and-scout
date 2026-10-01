@@ -86,19 +86,28 @@ struct ShotListView: View {
             }
 
             VStack(alignment: .leading, spacing: 2) {
-                Text("shot list · \(project.name)").font(.osData).foregroundStyle(Palette.graphite)
-                Text(sceneFilter.flatMap(scene(for:))?.name ?? "all scenes").font(.osTitle).lineLimit(1)
+                HStack(spacing: 0) {
+                    Text("shot list · ").font(.osData).foregroundStyle(Palette.graphite)
+                    EditableName(text: project.name, font: .osData, color: Palette.graphite) {
+                        store.renameProject(project.id, to: $0)
+                    }
+                }
+                if let s = sceneFilter.flatMap(scene(for:)) {
+                    EditableName(text: s.name, font: .osTitle) { store.renameScene(s.id, to: $0) }
+                } else {
+                    Text("all scenes").font(.osTitle).lineLimit(1)
+                }
                 Text(subtitle).font(.osSupport).foregroundStyle(Palette.graphite)
             }
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: Space.xxs) {
                     let total = project.scenes.reduce(0) { $0 + $1.shots.count }
-                    Chip(label: "all scenes \(total)", selected: sceneFilter == nil, onDark: false, mono: false) {
+                    Chip(label: "all scenes · \(total)", selected: sceneFilter == nil, onDark: false, mono: false) {
                         sceneFilter = nil
                     }
                     ForEach(project.scenes) { s in
-                        Chip(label: "\(s.name) \(s.shots.count)", selected: sceneFilter == s.id, onDark: false, mono: false) {
+                        Chip(label: "\(s.name) · \(s.shots.count)", selected: sceneFilter == s.id, onDark: false, mono: false) {
                             sceneFilter = s.id
                             store.select(project: project.id, scene: s.id)
                         }
@@ -133,9 +142,10 @@ struct ShotListView: View {
 
     private var subtitle: String {
         if let s = sceneFilter.flatMap(scene(for:)) {
-            return [s.note, "\(s.shots.count) shots"].filter { !$0.isEmpty }.joined(separator: " · ")
+            return [s.note, Self.shots(s.shots.count)].filter { !$0.isEmpty }.joined(separator: " · ")
         }
-        return "\(project.scenes.count) scenes · \(visible.count) shots"
+        let scenes = project.scenes.count == 1 ? "1 scene" : "\(project.scenes.count) scenes"
+        return "\(scenes) · \(Self.shots(visible.count))"
     }
 
     // MARK: Detail pane
@@ -156,9 +166,12 @@ struct ShotListView: View {
                         Text(shot.caption.isEmpty ? "untitled" : shot.caption)
                             .font(Fonts.sans(22, .medium))
                             .lineLimit(3)
-                        Text("\(item.scene.name) · \(shot.cameraName)")
-                            .font(.osSupport)
-                            .foregroundStyle(Palette.graphite)
+                        HStack(spacing: 0) {
+                            EditableName(text: item.scene.name, font: .osSupport, color: Palette.graphite) {
+                                store.renameScene(item.scene.id, to: $0)
+                            }
+                            Text(" · \(shot.cameraName)").font(.osSupport).foregroundStyle(Palette.graphite)
+                        }
                         if let loc = shot.location {
                             Text(loc.display).font(.osData).foregroundStyle(Palette.graphite).lineLimit(2)
                         }
@@ -170,7 +183,7 @@ struct ShotListView: View {
                     readout("lens", "\(Format.mm(shot.lensMM))mm")
                     readout("time", Format.time(shot.plannedTime))
                     readout("light", shot.light.label, golden: shot.isGolden)
-                    readout("sun", "\(Int(shot.sunAzimuth.rounded()))° · \(Int(shot.sunElevation.rounded()))° up")
+                    readout("sun", "\(Int(shot.sunAzimuth.rounded()))° / \(Int(shot.sunElevation.rounded()))°")
                 }
                 Rule()
 
@@ -204,12 +217,14 @@ struct ShotListView: View {
         }
     }
 
+    static func shots(_ n: Int) -> String { n == 1 ? "1 shot" : "\(n) shots" }
+
     private func readout(_ label: String, _ value: String, golden: Bool? = nil) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(label).font(.osDataSmall).foregroundStyle(Palette.graphite)
             HStack(spacing: Space.xxs) {
                 if let golden { LightDot(golden: golden) }
-                Text(value).font(.osData)
+                Text(value).font(.osData).lineLimit(1).minimumScaleFactor(0.75)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)

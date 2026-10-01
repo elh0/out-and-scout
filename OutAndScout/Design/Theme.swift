@@ -83,6 +83,8 @@ struct PillButtonStyle: ButtonStyle {
         let bg = onDark ? Palette.paper : Palette.ink
         configuration.label
             .font(.osAction)
+            .lineLimit(1)
+            .fixedSize(horizontal: kind == .secondary, vertical: false)
             .padding(.horizontal, Space.xl)
             .frame(height: kind == .primary ? ButtonHeight.primary : ButtonHeight.secondary)
             .frame(maxWidth: kind == .primary ? .infinity : nil)

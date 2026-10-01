@@ -102,42 +102,41 @@ struct ProjectsPanel: View {
         .onAppear { expanded = store.currentProjectID }
     }
 
+    // Tapping a name renames it in place; tapping the rest of the row expands or selects.
+
     private func projectRow(_ project: Project) -> some View {
-        Button {
-            withAnimation(.snappy(duration: 0.2)) { expanded = expanded == project.id ? nil : project.id }
-        } label: {
-            HStack(alignment: .firstTextBaseline, spacing: Space.xs) {
-                Text(project.name).font(.osRow)
-                if !project.kind.isEmpty {
-                    Text(project.kind).font(.osSupport).foregroundStyle(Palette.graphite)
-                }
-                Spacer()
-                Text("\(project.scenes.count) scenes").font(.osData).foregroundStyle(Palette.graphite)
+        HStack(alignment: .firstTextBaseline, spacing: Space.xs) {
+            EditableName(text: project.name, font: .osRow) { store.renameProject(project.id, to: $0) }
+            if !project.kind.isEmpty {
+                Text(project.kind).font(.osSupport).foregroundStyle(Palette.graphite)
             }
-            .frame(minHeight: 48)
-            .contentShape(Rectangle())
+            Spacer()
+            Text(project.scenes.count == 1 ? "1 scene" : "\(project.scenes.count) scenes")
+                .font(.osData).foregroundStyle(Palette.graphite)
         }
-        .buttonStyle(.plain)
+        .frame(minHeight: 48)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            withAnimation(.snappy(duration: 0.2)) { expanded = expanded == project.id ? nil : project.id }
+        }
     }
 
     private func sceneRow(project: Project, scene: ScoutScene) -> some View {
         let current = scene.id == store.currentSceneID
-        return Button {
+        return HStack(alignment: .firstTextBaseline, spacing: Space.xs) {
+            EditableName(text: scene.name, font: current ? .osRow : .osSupport) { store.renameScene(scene.id, to: $0) }
+            Text(scene.note).font(.osData).foregroundStyle(Palette.graphite)
+            Spacer()
+            Text("\(scene.shots.count)").font(.osData).foregroundStyle(Palette.graphite)
+        }
+        .padding(.leading, Space.m)
+        .frame(minHeight: 44)
+        .contentShape(Rectangle())
+        .onTapGesture {
             store.select(project: project.id, scene: scene.id)
             store.panel = nil
-        } label: {
-            HStack(alignment: .firstTextBaseline, spacing: Space.xs) {
-                Text(scene.name).font(current ? .osRow : .osSupport)
-                Text(scene.note).font(.osData).foregroundStyle(Palette.graphite)
-                Spacer()
-                Text("\(scene.shots.count)").font(.osData).foregroundStyle(Palette.graphite)
-            }
-            .padding(.leading, Space.m)
-            .frame(minHeight: 44)
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(current ? .isSelected : [])
+        .accessibilityAddTraits(current ? [.isButton, .isSelected] : .isButton)
     }
 
     private func addProject() {

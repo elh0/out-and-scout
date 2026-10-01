@@ -10,17 +10,26 @@ struct TopBar: View {
     var body: some View {
         HStack(spacing: Space.xs) {
             Button { store.panel = .projects } label: {
-                HStack(spacing: Space.xxs) {
-                    Text("\(store.currentProject.name) /").foregroundStyle(Palette.nightMuted)
-                    Text(store.currentScene.name).foregroundStyle(Palette.paper)
-                }
-                .font(.osRow)
-                .lineLimit(1)
-                .frame(height: 44)
-                .contentShape(Rectangle())
+                Image(systemName: "square.stack")
+                    .font(.system(size: 15))
+                    .foregroundStyle(Palette.nightMuted)
+                    .frame(width: 36, height: 44)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityHint("switch project or scene")
+            .accessibilityLabel("switch project or scene")
+
+            // Tap either name to rename it.
+            HStack(spacing: Space.xxs) {
+                EditableName(text: store.currentProject.name, font: .osRow, color: Palette.nightMuted) {
+                    store.renameProject(store.currentProjectID, to: $0)
+                }
+                Text("/").font(.osRow).foregroundStyle(Palette.nightMuted)
+                EditableName(text: store.currentScene.name, font: .osRow, color: Palette.paper) {
+                    store.renameScene(store.currentSceneID, to: $0)
+                }
+            }
+            .frame(height: 44)
 
             Chip(label: "+ scene", mono: false) { store.requestNewScene() }
 
