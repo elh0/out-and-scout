@@ -58,6 +58,8 @@ struct ProjectsPanel: View {
     @State private var expanded: UUID?
     @State private var newName = ""
     @State private var confirmDeleteAll = false
+    /// The project the "delete project" dialog is asking about.
+    @State private var deleting: Project?
 
     var body: some View {
         SidePanel(edge: .leading) {
@@ -83,6 +85,16 @@ struct ProjectsPanel: View {
                             } label: {
                                 Text("+ scene")
                                     .font(.osSupport)
+                                    .padding(.leading, Space.m)
+                                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+
+                            Button { deleting = project } label: {
+                                Text("delete project")
+                                    .font(.osSupport)
+                                    .foregroundStyle(Palette.graphite)
                                     .padding(.leading, Space.m)
                                     .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                                     .contentShape(Rectangle())
@@ -115,6 +127,22 @@ struct ProjectsPanel: View {
                 } message: {
                     Text("All scenes, shots and stills go. You start again with an empty project. This can't be undone.")
                 }
+        }
+        .confirmationDialog(
+            "Delete \"\(deleting?.name ?? "")\"?",
+            isPresented: Binding(get: { deleting != nil }, set: { if !$0 { deleting = nil } }),
+            titleVisibility: .visible,
+            presenting: deleting
+        ) { project in
+            Button("delete \(project.name)", role: .destructive) {
+                store.deleteProject(project.id)
+                expanded = store.currentProjectID
+                deleting = nil
+            }
+        } message: { project in
+            let shots = project.scenes.reduce(0) { $0 + $1.shots.count }
+            let scenes = project.scenes.count == 1 ? "1 scene" : "\(project.scenes.count) scenes"
+            Text("Its \(scenes) and \(ShotListView.shots(shots)) go too, stills included. This can't be undone.")
         }
         .onAppear { expanded = store.currentProjectID }
     }

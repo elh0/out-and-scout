@@ -331,6 +331,29 @@ final class ScoutStore {
         save()
     }
 
+    /// Deletes one project with its scenes, shots and stills. The last one can't vanish:
+    /// deleting it leaves a fresh empty project, like delete all.
+    func deleteProject(_ id: UUID) {
+        guard let project = projects.first(where: { $0.id == id }) else { return }
+        if projects.count == 1 {
+            deleteAllProjects()
+            return
+        }
+        for scene in project.scenes {
+            for shot in scene.shots {
+                if let file = shot.photoFile {
+                    try? FileManager.default.removeItem(at: Self.shotsFolder.appendingPathComponent(file))
+                }
+            }
+        }
+        projects.removeAll { $0.id == id }
+        if currentProjectID == id, let first = projects.first {
+            currentProjectID = first.id
+            currentSceneID = first.scenes.first?.id ?? currentSceneID
+        }
+        save()
+    }
+
     /// Wipes every project, scene, shot and still, and starts again with an empty project,
     /// just like a first launch. Kit, lens and aspect stay as they are.
     func deleteAllProjects() {
