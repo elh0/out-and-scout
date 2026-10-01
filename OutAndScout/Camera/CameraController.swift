@@ -38,12 +38,17 @@ final class CameraController: NSObject {
     /// Horizontal FOV at zoom factor 1.
     @ObservationIgnored private var baseHFOV: Double = 70
     @ObservationIgnored private var configured = false
+    @ObservationIgnored private var isStarting = false
     @ObservationIgnored private var inFlight: [Int64: PhotoDelegate] = [:]
 
     // MARK: Setup
 
     func start() async {
-        guard status != .running else { return }
+        // Launch and returning from the permission prompt both call this. Only one may
+        // configure the session; a second would fail to add the input and mark it unavailable.
+        guard status != .running, !isStarting else { return }
+        isStarting = true
+        defer { isStarting = false }
 
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized: break
