@@ -418,7 +418,11 @@ struct SunTimeline: View {
     }
 
     private var goldenSpans: [ClosedRange<Double>] {
-        (sunDay?.goldenWindows ?? []).map { minutes(of: $0.lowerBound)...minutes(of: $0.upperBound) }
+        // min/max: around midnight sunDay can lag a render behind, and a reversed range crashes.
+        (sunDay?.goldenWindows ?? []).map {
+            let a = minutes(of: $0.lowerBound), b = minutes(of: $0.upperBound)
+            return min(a, b)...max(a, b)
+        }
     }
 
     private func minutes(of date: Date) -> Double {

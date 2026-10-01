@@ -82,6 +82,12 @@ final class ScoutStore {
             overlays = snap.overlays
             locationChoice = snap.locationChoice
         } else {
+            // If a saved file exists but won't load, keep a copy rather than overwrite it.
+            if FileManager.default.fileExists(atPath: fileURL.path) {
+                let backup = fileURL.deletingPathExtension()
+                    .appendingPathExtension("unreadable-\(Int(Date().timeIntervalSince1970)).json")
+                try? FileManager.default.copyItem(at: fileURL, to: backup)
+            }
             // No setup before first use: a project and a scene are ready to pin into.
             let scene = ScoutScene(name: "scene 1", note: Format.shortDate(Date()))
             let project = Project(name: "first recce", kind: "", scenes: [scene])
@@ -108,8 +114,10 @@ final class ScoutStore {
     }
 
     /// "5A": the next setup number in the current scene.
+    /// One past the highest number used, so deleting a shot never reuses its number.
     var nextShotNumber: String {
-        "\(currentScene.shots.count + 1)A"
+        let used = currentScene.shots.compactMap { Int($0.number.prefix { $0.isNumber }) }
+        return "\((used.max() ?? 0) + 1)A"
     }
 
     var aspectStrip: [AspectRatio] { AspectRatio.strip + customAspects }

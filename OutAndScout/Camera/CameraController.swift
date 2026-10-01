@@ -237,7 +237,8 @@ final class CameraController: NSObject {
 
     /// Takes a quality-prioritised still and crops it to the frame lines.
     func capturePhoto(aspect: Double, frameFraction: Double) async -> Data? {
-        guard status == .running else { return nil }
+        guard status == .running, session.isRunning,
+              photoOutput.connection(with: .video)?.isActive == true else { return nil }
 
         let settings: AVCapturePhotoSettings
         if photoOutput.availablePhotoCodecTypes.contains(.hevc) {

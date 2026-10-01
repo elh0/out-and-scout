@@ -19,9 +19,10 @@ enum Exporter {
 
     /// Turns a typed name into a safe file name (no slashes or colons), without the extension.
     static func cleanName(_ name: String) -> String {
-        name.trimmingCharacters(in: .whitespacesAndNewlines)
+        let safe = name.trimmingCharacters(in: .whitespacesAndNewlines)
             .components(separatedBy: CharacterSet(charactersIn: "/:\\"))
             .joined(separator: "-")
+        return String(safe.prefix(120))
     }
 
     /// Writes the file to a temporary folder and returns its URL, ready to share.
@@ -33,7 +34,8 @@ enum Exporter {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(file)
         switch format {
         case .csv:
-            try csv(project: project, scenes: scenes, options: options).data(using: .utf8)!.write(to: url, options: .atomic)
+            // The BOM tells Excel it's UTF-8, so "°" and "·" survive.
+            try ("\u{FEFF}" + csv(project: project, scenes: scenes, options: options)).data(using: .utf8)!.write(to: url, options: .atomic)
         case .pdf:
             try pdf(project: project, scenes: scenes, options: options).write(to: url, options: .atomic)
         }
@@ -193,7 +195,14 @@ enum Exporter {
             var x = margin
             if options.frames {
                 let rect = CGRect(x: x, y: y, width: thumbW, height: thumbH)
-                if let image = ThumbCache.full(for: shot) {
+                // Downsample to ~2x the printed size: keeps the PDF small and memory low.
+                // Ratios narrower than the 16:9 still use only part of its width, so scale up.
+                let scale = max(1, AspectRatio.viewfinderValue / shot.aspect.value)
+                if let full = ThumbCache.full(for: shot), full.size.width > 0,
+                   let image = full.preparingThumbnail(of: CGSize(
+                       width: thumbW * 2 * scale,
+                       height: thumbW * 2 * scale * full.size.height / full.size.width
+                   )) {
                     ctx.cgContext.saveGState()
                     UIBezierPath(roundedRect: rect, cornerRadius: 3).addClip()
                     image.draw(in: aspectFill(image.size, in: rect))
@@ -208,7 +217,7 @@ enum Exporter {
             let textW = w - (x - margin) - 20
             text(shot.number, font: mono(10), color: graphite).draw(at: CGPoint(x: x, y: y))
             text(shot.caption, font: sans(14, medium: true))
-                .draw(with: CGRect(x: x, y: y + 14, width: textW, height: 36), options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], context: nil)
+                .draw(with: CGRect(x: x, y: y + 14, width: textW, height: 20), options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], context: nil)
             var meta = "\(shot.aspect.label) · \(Format.mm(shot.lensMM))mm · \(Format.time(shot.plannedTime)) · \(shot.light.label)"
             if options.sunTimes { meta += " · sun \(Int(shot.sunAzimuth.rounded()))° / \(Int(shot.sunElevation.rounded()))°" }
             text(meta, font: mono(9), color: graphite)

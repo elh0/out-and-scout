@@ -125,9 +125,10 @@ struct ViewfinderFrame: View {
 
     private func syncLens(size: CGSize, frame: CGRect) {
         guard size.width > 0 else { return }
-        let fraction = frame.width / size.width
-        frameFraction = fraction
-        camera.match(targetHFOV: store.kit.horizontalFOV(focal: store.lensMM), frameFraction: fraction)
+        // The lens's field of view spans the whole 16:9 viewfinder, which is what every
+        // still keeps, so changing frame lines later never changes the lens framing.
+        frameFraction = 1
+        camera.match(targetHFOV: store.kit.horizontalFOV(focal: store.lensMM), frameFraction: 1)
     }
 
     private struct LensKey: Equatable {

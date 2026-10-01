@@ -260,7 +260,8 @@ struct ShotListView: View {
 
     /// Back to the viewfinder with this shot's lens, aspect and time.
     private func reframe(_ shot: Shot) {
-        store.lensMM = shot.lensMM
+        // Snap to the nearest focal in the current kit, as switching kits does.
+        store.lensMM = store.focalLengths.min { abs($0 - shot.lensMM) < abs($1 - shot.lensMM) } ?? shot.lensMM
         store.setAspect(shot.aspect)
         let c = Calendar.current.dateComponents([.hour, .minute], from: shot.plannedTime)
         store.plannedMinutes = Double((c.hour ?? 0) * 60 + (c.minute ?? 0))

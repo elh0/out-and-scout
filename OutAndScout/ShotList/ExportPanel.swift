@@ -72,6 +72,8 @@ struct ExportPanel: View {
             }
             .frame(minHeight: 32)
         }
+        // The Shot List was showing every scene, so start there.
+        .onAppear { allScenes = scene == nil }
         .sheet(item: $shareItem) { item in
             ActivityView(items: [item.url])
                 .presentationDetents([.large])
