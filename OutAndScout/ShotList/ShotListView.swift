@@ -9,6 +9,7 @@ struct ShotListView: View {
     @State private var selectedID: UUID?
     @State private var confirmDelete = false
     @State private var confirmDeleteAll = false
+    @State private var deletingScene: ScoutScene?
     /// The shot shown full screen, for holding the phone up to a director.
     @State private var enlarged: Shot?
 
@@ -44,6 +45,21 @@ struct ShotListView: View {
             }
         }
         .animation(.easeOut(duration: 0.2), value: enlarged?.id)
+        .confirmationDialog(
+            "Delete \"\(deletingScene?.name ?? "")\"?",
+            isPresented: Binding(get: { deletingScene != nil }, set: { if !$0 { deletingScene = nil } }),
+            titleVisibility: .visible,
+            presenting: deletingScene
+        ) { scene in
+            Button("delete \(scene.name)", role: .destructive) {
+                if sceneFilter == scene.id { sceneFilter = nil }
+                store.deleteScene(scene.id)
+                selectedID = nil
+                deletingScene = nil
+            }
+        } message: { scene in
+            Text("Its \(Self.shots(scene.shots.count)) go too, stills included. This can't be undone.")
+        }
         .onAppear {
             sceneFilter = store.currentSceneID
             selectedID = store.currentScene.shots.last?.id
@@ -141,6 +157,12 @@ struct ShotListView: View {
                         Chip(label: "\(s.name) · \(s.shots.count)", selected: sceneFilter == s.id, onDark: false, mono: false) {
                             sceneFilter = s.id
                             store.select(project: project.id, scene: s.id)
+                        }
+                        .contextMenu {
+                            // A project always keeps at least one scene.
+                            if project.scenes.count > 1 {
+                                Button("delete scene", systemImage: "trash", role: .destructive) { deletingScene = s }
+                            }
                         }
                     }
                     Chip(label: "+ scene", onDark: false, mono: false) {
