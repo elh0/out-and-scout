@@ -8,6 +8,7 @@ struct ShotListView: View {
     @State private var sceneFilter: UUID?
     @State private var selectedID: UUID?
     @State private var confirmDelete = false
+    @State private var confirmDeleteAll = false
     /// The shot shown full screen, for holding the phone up to a director.
     @State private var enlarged: Shot?
 
@@ -85,6 +86,27 @@ struct ShotListView: View {
                 }
                 .buttonStyle(.plain)
                 Spacer()
+                if !visible.isEmpty {
+                    // Clears every shot in view: this scene, or all scenes. Asks first.
+                    Button("delete all") { confirmDeleteAll = true }
+                        .font(.osSupport)
+                        .foregroundStyle(Palette.graphite)
+                        .buttonStyle(.plain)
+                        .frame(minHeight: 44)
+                        .padding(.trailing, Space.s)
+                        .confirmationDialog(
+                            "Delete \(visible.count == 1 ? "this shot" : "all \(visible.count) shots") in \(sceneFilter.flatMap(scene(for:))?.name ?? "all scenes")?",
+                            isPresented: $confirmDeleteAll,
+                            titleVisibility: .visible
+                        ) {
+                            Button("delete \(Self.shots(visible.count))", role: .destructive) {
+                                store.deleteShots(Set(visible.map(\.shot.id)))
+                                selectedID = nil
+                            }
+                        } message: {
+                            Text("The stills go too. This can't be undone.")
+                        }
+                }
                 Button("projects") {
                     store.showingShotList = false
                     store.panel = .projects

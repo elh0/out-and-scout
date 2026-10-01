@@ -316,6 +316,33 @@ final class ScoutStore {
         save()
     }
 
+    /// Clears several shots at once (the Shot List's "delete all"), stills included.
+    func deleteShots(_ ids: Set<UUID>) {
+        for p in projects.indices {
+            for s in projects[p].scenes.indices {
+                for shot in projects[p].scenes[s].shots where ids.contains(shot.id) {
+                    if let file = shot.photoFile {
+                        try? FileManager.default.removeItem(at: Self.shotsFolder.appendingPathComponent(file))
+                    }
+                }
+                projects[p].scenes[s].shots.removeAll { ids.contains($0.id) }
+            }
+        }
+        save()
+    }
+
+    /// Wipes every project, scene, shot and still, and starts again with an empty project,
+    /// just like a first launch. Kit, lens and aspect stay as they are.
+    func deleteAllProjects() {
+        try? FileManager.default.removeItem(at: Self.shotsFolder)
+        let scene = ScoutScene(name: "scene 1", note: Format.shortDate(Date()))
+        let project = Project(name: "first recce", kind: "", scenes: [scene])
+        projects = [project]
+        currentProjectID = project.id
+        currentSceneID = scene.id
+        save()
+    }
+
     func deleteShot(_ id: UUID) {
         for p in projects.indices {
             for s in projects[p].scenes.indices {

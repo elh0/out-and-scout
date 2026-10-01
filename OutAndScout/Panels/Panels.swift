@@ -57,6 +57,7 @@ struct ProjectsPanel: View {
     @Environment(ScoutStore.self) private var store
     @State private var expanded: UUID?
     @State private var newName = ""
+    @State private var confirmDeleteAll = false
 
     var body: some View {
         SidePanel(edge: .leading) {
@@ -99,6 +100,21 @@ struct ProjectsPanel: View {
                     .buttonStyle(PillButtonStyle(kind: .secondary))
                     .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
             }
+
+            // Small and grey on purpose, and it asks first: a clean slate, not a slip.
+            Button("delete all projects") { confirmDeleteAll = true }
+                .font(.osSupport)
+                .foregroundStyle(Palette.graphite)
+                .buttonStyle(.plain)
+                .frame(minHeight: 36)
+                .confirmationDialog("Delete every project?", isPresented: $confirmDeleteAll, titleVisibility: .visible) {
+                    Button("delete all projects and shots", role: .destructive) {
+                        store.deleteAllProjects()
+                        expanded = store.currentProjectID
+                    }
+                } message: {
+                    Text("All scenes, shots and stills go. You start again with an empty project. This can't be undone.")
+                }
         }
         .onAppear { expanded = store.currentProjectID }
     }
