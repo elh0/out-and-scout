@@ -60,6 +60,8 @@ struct ProjectsPanel: View {
     @State private var confirmDeleteAll = false
     /// The project the "delete project" dialog is asking about.
     @State private var deleting: Project?
+    /// The scene the "delete scene" dialog is asking about.
+    @State private var deletingScene: ScoutScene?
 
     var body: some View {
         SidePanel(edge: .leading) {
@@ -85,16 +87,6 @@ struct ProjectsPanel: View {
                             } label: {
                                 Text("+ scene")
                                     .font(.osSupport)
-                                    .padding(.leading, Space.m)
-                                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                                    .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-
-                            Button { deleting = project } label: {
-                                Text("delete project")
-                                    .font(.osSupport)
-                                    .foregroundStyle(Palette.graphite)
                                     .padding(.leading, Space.m)
                                     .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
                                     .contentShape(Rectangle())
@@ -144,6 +136,19 @@ struct ProjectsPanel: View {
             let scenes = project.scenes.count == 1 ? "1 scene" : "\(project.scenes.count) scenes"
             Text("Its \(scenes) and \(ShotListView.shots(shots)) go too, stills included. This can't be undone.")
         }
+        .confirmationDialog(
+            "Delete \"\(deletingScene?.name ?? "")\"?",
+            isPresented: Binding(get: { deletingScene != nil }, set: { if !$0 { deletingScene = nil } }),
+            titleVisibility: .visible,
+            presenting: deletingScene
+        ) { scene in
+            Button("delete \(scene.name)", role: .destructive) {
+                store.deleteScene(scene.id)
+                deletingScene = nil
+            }
+        } message: { scene in
+            Text("Its \(ShotListView.shots(scene.shots.count)) go too, stills included. This can't be undone.")
+        }
         .onAppear { expanded = store.currentProjectID }
     }
 
@@ -164,6 +169,10 @@ struct ProjectsPanel: View {
         .onTapGesture {
             withAnimation(.snappy(duration: 0.2)) { expanded = expanded == project.id ? nil : project.id }
         }
+        // Press and hold for delete; it still asks before anything goes.
+        .contextMenu {
+            Button("delete project", systemImage: "trash", role: .destructive) { deleting = project }
+        }
     }
 
     private func sceneRow(project: Project, scene: ScoutScene) -> some View {
@@ -180,6 +189,12 @@ struct ProjectsPanel: View {
         .onTapGesture {
             store.select(project: project.id, scene: scene.id)
             store.panel = nil
+        }
+        .contextMenu {
+            // A project always keeps at least one scene.
+            if project.scenes.count > 1 {
+                Button("delete scene", systemImage: "trash", role: .destructive) { deletingScene = scene }
+            }
         }
         .accessibilityAddTraits(current ? [.isButton, .isSelected] : .isButton)
     }

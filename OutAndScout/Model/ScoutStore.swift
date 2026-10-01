@@ -354,6 +354,23 @@ final class ScoutStore {
         save()
     }
 
+    /// Deletes one scene with its shots and stills. A project's last scene stays.
+    func deleteScene(_ id: UUID) {
+        guard let p = projects.firstIndex(where: { $0.scenes.contains { $0.id == id } }),
+              projects[p].scenes.count > 1,
+              let s = projects[p].scenes.firstIndex(where: { $0.id == id }) else { return }
+        for shot in projects[p].scenes[s].shots {
+            if let file = shot.photoFile {
+                try? FileManager.default.removeItem(at: Self.shotsFolder.appendingPathComponent(file))
+            }
+        }
+        projects[p].scenes.remove(at: s)
+        if currentSceneID == id, projects[p].id == currentProjectID {
+            currentSceneID = projects[p].scenes[max(0, s - 1)].id
+        }
+        save()
+    }
+
     /// Wipes every project, scene, shot and still, and starts again with an empty project,
     /// just like a first launch. Kit, lens and aspect stay as they are.
     func deleteAllProjects() {
