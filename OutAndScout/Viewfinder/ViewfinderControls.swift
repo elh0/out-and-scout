@@ -25,9 +25,18 @@ struct TopBar: View {
                     store.renameProject(store.currentProjectID, to: $0)
                 }
                 Text("/").font(.osRow).foregroundStyle(Palette.nightMuted)
-                EditableName(text: store.currentScene.name, font: .osRow, color: Palette.paper) {
-                    store.renameScene(store.currentSceneID, to: $0)
+                // Renaming happens in the name bar, which floats over the viewfinder,
+                // so typing never pushes the top bar about.
+                Button { store.startRenamingCurrentScene() } label: {
+                    Text(store.currentScene.name)
+                        .font(.osRow)
+                        .foregroundStyle(Palette.paper)
+                        .lineLimit(1)
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                .accessibilityHint("tap to rename")
             }
             .frame(height: 44)
 

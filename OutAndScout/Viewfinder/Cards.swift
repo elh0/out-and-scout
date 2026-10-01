@@ -200,11 +200,11 @@ struct NameSceneCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Space.xxs) {
             HStack {
-                Text("name this scene")
+                Text(store.namingByTyping ? "rename scene" : "name this scene")
                     .font(.osDataSmall)
                     .foregroundStyle(Palette.nightMuted)
                 Spacer()
-                Button("keep \"\(store.currentScene.name)\"") { store.namingSceneID = nil }
+                Button(store.namingByTyping ? "cancel" : "keep \"\(store.currentScene.name)\"") { store.namingSceneID = nil }
                     .font(.osSupport)
                     .foregroundStyle(Palette.nightMuted)
                     .buttonStyle(.plain)
@@ -245,7 +245,15 @@ struct NameSceneCard: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .padding(.top, Space.xs)
         .ignoresSafeArea(.keyboard)
-        .task { suggestions = await location.nameSuggestions() }
+        .task {
+            if store.namingByTyping {
+                text = store.currentScene.name
+                // Focus once the bar has slid in, or iOS drops the request.
+                try? await Task.sleep(for: .milliseconds(150))
+                typing = true
+            }
+            suggestions = await location.nameSuggestions()
+        }
     }
 
     private func pick(_ name: String) {

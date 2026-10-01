@@ -30,7 +30,9 @@ struct EditableName: View {
                     if !isFocused { commit() }
                 }
                 .onAppear { focused = true }
-                .frame(minWidth: 80)
+                // Hug the text so the field never grows and shoves its neighbours aside.
+                .fixedSize(horizontal: true, vertical: false)
+                .frame(minWidth: 40, alignment: .leading)
                 .overlay(alignment: .bottom) {
                     color.opacity(0.4).frame(height: 1).offset(y: 2)
                 }
