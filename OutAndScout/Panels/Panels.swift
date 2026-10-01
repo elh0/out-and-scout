@@ -14,6 +14,7 @@ struct SidePanel<Content: View>: View {
         .padding(Space.l)
         .frame(width: width)
         .frame(maxHeight: .infinity, alignment: .top)
+        .keyboardPadding()
         .background(
             UnevenRoundedRectangle(
                 topLeadingRadius: edge == .trailing ? Radius.sheet : 0,

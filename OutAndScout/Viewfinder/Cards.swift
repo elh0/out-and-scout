@@ -1,10 +1,14 @@
 import SwiftUI
 
 /// Light card that rises over the Viewfinder. Radius 24, paper, no shadow.
+/// While the keyboard is up the card jumps to the top so the field stays in view;
+/// nothing behind it moves.
 struct SheetCard<Content: View>: View {
     let eyebrow: String
     var maxWidth: CGFloat = 620
     @ViewBuilder let content: Content
+
+    @State private var keyboardUp = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.s) {
@@ -17,8 +21,16 @@ struct SheetCard<Content: View>: View {
         .frame(maxWidth: maxWidth, alignment: .leading)
         .background(Palette.paper, in: RoundedRectangle(cornerRadius: Radius.sheet, style: .continuous))
         .foregroundStyle(Palette.ink)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-        .padding(.bottom, Space.xs)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: keyboardUp ? .top : .bottom)
+        .padding(.vertical, Space.xs)
+        .ignoresSafeArea(.keyboard)
+        .animation(.snappy(duration: 0.25), value: keyboardUp)
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillShowNotification)) { _ in
+            keyboardUp = true
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIResponder.keyboardWillHideNotification)) { _ in
+            keyboardUp = false
+        }
     }
 }
 
@@ -47,62 +59,81 @@ struct CaptionCard: View {
     @Environment(ScoutStore.self) private var store
     @State private var pick = 0
     @State private var custom = ""
+    @FocusState private var typing: Bool
 
     var body: some View {
         if let p = store.pending {
-            SheetCard(eyebrow: "suggested caption") {
-                HStack(alignment: .top, spacing: Space.m) {
-                    Group {
-                        if let data = p.photo, let image = UIImage(data: data) {
-                            Image(uiImage: image).resizable().scaledToFill()
-                        } else {
-                            Color(hex: 0x2B2B28)
+            SheetCard(eyebrow: typing ? "your own caption · \(p.number)" : "suggested caption") {
+                // While typing, only the field and save stay, so the card fits above the keyboard.
+                // The field itself never moves between layouts, so it keeps focus.
+                if !typing {
+                    HStack(alignment: .top, spacing: Space.m) {
+                        Group {
+                            if let data = p.photo, let image = UIImage(data: data) {
+                                Image(uiImage: image).resizable().scaledToFill()
+                            } else {
+                                Color(hex: 0x2B2B28)
+                            }
+                        }
+                        .frame(width: 168, height: 168 / max(store.aspect.value, 0.6))
+                        .clipShape(RoundedRectangle(cornerRadius: Radius.readout, style: .continuous))
+
+                        VStack(alignment: .leading, spacing: Space.xs) {
+                            Text("\(p.number) · \(Format.mm(p.lensMM))mm · \(Format.time(p.plannedTime)) · \(p.light.label)")
+                                .font(.osData)
+                                .foregroundStyle(Palette.graphite)
+
+                            ForEach(Array(p.suggestions.enumerated()), id: \.offset) { i, s in
+                                Button {
+                                    pick = i
+                                    custom = ""
+                                } label: {
+                                    HStack {
+                                        Text(s.text).font(.osRow).lineLimit(1)
+                                        Spacer(minLength: Space.xs)
+                                        Text(s.tag).font(.osDataSmall).foregroundStyle(Palette.graphite)
+                                    }
+                                    .padding(.horizontal, Space.s)
+                                    .frame(minHeight: 40)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: Radius.card)
+                                            .strokeBorder(pick == i && custom.isEmpty ? Palette.ink : Palette.rule, lineWidth: 1)
+                                    )
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                            }
                         }
                     }
-                    .frame(width: 168, height: 168 / max(store.aspect.value, 0.6))
-                    .clipShape(RoundedRectangle(cornerRadius: Radius.readout, style: .continuous))
+                }
 
-                    VStack(alignment: .leading, spacing: Space.xs) {
-                        Text("\(p.number) · \(Format.mm(p.lensMM))mm · \(Format.time(p.plannedTime)) · \(p.light.label)")
-                            .font(.osData)
-                            .foregroundStyle(Palette.graphite)
+                HStack(spacing: Space.xs) {
+                    SheetField(placeholder: "your own caption", text: $custom) { save(p) }
+                        .focused($typing)
+                    if typing {
+                        Button("save \(p.number)") { save(p) }
+                            .buttonStyle(PillButtonStyle(kind: .secondary))
+                    }
+                }
 
-                        ForEach(Array(p.suggestions.enumerated()), id: \.offset) { i, s in
-                            Button {
-                                pick = i
-                                custom = ""
-                            } label: {
-                                HStack {
-                                    Text(s.text).font(.osRow).lineLimit(1)
-                                    Spacer(minLength: Space.xs)
-                                    Text(s.tag).font(.osDataSmall).foregroundStyle(Palette.graphite)
-                                }
-                                .padding(.horizontal, Space.s)
-                                .frame(minHeight: 40)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: Radius.card)
-                                        .strokeBorder(pick == i && custom.isEmpty ? Palette.ink : Palette.rule, lineWidth: 1)
-                                )
-                                .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                        }
-
-                        SheetField(placeholder: "your own caption", text: $custom)
-
-                        HStack(spacing: Space.xs) {
-                            Button("retake") { store.pending = nil }
-                                .buttonStyle(PillButtonStyle(kind: .secondary))
-                            Button("save \(p.number)") {
-                                let caption = custom.isEmpty ? p.suggestions[min(pick, p.suggestions.count - 1)].text : custom
-                                store.commitPending(caption: caption)
-                            }
+                if !typing {
+                    HStack(spacing: Space.xs) {
+                        Button("retake") { store.pending = nil }
+                            .buttonStyle(PillButtonStyle(kind: .secondary))
+                        Button("save \(p.number)") { save(p) }
                             .buttonStyle(PillButtonStyle(kind: .primary))
-                        }
                     }
                 }
             }
         }
+    }
+
+    private func save(_ p: PendingShot) {
+        let typed = custom.trimmingCharacters(in: .whitespacesAndNewlines)
+        let suggested = p.suggestions.isEmpty ? "" : p.suggestions[min(pick, p.suggestions.count - 1)].text
+        let caption = typed.isEmpty ? suggested : typed
+        typing = false
+        store.commitPending(caption: caption)
     }
 }
 

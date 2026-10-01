@@ -50,6 +50,8 @@ struct ViewfinderView: View {
 
             overlays
         }
+        // The keyboard only ever slides over the app; nothing gets pushed up or squashed.
+        .ignoresSafeArea(.keyboard)
         .task(id: DayKey(date: planned, latitude: coord.latitude, longitude: coord.longitude)) {
             let day = await Task.detached(priority: .utility) {
                 SunCalculator.day(containing: planned, latitude: coord.latitude, longitude: coord.longitude)

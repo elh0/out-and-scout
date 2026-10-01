@@ -57,6 +57,7 @@ struct RootView: View {
                     }
             }
         }
+        .ignoresSafeArea(.keyboard)
         .animation(.snappy(duration: 0.28), value: store.showingShotList)
         .animation(.easeOut(duration: 0.2), value: store.toast)
         .statusBarHidden()
