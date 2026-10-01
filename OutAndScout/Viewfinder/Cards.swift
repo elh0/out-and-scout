@@ -155,8 +155,9 @@ struct LocationPermissionCard: View {
                 reason("03", "Works out the sun for that exact spot.")
             }
 
-            // Confirmed by Elliot, 1 Oct 2026. True while nothing is uploaded; revisit if live links ship.
-            Text("Your locations stay on your phone unless you share a shot list.")
+            // Agreed with Elliot, 1 Oct 2026. True while the app has no server (street names come from
+            // Apple's on-device-requested geocoder). Revisit if live links ship.
+            Text("Saved only on your phone. We never upload them; they leave only when you share a shot list.")
                 .font(.osSupport)
                 .foregroundStyle(Palette.graphite)
 
