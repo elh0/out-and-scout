@@ -149,8 +149,8 @@ struct RightRail: View {
 
     var body: some View {
         VStack(spacing: Space.xs) {
-            lensWheel
             Spacer(minLength: 0)
+            lensWheel
             shutter
             Spacer(minLength: 0)
             shotStack
@@ -178,12 +178,10 @@ struct RightRail: View {
             }
             .foregroundStyle(Palette.paper)
 
-            Text(camera.readout)
+            // Which iPhone lens is live. Greys out when the digital crop gets soft.
+            Text(camera.lensLabel)
                 .font(.osDataSmall)
-                .foregroundStyle(camera.cropIsSoft ? Palette.nightMuted.opacity(0.5) : Palette.nightMuted)
-                .multilineTextAlignment(.center)
-                .lineLimit(2)
-                .frame(minHeight: 24)
+                .foregroundStyle(camera.cropIsSoft ? Palette.nightMuted.opacity(0.4) : Palette.nightMuted)
                 .accessibilityLabel("which iphone lens is live: \(camera.readout)")
 
             Button { store.stepLens(-1) } label: {

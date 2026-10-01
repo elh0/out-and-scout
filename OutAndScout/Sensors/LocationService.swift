@@ -45,11 +45,13 @@ final class LocationService: NSObject {
 
     /// Starts updates if already allowed. Safe to call on every launch.
     func start() {
-        guard manager.authorizationStatus == .authorizedWhenInUse || manager.authorizationStatus == .authorizedAlways else { return }
-        manager.startUpdatingLocation()
+        // The compass doesn't need location permission, so north works from first launch.
+        // Without a location fix the heading is magnetic rather than true north.
         if CLLocationManager.headingAvailable() {
             manager.startUpdatingHeading()
         }
+        guard manager.authorizationStatus == .authorizedWhenInUse || manager.authorizationStatus == .authorizedAlways else { return }
+        manager.startUpdatingLocation()
     }
 
     /// Heading is reported relative to the top of the interface, so tell Core Location

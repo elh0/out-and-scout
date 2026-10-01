@@ -15,6 +15,8 @@ final class CameraController: NSObject {
     private(set) var status: Status = .idle
     /// "iphone 1x · 1.9x crop"
     private(set) var readout = ""
+    /// Just the live iPhone lens, e.g. "1x". The short form shown under the lens wheel.
+    private(set) var lensLabel = ""
     /// True once the digital crop gets big enough to look soft. The readout greys out.
     private(set) var cropIsSoft = false
     private(set) var aeAfLocked = false
@@ -167,6 +169,7 @@ final class CameraController: NSObject {
         let lens = lensFactors[i] * displayMultiplier
         let crop = z / lensFactors[i]
         let lensText = "iphone " + Self.format(lens) + "x"
+        lensLabel = Self.format(lens) + "x"
         if tooWide {
             readout = lensText + " · wider than the iphone sees"
             cropIsSoft = true
