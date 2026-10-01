@@ -17,11 +17,20 @@ enum Exporter {
         return "shot-list_\(Format.slug(project.name))_\(scope).\(format.rawValue)"
     }
 
+    /// Turns a typed name into a safe file name (no slashes or colons), without the extension.
+    static func cleanName(_ name: String) -> String {
+        name.trimmingCharacters(in: .whitespacesAndNewlines)
+            .components(separatedBy: CharacterSet(charactersIn: "/:\\"))
+            .joined(separator: "-")
+    }
+
     /// Writes the file to a temporary folder and returns its URL, ready to share.
-    static func export(project: Project, scene: ScoutScene?, format: FileFormat, options: Options) throws -> URL {
+    /// `name` overrides the default file name (without extension).
+    static func export(project: Project, scene: ScoutScene?, format: FileFormat, options: Options, name: String? = nil) throws -> URL {
         let scenes = scene.map { [$0] } ?? project.scenes
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent(filename(project: project, scene: scene, format: format))
+        let file = name.map { cleanName($0) }.flatMap { $0.isEmpty ? nil : "\($0).\(format.rawValue)" }
+            ?? filename(project: project, scene: scene, format: format)
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent(file)
         switch format {
         case .csv:
             try csv(project: project, scenes: scenes, options: options).data(using: .utf8)!.write(to: url, options: .atomic)

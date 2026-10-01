@@ -13,6 +13,8 @@ struct ExportPanel: View {
     @State private var options = Exporter.Options()
     @State private var shareItem: ShareItem?
     @State private var error: String?
+    /// A name typed over the default file name, without the extension.
+    @State private var customName: String?
 
     enum Choice: String, CaseIterable { case pdf, csv, link }
 
@@ -56,11 +58,19 @@ struct ExportPanel: View {
             Button("export \(format.rawValue)") { export(project: project, scene: target) }
                 .buttonStyle(PillButtonStyle(kind: .primary))
                 .disabled(format == .link)
-            Text(Exporter.filename(project: project, scene: target, format: format == .csv ? .csv : .pdf))
-                .font(.osData)
-                .foregroundStyle(Palette.graphite)
-                .lineLimit(1)
-                .truncationMode(.middle)
+            // Tap the file name to rename the export.
+            let ext = format == .csv ? "csv" : "pdf"
+            let defaultName = Exporter.filename(project: project, scene: target, format: format == .csv ? .csv : .pdf)
+                .replacingOccurrences(of: ".\(ext)", with: "")
+            HStack(spacing: 0) {
+                EditableName(text: customName ?? defaultName, font: .osData, color: Palette.graphite) {
+                    customName = Exporter.cleanName($0)
+                }
+                Text(".\(ext)").font(.osData).foregroundStyle(Palette.graphite)
+                Image(systemName: "pencil").font(.system(size: 10)).foregroundStyle(Palette.graphite)
+                    .padding(.leading, Space.xxs)
+            }
+            .frame(minHeight: 32)
         }
         .sheet(item: $shareItem) { item in
             ActivityView(items: [item.url])
@@ -87,7 +97,7 @@ struct ExportPanel: View {
 
     private func export(project: Project, scene: ScoutScene?) {
         do {
-            let url = try Exporter.export(project: project, scene: scene, format: format == .csv ? .csv : .pdf, options: options)
+            let url = try Exporter.export(project: project, scene: scene, format: format == .csv ? .csv : .pdf, options: options, name: customName)
             shareItem = ShareItem(url: url)
             error = nil
         } catch {
