@@ -6,6 +6,7 @@ struct OutAndScoutApp: App {
     @State private var camera = CameraController()
     @State private var location = LocationService()
     @State private var motion = MotionService()
+    @Environment(\.scenePhase) private var scenePhase
 
     init() {
         Fonts.registerBundled()
@@ -13,12 +14,47 @@ struct OutAndScoutApp: App {
 
     var body: some SwiftUI.Scene {
         WindowGroup {
-            RootView()
-                .environment(store)
-                .environment(camera)
-                .environment(location)
-                .environment(motion)
+            KeyboardProofHost {
+                RootView()
+                    .environment(store)
+                    .environment(camera)
+                    .environment(location)
+                    .environment(motion)
+            }
+            .ignoresSafeArea()
+            .statusBarHidden()
+            .persistentSystemOverlays(.hidden)
         }
+        .onChange(of: scenePhase) { _, phase in
+            switch phase {
+            case .active:
+                Task { await camera.start() }
+                motion.start()
+            case .background:
+                camera.stop()
+                motion.stop()
+            default: break
+            }
+        }
+    }
+}
+
+/// Hosts the app with the keyboard taken out of its safe area. SwiftUI's
+/// .ignoresSafeArea(.keyboard) still let the whole screen ride up when a name
+/// field took focus; at this level the keyboard simply slides over the top.
+/// The notch and home-indicator insets still apply as normal.
+struct KeyboardProofHost<Content: View>: UIViewControllerRepresentable {
+    @ViewBuilder let content: () -> Content
+
+    func makeUIViewController(context: Context) -> UIHostingController<Content> {
+        let host = UIHostingController(rootView: content())
+        host.safeAreaRegions = .container
+        host.view.backgroundColor = UIColor(Palette.night)
+        return host
+    }
+
+    func updateUIViewController(_ host: UIHostingController<Content>, context: Context) {
+        host.rootView = content()
     }
 }
 
@@ -28,7 +64,6 @@ struct RootView: View {
     @Environment(CameraController.self) private var camera
     @Environment(LocationService.self) private var location
     @Environment(MotionService.self) private var motion
-    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         ZStack {
@@ -66,17 +101,6 @@ struct RootView: View {
             await camera.start()
             location.start()
             motion.start()
-        }
-        .onChange(of: scenePhase) { _, phase in
-            switch phase {
-            case .active:
-                Task { await camera.start() }
-                motion.start()
-            case .background:
-                camera.stop()
-                motion.stop()
-            default: break
-            }
         }
     }
 }
