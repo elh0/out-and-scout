@@ -137,7 +137,7 @@ enum Exporter {
         title.draw(with: CGRect(x: margin, y: y, width: w, height: 120), options: .usesLineFragmentOrigin, context: nil)
         y += 64
         let shotCount = scenes.reduce(0) { $0 + $1.shots.count }
-        let sub = [project.kind, "\(scenes.count) scene\(scenes.count == 1 ? "" : "s")", "\(shotCount) shots", Format.shortDate(Date())]
+        let sub = [project.kind, "\(scenes.count) scene\(scenes.count == 1 ? "" : "s")", ShotListView.shots(shotCount), Format.shortDate(Date())]
             .filter { !$0.isEmpty }.joined(separator: " · ")
         text(sub, font: sans(14), color: graphite).draw(at: CGPoint(x: margin, y: y))
 
