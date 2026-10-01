@@ -141,13 +141,13 @@ struct ViewfinderView: View {
                 && abs(sun.elevation - motion.cameraElevation) < hfov / store.aspect.value / 2
         }
 
-        async let labels = VisionLabels.labels(for: photo)
+        async let seen = VisionLabels.see(photo)
         async let place = location.shotLocation()
 
         let suggestions = Captioner.suggestions(
             lensMM: lens,
             sensorWidthMM: store.kit.mode.widthMM * store.kit.lenses.squeeze,
-            labels: await labels,
+            seen: await seen,
             light: light,
             sunInFrame: sunInFrame
         )

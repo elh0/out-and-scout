@@ -341,24 +341,54 @@ struct SunPathOverlay: View {
     }
 }
 
+/// What Vision saw in a still: the subjects, best first, and whether it looks like an
+/// interior or exterior.
+struct VisionResult {
+    var subjects: [String] = []
+    /// "int" or "ext", when Vision is fairly sure.
+    var setting: String?
+}
+
 enum VisionLabels {
-    /// Top scene labels from Vision's on-device classifier, readable and deduplicated.
-    static func labels(for data: Data?) async -> [String] {
-        guard let data else { return [] }
-        return await Task.detached(priority: .userInitiated) { () -> [String] in
-            let request = VNClassifyImageRequest()
+    /// Classifies the whole still and, separately, the part that draws the eye (Vision's
+    /// attention saliency), so a lamp in a dark room isn't drowned out by "room" or
+    /// "machine". Scores from the two passes are merged; the subject crop gets a nudge.
+    static func see(_ data: Data?) async -> VisionResult {
+        guard let data else { return VisionResult() }
+        return await Task.detached(priority: .userInitiated) { () -> VisionResult in
             let handler = VNImageRequestHandler(data: data)
-            do {
-                try handler.perform([request])
-            } catch {
-                return []
+            let whole = VNClassifyImageRequest()
+            let saliency = VNGenerateAttentionBasedSaliencyImageRequest()
+            try? handler.perform([whole, saliency])
+
+            var scores: [String: Float] = [:]
+            for o in whole.results ?? [] { scores[o.identifier] = o.confidence }
+
+            // Classify the most eye-catching region on its own.
+            if let box = saliency.results?.first?.salientObjects?.max(by: { $0.boundingBox.area < $1.boundingBox.area })?.boundingBox,
+               box.area > 0.02, box.area < 0.9 {
+                let subject = VNClassifyImageRequest()
+                subject.regionOfInterest = box.insetBy(dx: -box.width * 0.1, dy: -box.height * 0.1)
+                    .intersection(CGRect(x: 0, y: 0, width: 1, height: 1))
+                try? handler.perform([subject])
+                for o in subject.results ?? [] {
+                    scores[o.identifier] = max(scores[o.identifier] ?? 0, o.confidence * 1.15)
+                }
             }
-            let top = (request.results ?? [])
-                .filter { $0.confidence > 0.25 }
-                .sorted { $0.confidence > $1.confidence }
-                .prefix(10)
-                .map(\.identifier)
-            return Captioner.readable(Array(top))
+
+            let indoor = scores["indoor"] ?? 0
+            let outdoor = scores["outdoor"] ?? 0
+            let setting: String? = max(indoor, outdoor) < 0.3 ? nil : (indoor > outdoor ? "int" : "ext")
+
+            let ranked = scores
+                .filter { $0.value > 0.08 }
+                .sorted { $0.value > $1.value }
+                .map(\.key)
+            return VisionResult(subjects: Array(Captioner.readable(ranked).prefix(4)), setting: setting)
         }.value
     }
+}
+
+private extension CGRect {
+    var area: CGFloat { width * height }
 }

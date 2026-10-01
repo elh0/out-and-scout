@@ -29,34 +29,41 @@ enum Captioner {
     static func suggestions(
         lensMM: Double,
         sensorWidthMM: Double,
-        labels: [String],
+        seen: VisionResult,
         light: LightPhase,
         sunInFrame: Bool
     ) -> [CaptionSuggestion] {
         let (size, alt) = shotSize(lensMM: lensMM, sensorWidthMM: sensorWidthMM)
-        let seen = labels.isEmpty ? ["location"] : labels
-        let a = seen[0]
-        let b = seen.count > 1 ? seen[1] : seen[0]
+        let subjects = seen.subjects.isEmpty ? ["location"] : seen.subjects
+        let a = subjects[0]
+        let b = subjects.count > 1 ? subjects[1] : nil
 
         let lightBit: String
         switch light {
-        case .afterDark, .beforeSunrise: lightBit = ", after dark"
+        case .afterDark, .beforeSunrise: lightBit = ", night"
         case .blueHour: lightBit = ", blue hour"
-        case .goldenHour: lightBit = sunInFrame ? ", into the sun" : ", golden light"
+        case .goldenHour: lightBit = sunInFrame ? ", into the sun" : ", golden hour"
         default: lightBit = sunInFrame ? ", into the sun" : ""
         }
+        // "int. wide · lamp, night", like a slugline.
+        let slug = seen.setting.map { "\($0). " } ?? ""
 
         return [
-            CaptionSuggestion(text: "\(size) · \(a)\(lightBit)", tag: "best match"),
-            CaptionSuggestion(text: "\(size) · \(b)", tag: "also in frame"),
-            CaptionSuggestion(text: "\(alt) · \(a)", tag: "alt framing"),
+            CaptionSuggestion(text: "\(slug)\(size) · \(a)\(lightBit)", tag: "best match"),
+            CaptionSuggestion(text: b.map { "\(size) · \(a) and \($0)" } ?? "\(size) · \(a)", tag: "also in frame"),
+            CaptionSuggestion(text: "\(slug)\(alt) · \(b ?? a)", tag: "alt framing"),
         ]
     }
 
     /// Vision identifiers look like "sky" or "structure_other". Make them readable and drop
-    /// the ones that say nothing about a location.
+    /// the broad parent labels that say nothing about the shot ("machine", "structure").
     static func readable(_ identifiers: [String]) -> [String] {
-        let skip: Set<String> = ["outdoor", "indoor", "structure", "material", "liquid", "water_body", "consumable"]
+        let skip: Set<String> = [
+            "outdoor", "indoor", "structure", "material", "liquid", "water_body", "consumable",
+            "machine", "equipment", "container", "conveyance", "furniture", "textile", "people",
+            "adult", "wood_processed", "wood_natural", "art", "decoration", "office_supplies",
+            "housewares", "tool", "hardware", "electronics", "interior_room", "room",
+        ]
         var out: [String] = []
         for id in identifiers where !skip.contains(id) {
             let words = id
