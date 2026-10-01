@@ -376,13 +376,16 @@ enum VisionLabels {
                 }
             }
 
-            let indoor = scores["indoor"] ?? 0
-            let outdoor = scores["outdoor"] ?? 0
-            let setting: String? = max(indoor, outdoor) < 0.3 ? nil : (indoor > outdoor ? "int" : "ext")
+            // Vision has "interior_room" and "outdoor" but no "indoor".
+            let inside = scores["interior_room"] ?? 0
+            let outside = scores["outdoor"] ?? 0
+            let setting: String? = max(inside, outside) < 0.3 ? nil : (inside > outside ? "int" : "ext")
 
+            // Parents share their child's score (machine = computer = laptop), so on a tie
+            // the longer, more specific identifier wins once the parents are skipped.
             let ranked = scores
-                .filter { $0.value > 0.08 }
-                .sorted { $0.value > $1.value }
+                .filter { $0.value >= 0.25 }
+                .sorted { abs($0.value - $1.value) > 0.001 ? $0.value > $1.value : $0.key.count > $1.key.count }
                 .map(\.key)
             return VisionResult(subjects: Array(Captioner.readable(ranked).prefix(4)), setting: setting)
         }.value

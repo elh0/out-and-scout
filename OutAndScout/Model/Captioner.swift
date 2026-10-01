@@ -58,11 +58,12 @@ enum Captioner {
     /// Vision identifiers look like "sky" or "structure_other". Make them readable and drop
     /// the broad parent labels that say nothing about the shot ("machine", "structure").
     static func readable(_ identifiers: [String]) -> [String] {
+        // Checked against Vision's taxonomy and real stills from the app (1 Oct 2026).
         let skip: Set<String> = [
-            "outdoor", "indoor", "structure", "material", "liquid", "water_body", "consumable",
-            "machine", "equipment", "container", "conveyance", "furniture", "textile", "people",
-            "adult", "wood_processed", "wood_natural", "art", "decoration", "office_supplies",
-            "housewares", "tool", "hardware", "electronics", "interior_room", "room",
+            "outdoor", "interior_room", "structure", "material", "liquid", "water_body", "consumable",
+            "machine", "consumer_electronics", "container", "conveyance", "furniture", "textile",
+            "people", "adult", "wood_processed", "wood_natural", "art", "decoration",
+            "office_supplies", "housewares", "tool", "cord", "light", "sky",
         ]
         var out: [String] = []
         for id in identifiers where !skip.contains(id) {
