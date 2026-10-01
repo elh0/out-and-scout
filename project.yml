@@ -1,0 +1,29 @@
+# Fallback: if OutAndScout.xcodeproj ever gets into a bad state, regenerate it with
+#   brew install xcodegen && xcodegen
+name: OutAndScout
+options:
+  bundleIdPrefix: com.outandscout
+  deploymentTarget:
+    iOS: "18.0"
+targets:
+  OutAndScout:
+    type: application
+    platform: iOS
+    sources: [OutAndScout]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.outandscout.app
+        MARKETING_VERSION: "0.1"
+        CURRENT_PROJECT_VERSION: 1
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: 1
+        GENERATE_INFOPLIST_FILE: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        INFOPLIST_KEY_CFBundleDisplayName: "out & scout"
+        INFOPLIST_KEY_NSCameraUsageDescription: "The viewfinder uses the camera to frame shots."
+        INFOPLIST_KEY_NSLocationWhenInUseUsageDescription: "Names each scene after the street you're on, tags shots with where they were taken, and works out the sun for that spot."
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIRequiresFullScreen: YES
+        INFOPLIST_KEY_UIStatusBarHidden: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"

@@ -1,0 +1,259 @@
+import SwiftUI
+
+/// 02 Shot List. The light two-pane screen: scene tabs and shots on the left,
+/// the selected shot on the right. Export is one tap away.
+struct ShotListView: View {
+    @Environment(ScoutStore.self) private var store
+    /// nil = all scenes
+    @State private var sceneFilter: UUID?
+    @State private var selectedID: UUID?
+    @State private var confirmDelete = false
+
+    var body: some View {
+        ZStack {
+            Palette.paper.ignoresSafeArea()
+
+            HStack(spacing: 0) {
+                listPane
+                    .frame(width: 360)
+                Palette.rule.frame(width: 1).ignoresSafeArea()
+                detailPane
+                    .frame(maxWidth: .infinity)
+            }
+            .foregroundStyle(Palette.ink)
+
+            ZStack {
+                if store.showingExport {
+                    Color.black.opacity(0.2).ignoresSafeArea()
+                        .onTapGesture { store.showingExport = false }
+                        .transition(.opacity)
+                    ExportPanel(scene: sceneFilter.flatMap(scene(for:)))
+                        .frame(maxWidth: .infinity, alignment: .trailing)
+                        .transition(.move(edge: .trailing))
+                }
+            }
+            .animation(.snappy(duration: 0.28), value: store.showingExport)
+        }
+        .onAppear {
+            sceneFilter = store.currentSceneID
+            selectedID = store.currentScene.shots.last?.id
+        }
+    }
+
+    // MARK: Data
+
+    private var project: Project { store.currentProject }
+
+    private func scene(for id: UUID) -> ScoutScene? {
+        project.scenes.first { $0.id == id }
+    }
+
+    private struct Item: Identifiable {
+        var scene: ScoutScene
+        var shot: Shot
+        var id: UUID { shot.id }
+    }
+
+    private var visible: [Item] {
+        let scenes = sceneFilter.flatMap(scene(for:)).map { [$0] } ?? project.scenes
+        return scenes.flatMap { scene in scene.shots.map { Item(scene: scene, shot: $0) } }
+    }
+
+    private var selected: Item? {
+        visible.first { $0.shot.id == selectedID } ?? visible.first
+    }
+
+    // MARK: List pane
+
+    private var listPane: some View {
+        VStack(alignment: .leading, spacing: Space.s) {
+            HStack {
+                Button { store.showingShotList = false } label: {
+                    Label("viewfinder", systemImage: "chevron.left")
+                        .font(.osSupport)
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                Spacer()
+                Button("projects") {
+                    store.showingShotList = false
+                    store.panel = .projects
+                }
+                .font(.osSupport)
+                .buttonStyle(.plain)
+                .frame(minHeight: 44)
+            }
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("shot list · \(project.name)").font(.osData).foregroundStyle(Palette.graphite)
+                Text(sceneFilter.flatMap(scene(for:))?.name ?? "all scenes").font(.osTitle).lineLimit(1)
+                Text(subtitle).font(.osSupport).foregroundStyle(Palette.graphite)
+            }
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: Space.xxs) {
+                    let total = project.scenes.reduce(0) { $0 + $1.shots.count }
+                    Chip(label: "all scenes \(total)", selected: sceneFilter == nil, onDark: false, mono: false) {
+                        sceneFilter = nil
+                    }
+                    ForEach(project.scenes) { s in
+                        Chip(label: "\(s.name) \(s.shots.count)", selected: sceneFilter == s.id, onDark: false, mono: false) {
+                            sceneFilter = s.id
+                            store.select(project: project.id, scene: s.id)
+                        }
+                    }
+                    Chip(label: "+ scene", onDark: false, mono: false) {
+                        store.showingShotList = false
+                        store.requestNewScene()
+                    }
+                }
+            }
+
+            if visible.isEmpty {
+                Text("No shots in this scene yet. Pin one from the viewfinder and it lands here.")
+                    .font(.osSupport)
+                    .foregroundStyle(Palette.graphite)
+                    .padding(.top, Space.m)
+                Spacer()
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 0) {
+                        ForEach(visible) { item in
+                            ShotRow(shot: item.shot, sceneName: sceneFilter == nil ? item.scene.name : nil, selected: item.shot.id == selected?.shot.id)
+                                .onTapGesture { selectedID = item.shot.id }
+                        }
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, Space.l)
+        .padding(.top, Space.xs)
+    }
+
+    private var subtitle: String {
+        if let s = sceneFilter.flatMap(scene(for:)) {
+            return [s.note, "\(s.shots.count) shots"].filter { !$0.isEmpty }.joined(separator: " · ")
+        }
+        return "\(project.scenes.count) scenes · \(visible.count) shots"
+    }
+
+    // MARK: Detail pane
+
+    @ViewBuilder private var detailPane: some View {
+        if let item = selected {
+            let shot = item.shot
+            VStack(alignment: .leading, spacing: Space.s) {
+                HStack(alignment: .top, spacing: Space.l) {
+                    ShotThumb(shot: shot)
+                        .aspectRatio(shot.aspect.value, contentMode: .fit)
+                        .frame(maxWidth: 300, maxHeight: 170)
+
+                    VStack(alignment: .leading, spacing: Space.xs) {
+                        Text("\(shot.number) · \(shot.aspect.label) · \(Format.mm(shot.lensMM))mm · \(Format.time(shot.plannedTime))")
+                            .font(.osData)
+                            .foregroundStyle(Palette.graphite)
+                        Text(shot.caption.isEmpty ? "untitled" : shot.caption)
+                            .font(Fonts.sans(22, .medium))
+                            .lineLimit(3)
+                        Text("\(item.scene.name) · \(shot.cameraName)")
+                            .font(.osSupport)
+                            .foregroundStyle(Palette.graphite)
+                        if let loc = shot.location {
+                            Text(loc.display).font(.osData).foregroundStyle(Palette.graphite).lineLimit(2)
+                        }
+                    }
+                }
+
+                Rule()
+                HStack(spacing: 0) {
+                    readout("lens", "\(Format.mm(shot.lensMM))mm")
+                    readout("time", Format.time(shot.plannedTime))
+                    readout("light", shot.light.label, golden: shot.isGolden)
+                    readout("sun", "\(Int(shot.sunAzimuth.rounded()))° · \(Int(shot.sunElevation.rounded()))° up")
+                }
+                Rule()
+
+                HStack(spacing: Space.xs) {
+                    Button("delete") { confirmDelete = true }
+                        .buttonStyle(PillButtonStyle(kind: .secondary))
+                    Button("reframe") { reframe(shot) }
+                        .buttonStyle(PillButtonStyle(kind: .secondary))
+                    Spacer()
+                    Button("export list") { store.showingExport = true }
+                        .buttonStyle(PillButtonStyle(kind: .primary))
+                        .frame(width: 200)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(Space.l)
+            .confirmationDialog("Delete \(shot.number)?", isPresented: $confirmDelete, titleVisibility: .visible) {
+                Button("delete \(shot.number)", role: .destructive) {
+                    store.deleteShot(shot.id)
+                    selectedID = nil
+                }
+            }
+        } else {
+            VStack(spacing: Space.m) {
+                Spacer()
+                Text("Pin a shot from the viewfinder to see it here.")
+                    .font(.osSupport)
+                    .foregroundStyle(Palette.graphite)
+                Spacer()
+            }
+        }
+    }
+
+    private func readout(_ label: String, _ value: String, golden: Bool? = nil) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label).font(.osDataSmall).foregroundStyle(Palette.graphite)
+            HStack(spacing: Space.xxs) {
+                if let golden { LightDot(golden: golden) }
+                Text(value).font(.osData)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    /// Back to the viewfinder with this shot's lens, aspect and time.
+    private func reframe(_ shot: Shot) {
+        store.lensMM = shot.lensMM
+        store.setAspect(shot.aspect)
+        let c = Calendar.current.dateComponents([.hour, .minute], from: shot.plannedTime)
+        store.plannedMinutes = Double((c.hour ?? 0) * 60 + (c.minute ?? 0))
+        store.showingShotList = false
+    }
+}
+
+/// Thumb, number, title, mono meta, light dot.
+struct ShotRow: View {
+    let shot: Shot
+    var sceneName: String?
+    let selected: Bool
+
+    var body: some View {
+        HStack(spacing: Space.s) {
+            ShotThumb(shot: shot)
+                .frame(width: 64, height: 64 / max(shot.aspect.value, 1))
+            Text(shot.number)
+                .font(.osData)
+                .foregroundStyle(Palette.graphite)
+                .frame(width: 28, alignment: .leading)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(shot.caption.isEmpty ? "untitled" : shot.caption).font(.osRow).lineLimit(1)
+                Text(sceneName.map { "\($0) · \(shot.meta)" } ?? shot.meta)
+                    .font(.osData)
+                    .foregroundStyle(Palette.graphite)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 0)
+            LightDot(golden: shot.isGolden)
+        }
+        .padding(.vertical, Space.xs)
+        .padding(.horizontal, Space.xs)
+        .frame(minHeight: 56)
+        .background(selected ? Palette.ink.opacity(0.05) : .clear, in: RoundedRectangle(cornerRadius: Radius.readout))
+        .overlay(alignment: .bottom) { Rule() }
+        .contentShape(Rectangle())
+    }
+}

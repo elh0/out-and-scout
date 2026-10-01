@@ -1,0 +1,237 @@
+import SwiftUI
+
+/// Light card that rises over the Viewfinder. Radius 24, paper, no shadow.
+struct SheetCard<Content: View>: View {
+    let eyebrow: String
+    var maxWidth: CGFloat = 620
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Space.s) {
+            Text(eyebrow)
+                .font(.osDataSmall)
+                .foregroundStyle(Palette.graphite)
+            content
+        }
+        .padding(Space.l)
+        .frame(maxWidth: maxWidth, alignment: .leading)
+        .background(Palette.paper, in: RoundedRectangle(cornerRadius: Radius.sheet, style: .continuous))
+        .foregroundStyle(Palette.ink)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
+        .padding(.bottom, Space.xs)
+    }
+}
+
+/// Single-line text field in the light sheets.
+struct SheetField: View {
+    let placeholder: String
+    @Binding var text: String
+    var onSubmit: () -> Void = {}
+
+    var body: some View {
+        TextField(placeholder, text: $text)
+            .font(.osRow)
+            .textInputAutocapitalization(.never)
+            .submitLabel(.done)
+            .onSubmit(onSubmit)
+            .padding(.horizontal, Space.s)
+            .frame(height: 44)
+            .overlay(RoundedRectangle(cornerRadius: Radius.card).strokeBorder(Palette.rule, lineWidth: 1))
+    }
+}
+
+// MARK: - 04 Caption card
+
+/// Pops up after the shutter with three suggested captions.
+struct CaptionCard: View {
+    @Environment(ScoutStore.self) private var store
+    @State private var pick = 0
+    @State private var custom = ""
+
+    var body: some View {
+        if let p = store.pending {
+            SheetCard(eyebrow: "suggested caption") {
+                HStack(alignment: .top, spacing: Space.m) {
+                    Group {
+                        if let data = p.photo, let image = UIImage(data: data) {
+                            Image(uiImage: image).resizable().scaledToFill()
+                        } else {
+                            Color(hex: 0x2B2B28)
+                        }
+                    }
+                    .frame(width: 168, height: 168 / max(store.aspect.value, 0.6))
+                    .clipShape(RoundedRectangle(cornerRadius: Radius.readout, style: .continuous))
+
+                    VStack(alignment: .leading, spacing: Space.xs) {
+                        Text("\(p.number) · \(Format.mm(p.lensMM))mm · \(Format.time(p.plannedTime)) · \(p.light.label)")
+                            .font(.osData)
+                            .foregroundStyle(Palette.graphite)
+
+                        ForEach(Array(p.suggestions.enumerated()), id: \.offset) { i, s in
+                            Button {
+                                pick = i
+                                custom = ""
+                            } label: {
+                                HStack {
+                                    Text(s.text).font(.osRow).lineLimit(1)
+                                    Spacer(minLength: Space.xs)
+                                    Text(s.tag).font(.osDataSmall).foregroundStyle(Palette.graphite)
+                                }
+                                .padding(.horizontal, Space.s)
+                                .frame(minHeight: 40)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: Radius.card)
+                                        .strokeBorder(pick == i && custom.isEmpty ? Palette.ink : Palette.rule, lineWidth: 1)
+                                )
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                        }
+
+                        SheetField(placeholder: "your own caption", text: $custom)
+
+                        HStack(spacing: Space.xs) {
+                            Button("retake") { store.pending = nil }
+                                .buttonStyle(PillButtonStyle(kind: .secondary))
+                            Button("save \(p.number)") {
+                                let caption = custom.isEmpty ? p.suggestions[min(pick, p.suggestions.count - 1)].text : custom
+                                store.commitPending(caption: caption)
+                            }
+                            .buttonStyle(PillButtonStyle(kind: .primary))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - 07 Location permission prompt
+
+/// Asked the first time a scene is added. Explains why before iOS asks.
+struct LocationPermissionCard: View {
+    @Environment(ScoutStore.self) private var store
+    @Environment(LocationService.self) private var location
+
+    var body: some View {
+        SheetCard(eyebrow: "location permission", maxWidth: 520) {
+            Text("Use your precise location?")
+                .font(Fonts.sans(22, .medium))
+
+            VStack(alignment: .leading, spacing: Space.xs) {
+                reason("01", "Names each scene after the street you're on.")
+                reason("02", "Tags every shot with where it was taken, for the shot list and map.")
+                reason("03", "Works out the sun for that exact spot.")
+            }
+
+            // TODO: privacy line still to be written and confirmed true (see project to-dos).
+            Text("[privacy line: e.g. stays on your phone unless you share a shot list]")
+                .font(.osSupport)
+                .foregroundStyle(Palette.graphite)
+
+            HStack(spacing: Space.xs) {
+                Button("allow precise") { choose(.precise) }
+                    .buttonStyle(PillButtonStyle(kind: .primary))
+                Button("approximate") { choose(.approximate) }
+                    .buttonStyle(PillButtonStyle(kind: .secondary))
+                Button("not now") { choose(.notNow) }
+                    .buttonStyle(PillButtonStyle(kind: .secondary))
+            }
+        }
+    }
+
+    private func reason(_ n: String, _ text: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: Space.s) {
+            Text(n).font(.osData).foregroundStyle(Palette.graphite)
+            Text(text).font(.osSupport)
+        }
+    }
+
+    private func choose(_ choice: LocationChoice) {
+        store.locationChoice = choice
+        store.askingLocation = false
+        location.request(choice)
+        store.addScene()
+    }
+}
+
+// MARK: - Name-this-scene card
+
+struct NameSceneCard: View {
+    @Environment(ScoutStore.self) private var store
+    @Environment(LocationService.self) private var location
+    @State private var text = ""
+    @State private var suggestions: [String] = []
+
+    var body: some View {
+        SheetCard(eyebrow: "name this scene", maxWidth: 520) {
+            Text("\(store.currentScene.name) · \(store.currentProject.name)")
+                .font(.osData)
+                .foregroundStyle(Palette.graphite)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: Space.xxs) {
+                    ForEach(suggestions + ["studio", "interior", "field"], id: \.self) { s in
+                        Chip(label: s, selected: text == s, onDark: false, mono: false) { text = s }
+                    }
+                }
+            }
+
+            HStack(spacing: Space.xs) {
+                SheetField(placeholder: "scene name", text: $text, onSubmit: done)
+                Button("done", action: done)
+                    .buttonStyle(PillButtonStyle(kind: .secondary))
+            }
+        }
+        .task {
+            suggestions = await location.nameSuggestions()
+            if text.isEmpty, let first = suggestions.first { text = first }
+        }
+    }
+
+    private func done() {
+        if let id = store.namingSceneID { store.renameScene(id, to: text) }
+        store.namingSceneID = nil
+    }
+}
+
+// MARK: - Custom aspect card
+
+struct CustomAspectCard: View {
+    @Environment(ScoutStore.self) private var store
+    @State private var text = ""
+    @State private var error = ""
+
+    var body: some View {
+        SheetCard(eyebrow: "custom aspect · saved to your kit", maxWidth: 480) {
+            HStack(spacing: Space.xxs) {
+                ForEach(AspectRatio.customPresets) { a in
+                    Chip(label: a.label, onDark: false) { add(a) }
+                }
+            }
+            HStack(spacing: Space.xs) {
+                SheetField(placeholder: "aspect ratio, e.g. 2.2 or 4:3", text: $text, onSubmit: addTyped)
+                Button("add", action: addTyped)
+                    .buttonStyle(PillButtonStyle(kind: .secondary))
+                Button("close") { store.showingCustomAspect = false }
+                    .buttonStyle(PillButtonStyle(kind: .secondary))
+            }
+            if !error.isEmpty {
+                Text(error).font(.osSupport).foregroundStyle(Palette.graphite)
+            }
+        }
+    }
+
+    private func addTyped() {
+        guard let a = AspectRatio.parse(text) else {
+            error = "That's not a ratio we can frame. Try 2.2 or 4:3."
+            return
+        }
+        add(a)
+    }
+
+    private func add(_ a: AspectRatio) {
+        store.addCustomAspect(a)
+        store.showingCustomAspect = false
+    }
+}
