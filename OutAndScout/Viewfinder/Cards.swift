@@ -157,40 +157,75 @@ struct LocationPermissionCard: View {
 
 // MARK: - Name-this-scene card
 
+/// A slim dark bar at the top of the Viewfinder. One tap on a suggestion names the scene;
+/// typing is there if you want it, and the bar stays above the keyboard.
 struct NameSceneCard: View {
     @Environment(ScoutStore.self) private var store
     @Environment(LocationService.self) private var location
     @State private var text = ""
     @State private var suggestions: [String] = []
+    @FocusState private var typing: Bool
 
     var body: some View {
-        SheetCard(eyebrow: "name this scene", maxWidth: 520) {
-            Text("\(store.currentScene.name) · \(store.currentProject.name)")
-                .font(.osData)
-                .foregroundStyle(Palette.graphite)
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: Space.xxs) {
-                    ForEach(suggestions + ["studio", "interior", "field"], id: \.self) { s in
-                        Chip(label: s, selected: text == s, onDark: false, mono: false) { text = s }
-                    }
-                }
+        VStack(alignment: .leading, spacing: Space.xxs) {
+            HStack {
+                Text("name this scene")
+                    .font(.osDataSmall)
+                    .foregroundStyle(Palette.nightMuted)
+                Spacer()
+                Button("keep \"\(store.currentScene.name)\"") { store.namingSceneID = nil }
+                    .font(.osSupport)
+                    .foregroundStyle(Palette.nightMuted)
+                    .buttonStyle(.plain)
+                    .frame(minHeight: 36)
             }
 
             HStack(spacing: Space.xs) {
-                SheetField(placeholder: "scene name", text: $text, onSubmit: done)
-                Button("done", action: done)
-                    .buttonStyle(PillButtonStyle(kind: .secondary))
+                TextField("", text: $text, prompt: Text("type a name").foregroundStyle(Palette.nightMuted))
+                    .font(.osRow)
+                    .foregroundStyle(Palette.paper)
+                    .tint(Palette.paper)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .submitLabel(.done)
+                    .focused($typing)
+                    .onSubmit(done)
+                    .padding(.horizontal, Space.s)
+                    .frame(width: 200, height: ButtonHeight.chip)
+                    .overlay(Capsule().strokeBorder(Palette.nightRule, lineWidth: 1))
+
+                if typing {
+                    Chip(label: "done") { done() }
+                } else {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: Space.xxs) {
+                            ForEach(suggestions + ["studio", "interior", "field"], id: \.self) { s in
+                                Chip(label: s, mono: false) { pick(s) }
+                            }
+                        }
+                    }
+                }
             }
         }
-        .task {
-            suggestions = await location.nameSuggestions()
-            if text.isEmpty, let first = suggestions.first { text = first }
-        }
+        .padding(.horizontal, Space.m)
+        .padding(.vertical, Space.xs)
+        .frame(maxWidth: 640)
+        .background(Palette.ink.opacity(0.94), in: RoundedRectangle(cornerRadius: Radius.card, style: .continuous))
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .padding(.top, Space.xs)
+        .ignoresSafeArea(.keyboard)
+        .task { suggestions = await location.nameSuggestions() }
+    }
+
+    private func pick(_ name: String) {
+        if let id = store.namingSceneID { store.renameScene(id, to: name) }
+        store.namingSceneID = nil
     }
 
     private func done() {
-        if let id = store.namingSceneID { store.renameScene(id, to: text) }
+        if let id = store.namingSceneID, !text.trimmingCharacters(in: .whitespaces).isEmpty {
+            store.renameScene(id, to: text)
+        }
         store.namingSceneID = nil
     }
 }

@@ -45,6 +45,8 @@ struct ViewfinderView: View {
                 .frame(width: 92)
             }
             .padding(.vertical, Space.xs)
+            // The keyboard slides over the viewfinder rather than shoving it off the top.
+            .ignoresSafeArea(.keyboard)
 
             overlays
         }
@@ -86,7 +88,8 @@ struct ViewfinderView: View {
 
         // Cards
         ZStack {
-            if cardIsOpen {
+            // The name bar is light-touch, so the image stays undimmed behind it.
+            if cardIsOpen && store.namingSceneID == nil {
                 Color.black.opacity(0.45).ignoresSafeArea().transition(.opacity)
             }
             if store.pending != nil {
@@ -94,7 +97,7 @@ struct ViewfinderView: View {
             } else if store.askingLocation {
                 LocationPermissionCard().transition(.move(edge: .bottom).combined(with: .opacity))
             } else if store.namingSceneID != nil {
-                NameSceneCard().transition(.move(edge: .bottom).combined(with: .opacity))
+                NameSceneCard().transition(.move(edge: .top).combined(with: .opacity))
             } else if store.showingCustomAspect {
                 CustomAspectCard().transition(.move(edge: .bottom).combined(with: .opacity))
             }
