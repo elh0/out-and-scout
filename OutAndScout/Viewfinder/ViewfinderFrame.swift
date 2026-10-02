@@ -25,7 +25,7 @@ struct ViewfinderFrame: View {
             // what the still keeps); the chosen ratio's lines sit inside that. Everything
             // outside the lines is dimmed, like the v3c prototype.
             let sensor = FrameMath.fit(aspect: store.kit.frameAspect, in: size)
-            let frame = store.aspect.isFull ? sensor : FrameMath.fit(aspect: store.aspect.value, in: sensor)
+            let frame = store.aspect.isFull ? sensor : FrameMath.fit(aspect: store.aspect.value, in: sensor.size).offsetBy(dx: sensor.minX, dy: sensor.minY)
 
             ZStack(alignment: .topLeading) {
                 cameraLayer
