@@ -13,8 +13,6 @@ struct ViewfinderFrame: View {
     let sunDay: SunDay?
     let planned: Date
     @Binding var frameFraction: Double
-    /// Where the live image should sit, in ViewfinderView's space.
-    @Binding var previewRect: CGRect
     /// Upright phone: the v3c portrait frame (342 wide on a 390 screen).
     var portrait = false
 
@@ -86,7 +84,8 @@ struct ViewfinderFrame: View {
                         .background(Palette.hud, in: RoundedRectangle(cornerRadius: 4))
                         .fixedSize()
                         .frame(width: frame.width)
-                        .offset(x: frame.minX, y: frame.minY + Space.xs)
+                        // Upright, the sun's height sits top-right, so this goes near the bottom.
+                        .offset(x: frame.minX, y: portrait ? frame.maxY - 44 : frame.minY + Space.xs)
                 }
 
                 if let p = focusPoint {
@@ -133,9 +132,8 @@ struct ViewfinderFrame: View {
                 camera.lock(atLayerPoint: p)
                 showFocus(at: p)
             }
-            .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(ViewfinderView.space)) } action: {
-                previewRect = $0
-            }
+            // Tells ViewfinderView where to lay the live image, resolved fresh on every layout.
+            .anchorPreference(key: PreviewAreaKey.self, value: .bounds) { $0 }
             .onAppear { syncLens(size: size, frame: frame) }
             .onChange(of: LensKey(lens: store.lensMM, kit: store.kit, aspect: store.aspect, size: size, portrait: portrait)) {
                 syncLens(size: size, frame: frame)
@@ -524,4 +522,12 @@ enum VisionLabels {
 
 private extension CGRect {
     var area: CGFloat { width * height }
+}
+
+/// The viewfinder area's bounds, for placing the one shared live preview.
+struct PreviewAreaKey: PreferenceKey {
+    static let defaultValue: Anchor<CGRect>? = nil
+    static func reduce(value: inout Anchor<CGRect>?, nextValue: () -> Anchor<CGRect>?) {
+        value = value ?? nextValue()
+    }
 }
