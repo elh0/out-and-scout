@@ -35,6 +35,29 @@ struct ExportPanel: View {
                 option("all scenes", project.scenes.count == 1 ? "1 scene" : "\(project.scenes.count) scenes", selected: allScenes) { allScenes = true }
             }
 
+            // All scenes: drag the handles to set the order they go in the PDF and CSV.
+            if allScenes && project.scenes.count > 1 {
+                List {
+                    ForEach(Array(project.scenes.enumerated()), id: \.element.id) { i, s in
+                        HStack(spacing: Space.xs) {
+                            Text(String(format: "%02d", i + 1)).font(.osData).foregroundStyle(Palette.graphite)
+                            Text(s.name).font(.osRow).foregroundStyle(Palette.ink).lineLimit(1)
+                            Spacer(minLength: Space.xs)
+                            Text(ShotListView.shots(s.shots.count)).font(.osDataSmall).foregroundStyle(Palette.graphite)
+                        }
+                        .listRowBackground(Color.clear)
+                        .listRowInsets(EdgeInsets(top: 0, leading: Space.xs, bottom: 0, trailing: Space.xs))
+                    }
+                    .onMove { store.moveScenes(from: $0, to: $1) }
+                }
+                .listStyle(.plain)
+                .scrollContentBackground(.hidden)
+                .environment(\.editMode, .constant(.active))
+                // Takes whatever room is left in the panel, up to three rows; scrolls past that.
+                .frame(minHeight: 40, maxHeight: min(CGFloat(project.scenes.count) * 40, 120))
+                .overlay(RoundedRectangle(cornerRadius: Radius.card).strokeBorder(Palette.rule, lineWidth: 1))
+            }
+
             HStack(spacing: Space.xs) {
                 option("pdf", nil, selected: format == .pdf) { format = .pdf }
                 option("csv", nil, selected: format == .csv) { format = .csv }

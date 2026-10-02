@@ -101,6 +101,9 @@ final class CameraController: NSObject {
         }
         configured = ok
         status = ok ? .running : .unavailable
+        // Exposure stays where you put it, even after the app is closed.
+        let saved = UserDefaults.standard.float(forKey: Self.biasKey)
+        if ok, saved != 0 { setExposureBias(saved) }
     }
 
     func stop() {
@@ -169,7 +172,8 @@ final class CameraController: NSObject {
         let lens = lensFactors[i] * displayMultiplier
         let crop = z / lensFactors[i]
         let lensText = "iphone " + Self.format(lens) + "x"
-        lensLabel = Self.format(lens) + "x"
+        // Like the Camera app: the overall zoom, 0.5×, 1×, 1.9×, 3×.
+        lensLabel = Self.format(z * displayMultiplier) + "×"
         if tooWide {
             readout = lensText + " · wider than the iphone sees"
             cropIsSoft = true
@@ -189,12 +193,15 @@ final class CameraController: NSObject {
 
     // MARK: Focus and exposure
 
+    private static let biasKey = "exposureBias"
+
     /// Tap: focus and expose on a point, keep adjusting.
     func focus(atLayerPoint point: CGPoint) {
         guard let device, let layer = previewLayer else { return }
         let p = layer.captureDevicePointConverted(fromLayerPoint: point)
         aeAfLocked = false
-        exposureBias = 0
+        // Keep the exposure offset; tapping only moves where the camera meters.
+        let bias = exposureBias
         queue.async {
             guard (try? device.lockForConfiguration()) != nil else { return }
             defer { device.unlockForConfiguration() }
@@ -202,7 +209,7 @@ final class CameraController: NSObject {
             if device.isFocusModeSupported(.continuousAutoFocus) { device.focusMode = .continuousAutoFocus }
             if device.isExposurePointOfInterestSupported { device.exposurePointOfInterest = p }
             if device.isExposureModeSupported(.continuousAutoExposure) { device.exposureMode = .continuousAutoExposure }
-            device.setExposureTargetBias(0)
+            device.setExposureTargetBias(bias)
         }
     }
 
@@ -226,6 +233,7 @@ final class CameraController: NSObject {
         guard let device else { return }
         let v = min(max(value, device.minExposureTargetBias), device.maxExposureTargetBias)
         exposureBias = v
+        UserDefaults.standard.set(v, forKey: Self.biasKey)
         queue.async {
             guard (try? device.lockForConfiguration()) != nil else { return }
             device.setExposureTargetBias(v)

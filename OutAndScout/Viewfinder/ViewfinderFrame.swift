@@ -35,10 +35,13 @@ struct ViewfinderFrame: View {
                 if store.overlays.level {
                     LevelLine(roll: motion.roll).frame(width: frame.width, height: frame.height).offset(x: frame.minX, y: frame.minY)
                 }
-                if store.overlays.sunPath, let heading = location.heading {
+                if store.overlays.sunPath, let heading = (motion.heading ?? location.heading) {
                     SunPathOverlay(
                         sunDay: sunDay,
                         sun: sun,
+                        // When the time is scrubbed, a ring marks where the sun is right now.
+                        nowSun: store.plannedMinutes == nil ? nil : SunCalculator.position(
+                            at: Date(), latitude: location.coordinate.latitude, longitude: location.coordinate.longitude),
                         projector: Projector(heading: heading, elevation: motion.cameraElevation, hfov: camera.previewHFOV, size: size)
                     )
                 }
@@ -50,8 +53,11 @@ struct ViewfinderFrame: View {
                         .position(p)
                         .id(focusShownAt)
                         .task(id: focusShownAt) {
+                            // The exposure offset now carries over between taps, so hide the
+                            // square unless it was locked or the offset was changed this time.
+                            let biasAtTap = camera.exposureBias
                             guard (try? await Task.sleep(for: .seconds(3))) != nil else { return }
-                            if !camera.aeAfLocked && camera.exposureBias == 0 { focusPoint = nil }
+                            if !camera.aeAfLocked && camera.exposureBias == biasAtTap { focusPoint = nil }
                         }
                 }
             }
@@ -109,7 +115,7 @@ struct ViewfinderFrame: View {
             Text("\(Int(store.lensMM.rounded()))mm")
             Text(Format.time(planned))
                 .foregroundStyle(store.plannedMinutes == nil ? Palette.sun : Palette.paper)
-            Text(location.heading.map(Format.bearing) ?? "—")
+            Text((motion.heading ?? location.heading).map(Format.bearing) ?? "—")
         }
         .font(.osData)
         .foregroundStyle(Palette.paper)
@@ -274,20 +280,25 @@ struct Projector {
     }
 }
 
-/// The day's sun arc, golden-hour stretch highlighted, and the sun at the chosen time.
-/// If the sun is off-screen, an edge marker says which way to turn.
+/// The day's sun path: a solid line, golden-hour stretches in orange, a dot and label on
+/// each hour, the sun at the chosen time (filled) with its azimuth and elevation, and a ring
+/// for where it is now when the time is scrubbed. Off-screen, an edge marker says which way.
 struct SunPathOverlay: View {
     let sunDay: SunDay?
     let sun: SunPosition
+    var nowSun: SunPosition?
     let projector: Projector
 
     var body: some View {
         Canvas { ctx, size in
+            let bounds = CGRect(origin: .zero, size: size)
             if let day = sunDay {
                 var arc = Path()
                 var golden = Path()
                 var started = false
                 var goldenStarted = false
+                var hours: [(CGPoint, Int)] = []
+                let calendar = Calendar.current
                 for s in day.samples where s.position.elevation > -8 {
                     guard let p = projector.point(azimuth: s.position.azimuth, elevation: s.position.elevation) else {
                         started = false; goldenStarted = false; continue
@@ -299,9 +310,17 @@ struct SunPathOverlay: View {
                     } else {
                         goldenStarted = false
                     }
+                    let c = calendar.dateComponents([.hour, .minute], from: s.time)
+                    if c.minute == 0, s.position.elevation > -4, bounds.contains(p) { hours.append((p, c.hour ?? 0)) }
                 }
-                ctx.stroke(arc, with: .color(Palette.paper.opacity(0.45)), style: StrokeStyle(lineWidth: 1, dash: [3, 4]))
-                ctx.stroke(golden, with: .color(Palette.sun.opacity(0.6)), lineWidth: 2)
+                ctx.stroke(arc, with: .color(Palette.paper.opacity(0.55)), lineWidth: 1)
+                ctx.stroke(golden, with: .color(Palette.sun.opacity(0.85)), style: StrokeStyle(lineWidth: 2, lineCap: .round))
+
+                for (p, h) in hours {
+                    ctx.fill(Path(ellipseIn: CGRect(x: p.x - 2, y: p.y - 2, width: 4, height: 4)), with: .color(Palette.paper.opacity(0.8)))
+                    let label = Text(String(format: "%02d", h)).font(Fonts.mono(9)).foregroundColor(Palette.paper.opacity(0.7))
+                    ctx.draw(label, at: CGPoint(x: p.x, y: p.y + 9), anchor: .top)
+                }
 
                 // Horizon
                 if let l = projector.point(azimuth: projector.heading - 80, elevation: 0),
@@ -312,15 +331,21 @@ struct SunPathOverlay: View {
                 }
             }
 
+            if let now = nowSun, let p = projector.point(azimuth: now.azimuth, elevation: now.elevation), bounds.contains(p) {
+                let r: CGFloat = 7
+                ctx.stroke(Path(ellipseIn: CGRect(x: p.x - r, y: p.y - r, width: r * 2, height: r * 2)), with: .color(Palette.sun), lineWidth: 1.5)
+                ctx.draw(Text("now").font(.osDataSmall).foregroundColor(Palette.paper), at: CGPoint(x: p.x, y: p.y - r - 3), anchor: .bottom)
+            }
+
             if let p = projector.point(azimuth: sun.azimuth, elevation: sun.elevation),
-               CGRect(origin: .zero, size: size).insetBy(dx: -8, dy: -8).contains(p) {
+               bounds.insetBy(dx: -8, dy: -8).contains(p) {
                 let r: CGFloat = 7
                 let dot = Path(ellipseIn: CGRect(x: p.x - r, y: p.y - r, width: r * 2, height: r * 2))
-                if sun.elevation > -0.8 {
-                    ctx.fill(dot, with: .color(Palette.sun))
-                } else {
-                    ctx.stroke(dot, with: .color(Palette.sun), lineWidth: 1.5)
-                }
+                ctx.fill(dot, with: .color(Palette.sun))
+                let readout = Text("az \(Int(sun.azimuth.rounded()))° · el \(Int(sun.elevation.rounded()))°")
+                    .font(.osDataSmall).foregroundColor(Palette.paper)
+                let right = p.x < size.width - 110
+                ctx.draw(readout, at: CGPoint(x: right ? p.x + r + 5 : p.x - r - 5, y: p.y), anchor: right ? .leading : .trailing)
             } else {
                 // Off-screen: arrow at the edge pointing the way to turn.
                 let left = Bearing.difference(sun.azimuth, projector.heading) < 0

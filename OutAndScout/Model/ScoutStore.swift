@@ -66,6 +66,8 @@ final class ScoutStore {
     /// A name being edited in the floating name bar.
     var rename: RenameRequest?
     var toast: String?
+    /// The shot just taken; the Viewfinder shows its caption for a few seconds with an edit link.
+    var justSaved: UUID?
 
     private let fileURL: URL
 
@@ -315,6 +317,23 @@ final class ScoutStore {
             }
         }
         save()
+    }
+
+    /// Reorders the current project's scenes (the Export panel's drag handles); the PDF and
+    /// CSV follow this order.
+    func moveScenes(from source: IndexSet, to destination: Int) {
+        guard let p = projects.firstIndex(where: { $0.id == currentProjectID }) else { return }
+        projects[p].scenes.move(fromOffsets: source, toOffset: destination)
+        save()
+    }
+
+    func shot(_ id: UUID) -> Shot? {
+        for project in projects {
+            for scene in project.scenes {
+                if let shot = scene.shots.first(where: { $0.id == id }) { return shot }
+            }
+        }
+        return nil
     }
 
     func setCaption(_ id: UUID, to caption: String) {

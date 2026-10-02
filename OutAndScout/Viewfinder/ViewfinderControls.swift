@@ -345,7 +345,8 @@ struct BottomBar: View {
                     Text(Format.time(planned))
                         .font(.osData)
                         .foregroundStyle(store.plannedMinutes == nil ? Palette.sun : Palette.paper)
-                    Text(light.label)
+                    // When scrubbed, how far from now, e.g. "+2h10 · golden". Tap to snap back.
+                    Text(store.plannedMinutes == nil ? light.label : "\(Self.offset(from: Date(), to: planned)) · \(light.label)")
                         .font(.osDataSmall)
                         .foregroundStyle(Palette.nightMuted)
                         .lineLimit(1)
@@ -359,6 +360,15 @@ struct BottomBar: View {
 
             SunTimeline(sunDay: sunDay, planned: planned)
         }
+    }
+
+    /// "+2h10", "−45m", "now".
+    static func offset(from now: Date, to date: Date) -> String {
+        let minutes = Int((date.timeIntervalSince(now) / 60).rounded())
+        if minutes == 0 { return "now" }
+        let sign = minutes > 0 ? "+" : "−"
+        let m = abs(minutes)
+        return m < 60 ? "\(sign)\(m)m" : "\(sign)\(m / 60)h\(String(format: "%02d", m % 60))"
     }
 }
 

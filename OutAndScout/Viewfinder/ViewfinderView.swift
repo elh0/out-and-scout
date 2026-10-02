@@ -1,3 +1,4 @@
+import CoreLocation
 import Combine
 import SwiftUI
 
@@ -29,7 +30,7 @@ struct ViewfinderView: View {
                     .frame(width: 88)
 
                 VStack(spacing: Space.xs) {
-                    TopBar(heading: location.heading, sunAzimuth: sun.azimuth)
+                    TopBar(heading: (motion.heading ?? location.heading), sunAzimuth: sun.azimuth)
                         .frame(height: 44)
 
                     // Always 16:9, like a monitor; frame lines for the chosen ratio sit inside it.
@@ -50,10 +51,29 @@ struct ViewfinderView: View {
             // The keyboard slides over the viewfinder rather than shoving it off the top.
             .ignoresSafeArea(.keyboard)
 
+            if let metres = movedMetres {
+                SceneChangeChip(metres: metres) { newScene in
+                    keptScenes.insert(store.currentSceneID)
+                    if newScene { store.requestNewScene() }
+                }
+                .frame(maxHeight: .infinity, alignment: .top)
+                .padding(.top, 52 + Space.xs)
+                .transition(.opacity)
+            } else if let id = store.justSaved, let shot = store.shot(id) {
+                SavedChip(shot: shot)
+                    .frame(maxHeight: .infinity, alignment: .top)
+                    .padding(.top, 52 + Space.xs)
+                    .transition(.opacity)
+                    .id(id)
+            }
+
             overlays
         }
         // The keyboard only ever slides over the app; nothing gets pushed up or squashed.
         .ignoresSafeArea(.keyboard)
+        .animation(.easeOut(duration: 0.2), value: store.justSaved)
+        // Switch the compass to true north once location is allowed.
+        .onChange(of: location.authorization) { motion.start() }
         .task(id: DayKey(date: planned, latitude: coord.latitude, longitude: coord.longitude)) {
             let day = await Task.detached(priority: .utility) {
                 SunCalculator.day(containing: planned, latitude: coord.latitude, longitude: coord.longitude)
@@ -109,6 +129,19 @@ struct ViewfinderView: View {
         .animation(.snappy(duration: 0.25), value: cardIsOpen)
     }
 
+    /// Scenes where "keep" was picked, so the new-scene question isn't asked again there.
+    @State private var keptScenes: Set<UUID> = []
+
+    /// How far you've walked from this scene's last shot, once it's more than 300 m.
+    private var movedMetres: Int? {
+        guard !cardIsOpen, store.justSaved == nil, !keptScenes.contains(store.currentSceneID),
+              let here = location.location, here.horizontalAccuracy >= 0, here.horizontalAccuracy < 100,
+              let last = store.currentScene.shots.last(where: { $0.location != nil })?.location
+        else { return nil }
+        let d = here.distance(from: CLLocation(latitude: last.latitude, longitude: last.longitude))
+        return d > 300 ? Int((d / 10).rounded() * 10) : nil
+    }
+
     private var cardIsOpen: Bool {
         store.pending != nil || store.askingLocation || store.namingSceneID != nil || store.showingCustomAspect
     }
@@ -136,7 +169,7 @@ struct ViewfinderView: View {
         let light = LightPhase.from(elevation: sun.elevation, localHour: hour)
 
         var sunInFrame = false
-        if let heading = location.heading, sun.elevation > -2 {
+        if let heading = (motion.heading ?? location.heading), sun.elevation > -2 {
             let hfov = store.kit.horizontalFOV(focal: lens)
             sunInFrame = abs(Bearing.difference(sun.azimuth, heading)) < hfov / 2
                 && abs(sun.elevation - motion.cameraElevation) < hfov / (store.aspect.isFull ? stillAspect : store.aspect.value) / 2
@@ -150,13 +183,15 @@ struct ViewfinderView: View {
             plannedTime: planned,
             sun: sun,
             light: light,
-            bearing: location.heading,
+            bearing: (motion.heading ?? location.heading),
             location: nil,
             stillAspect: stillAspect
         )
         // Save now so the shutter is ready again at once; the caption and place name
         // arrive in the background and can be edited later in the Shot List.
         store.addShot(shot, caption: "")
+        store.toast = nil
+        store.justSaved = shot.id
 
         let sensorWidth = store.kit.mode.widthMM * store.kit.lenses.squeeze
         Task {
@@ -200,5 +235,63 @@ enum Bearing {
         if d > 180 { d -= 360 }
         if d < -180 { d += 360 }
         return d
+    }
+}
+
+/// "5A · lamp, night   edit" for a few seconds after the shutter. The caption fills in when
+/// it's ready; tap edit to change it in the name bar.
+private struct SavedChip: View {
+    @Environment(ScoutStore.self) private var store
+    let shot: Shot
+
+    var body: some View {
+        HStack(spacing: Space.s) {
+            Text("\(shot.number) · \(shot.caption.isEmpty ? "captioning…" : shot.caption)")
+                .font(.osData)
+                .foregroundStyle(Palette.paper)
+                .lineLimit(1)
+            Button("edit") {
+                store.justSaved = nil
+                store.rename = RenameRequest(title: "caption \(shot.number)", text: shot.caption) { [store, id = shot.id] in
+                    store.setCaption(id, to: $0)
+                }
+            }
+            .font(.osData)
+            .foregroundStyle(Palette.nightMuted)
+            .underline()
+            .frame(minHeight: 44)
+        }
+        .padding(.horizontal, Space.s)
+        .background(Palette.hud, in: Capsule())
+        .frame(maxWidth: 420)
+        .task {
+            guard (try? await Task.sleep(for: .seconds(4))) != nil else { return }
+            if store.justSaved == shot.id { store.justSaved = nil }
+        }
+    }
+}
+
+/// "moved 340 m · new scene?" with keep / new scene, after you walk away from the last shot.
+private struct SceneChangeChip: View {
+    let metres: Int
+    let choose: (Bool) -> Void
+
+    var body: some View {
+        HStack(spacing: Space.s) {
+            Text("moved \(metres) m · new scene?")
+                .font(.osData)
+                .foregroundStyle(Palette.paper)
+                .lineLimit(1)
+            Button("keep") { choose(false) }
+                .foregroundStyle(Palette.nightMuted)
+                .frame(minHeight: 44)
+            Button("new scene") { choose(true) }
+                .foregroundStyle(Palette.paper)
+                .underline()
+                .frame(minHeight: 44)
+        }
+        .font(.osData)
+        .padding(.horizontal, Space.s)
+        .background(Palette.hud, in: Capsule())
     }
 }
