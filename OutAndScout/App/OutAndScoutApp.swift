@@ -7,6 +7,7 @@ struct OutAndScoutApp: App {
     @State private var location = LocationService()
     @State private var motion = MotionService()
     @Environment(\.scenePhase) private var scenePhase
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     init() {
         Fonts.registerBundled()
@@ -165,9 +166,8 @@ struct RootView: View {
             default: break
             }
             // Screenshot testing: -orientation portrait turns the screen upright.
-            if UserDefaults.standard.string(forKey: "orientation") == "portrait",
-               let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first {
-                scene.requestGeometryUpdate(.iOS(interfaceOrientations: .portrait))
+            if let o = UserDefaults.standard.string(forKey: "orientation") {
+                Orientation.set(upright: o == "portrait", remember: false)
             }
             #endif
         }

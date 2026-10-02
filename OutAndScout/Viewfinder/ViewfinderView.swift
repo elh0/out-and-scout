@@ -28,6 +28,13 @@ struct ViewfinderView: View {
 
             if portrait {
                 portraitLayout(sun: sun, planned: planned)
+                    // Board: top 14, right 16, beside the notch.
+                    .overlay(alignment: .topTrailing) {
+                        TurnSidewaysButton()
+                            .padding(.top, 14 - 8)
+                            .padding(.trailing, Space.m)
+                            .ignoresSafeArea()
+                    }
             } else {
                 landscapeLayout(sun: sun, planned: planned)
             }

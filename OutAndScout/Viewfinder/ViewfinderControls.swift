@@ -189,6 +189,8 @@ struct LeftRail: View {
             RailToggle(symbol: "sun.horizon", label: "sun path", on: store.overlays.sunPath) { store.toggle(\.sunPath) }
             RailToggle(symbol: "grid", label: "grid", on: store.overlays.grid) { store.toggle(\.grid) }
             RailToggle(symbol: "level", label: "level", on: store.overlays.level) { store.toggle(\.level) }
+            // Portrait layout, picked by hand rather than by tilting the phone.
+            RailToggle(symbol: "rectangle.portrait.rotate", label: "upright", on: false) { Orientation.set(upright: true) }
         }
         // Centred on the viewfinder, not on the viewfinder plus the bottom bar.
         .frame(maxHeight: .infinity)
