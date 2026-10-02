@@ -217,7 +217,7 @@ private struct Picked: ViewModifier {
 
 /// "scene order · drag to reorder": rows 40 high with 4 between them; drag the grip
 /// on the right and the row moves as you pass each neighbour, like the v3c board.
-private struct SceneOrder: View {
+struct SceneOrder: View {
     let scenes: [ScoutScene]
     let move: (IndexSet, Int) -> Void
 

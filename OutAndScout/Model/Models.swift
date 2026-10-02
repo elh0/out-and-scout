@@ -49,7 +49,7 @@ struct Shot: Identifiable, Codable, Hashable {
 
     /// "24mm · 19:12 · sun 247°"
     var meta: String {
-        "\(Int(lensMM.rounded()))mm · \(Format.time(plannedTime)) · sun \(Int(sunAzimuth.rounded()))°"
+        "\(Int(lensMM.rounded()))mm · \(Format.time(plannedTime)) · Sun \(Int(sunAzimuth.rounded()))°"
     }
 }
 

@@ -237,10 +237,11 @@ struct RightRail: View {
     let onShutter: () -> Void
 
     var body: some View {
-        // Lens at the top, shutter under it where the thumb sits, shots below; spare room
-        // goes to the bottom rather than pushing everything to the middle.
+        // Lens at the top, shots at the bottom, and the shutter centred in the room between
+        // them, lower down where the thumb rests (Elliot found it sat too high).
         VStack(spacing: 6) {
             LensWheel()
+            Spacer(minLength: 0)
             shutter
             Spacer(minLength: 0)
             // Down in line with the bottom bar, clear of the shutter.

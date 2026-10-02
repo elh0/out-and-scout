@@ -6,6 +6,8 @@ struct ShotListView: View {
     @Environment(ScoutStore.self) private var store
     /// nil = all scenes
     @State private var sceneFilter: UUID?
+    /// The drag-to-reorder scenes sheet, opened by holding a scene.
+    @State private var reordering = false
     @State private var selectedID: UUID?
     @State private var confirmDelete = false
     @State private var confirmDeleteAll = false
@@ -56,6 +58,18 @@ struct ShotListView: View {
         }
         .animation(.easeOut(duration: 0.2), value: enlarged?.id)
         .animation(.snappy(duration: 0.25), value: sheetID)
+        .sheet(isPresented: $reordering) {
+            let project = store.currentProject
+            VStack(alignment: .leading, spacing: 16) {
+                PanelHeader(title: "Reorder Scenes", sub: "Drag the handles. Exports follow this order.", action: ("Done", { reordering = false }))
+                ScrollView { SceneOrder(scenes: project.scenes) { store.moveScenes(from: $0, to: $1) } }
+            }
+            .padding(.top, 18)
+            .padding(.horizontal, 20)
+            .background(Palette.paper)
+            .foregroundStyle(Palette.ink)
+            .presentationDetents([.medium, .large])
+        }
         .confirmationDialog(
             "Delete \"\(deletingScene?.name ?? "")\"?",
             isPresented: Binding(get: { deletingScene != nil }, set: { if !$0 { deletingScene = nil } }),
@@ -149,7 +163,7 @@ struct ShotListView: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 0) {
-                    Text("Shot list · ").font(.osData).foregroundStyle(Palette.graphite)
+                    Text("Shot List · ").font(.osData).foregroundStyle(Palette.graphite)
                     EditableName(text: project.name, font: .osData, color: Palette.graphite, title: "Rename Project") {
                         store.renameProject(project.id, to: $0)
                     }
@@ -157,7 +171,7 @@ struct ShotListView: View {
                 if let s = sceneFilter.flatMap(scene(for:)) {
                     EditableName(text: s.name, font: .osTitle, title: "Rename Scene") { store.renameScene(s.id, to: $0) }
                 } else {
-                    Text("All scenes").font(.osTitle).lineLimit(1)
+                    Text("All Scenes").font(.osTitle).lineLimit(1)
                 }
                 Text(subtitle).font(.osSupport).foregroundStyle(Palette.graphite)
             }
@@ -176,6 +190,7 @@ struct ShotListView: View {
                         .contextMenu {
                             // A project always keeps at least one scene.
                             if project.scenes.count > 1 {
+                                Button("Reorder Scenes", systemImage: "arrow.left.arrow.right") { reordering = true }
                                 Button("Delete Scene", systemImage: "trash", role: .destructive) { deletingScene = s }
                             }
                         }
@@ -186,6 +201,7 @@ struct ShotListView: View {
                     }
                 }
             }
+            if project.scenes.count > 1 { sceneHint }
 
             if visible.isEmpty {
                 Text("No shots in this scene yet. Pin one from the viewfinder and it lands here.")
@@ -270,6 +286,7 @@ struct ShotListView: View {
                         .contextMenu {
                             // A project always keeps at least one scene.
                             if project.scenes.count > 1 {
+                                Button("Reorder Scenes", systemImage: "arrow.left.arrow.right") { reordering = true }
                                 Button("Delete Scene", systemImage: "trash", role: .destructive) { deletingScene = sc }
                             }
                         }
@@ -278,7 +295,9 @@ struct ShotListView: View {
                 .padding(.horizontal, Space.l)
             }
             .scrollIndicators(.hidden)
-            .padding(.bottom, 12)
+            .padding(.bottom, project.scenes.count > 1 ? 6 : 12)
+
+            if project.scenes.count > 1 { sceneHint.padding(.horizontal, Space.l).padding(.bottom, 10) }
 
             Rule()
             ScrollView {
@@ -444,6 +463,16 @@ struct ShotListView: View {
                 .transition(.move(edge: .bottom))
             }
         }
+    }
+
+    /// Tells people the scene chips can be held.
+    private var sceneHint: some View {
+        Button { reordering = true } label: {
+            Text("Hold a scene to delete it, or tap here to reorder")
+                .font(.osDataSmall)
+                .foregroundStyle(Palette.graphite)
+        }
+        .buttonStyle(.plain)
     }
 
     private func sheetCell(_ label: String, _ value: String) -> some View {

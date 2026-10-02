@@ -7,8 +7,9 @@ import UIKit
     static let shared = LayoutMode()
     private static let key = "upright"
 
-    /// The portrait layouts are showing.
-    private(set) var portrait = UserDefaults.standard.bool(forKey: key)
+    /// The portrait layouts are showing. The app always opens in landscape, as Elliot
+    /// asked; portrait is a switch away.
+    private(set) var portrait = false
     /// True for the moment the screen is turning; the controls fade back in after.
     private(set) var turning = false
 

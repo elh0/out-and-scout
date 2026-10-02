@@ -164,12 +164,28 @@ struct Rule: View {
 /// reads as "more this way" rather than a stray sliver.
 struct FadingHScroll<Content: View>: View {
     @ViewBuilder let content: Content
+    /// Whether there's more to scroll to on each side; that side fades only then.
+    @State private var more = (leading: false, trailing: true)
+    private let fade: CGFloat = 24
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) { content }
-            .mask(
-                LinearGradient(stops: [.init(color: .black, location: 0.88), .init(color: .clear, location: 1)],
-                               startPoint: .leading, endPoint: .trailing)
-            )
+            // Room at both ends so the first and last chip sit clear of the fade.
+            .contentMargins(.horizontal, 8, for: .scrollContent)
+            .onScrollGeometryChange(for: [Bool].self) { g in
+                [g.contentOffset.x > -g.contentInsets.leading + 1,
+                 g.contentOffset.x + g.containerSize.width < g.contentSize.width + g.contentInsets.trailing - 1]
+            } action: { _, v in
+                withAnimation(.easeOut(duration: 0.15)) { more = (v[0], v[1]) }
+            }
+            .mask {
+                HStack(spacing: 0) {
+                    LinearGradient(colors: [more.leading ? .clear : .black, .black], startPoint: .leading, endPoint: .trailing)
+                        .frame(width: fade)
+                    Color.black
+                    LinearGradient(colors: [.black, more.trailing ? .clear : .black], startPoint: .leading, endPoint: .trailing)
+                        .frame(width: fade)
+                }
+            }
     }
 }

@@ -109,7 +109,8 @@ enum Exporter {
     private static func rowHeight(_ options: Options) -> CGFloat { options.frames ? 84 : 40 }
     private static func rowsPerPage(_ options: Options) -> Int {
         // Room under the scene header and sun grid, above the footer.
-        let avail = page.height - pad * 2 - 168 - footerH
+        // The sun path chart takes another 140 when sun times are on.
+        let avail = page.height - pad * 2 - 168 - (options.sunTimes ? 140 : 0) - footerH
         return max(1, Int(avail / rowHeight(options)))
     }
     private static func pages(for scene: ScoutScene, _ options: Options) -> Int {
@@ -180,6 +181,78 @@ enum Exporter {
         }
         line(at: y + 46)
         return y + 46
+    }
+
+    /// The day's sun path across the compass (N E S W along the bottom, height up the side),
+    /// golden hour in orange, every other hour marked, and a tick for the way each shot faced.
+    private static func sunPathChart(scene: ScoutScene, at loc: ShotLocation, on date: Date, y top: CGFloat) -> CGFloat {
+        let day = SunCalculator.day(containing: date, latitude: loc.latitude, longitude: loc.longitude)
+        let h: CGFloat = 96
+        let w = page.width - pad * 2
+        let maxEl = max(10, (day.samples.map(\.position.elevation).max() ?? 10) + 4)
+        // Room under the horizon for the shot ticks and their numbers.
+        let minEl = -14.0
+        let plot = CGRect(x: pad, y: top + 14, width: w, height: h)
+        func point(_ az: Double, _ el: Double) -> CGPoint {
+            CGPoint(x: plot.minX + plot.width * az / 360,
+                    y: plot.maxY - plot.height * (el - minEl) / (maxEl - minEl))
+        }
+
+        text("Sun path", font: mono(8.5), color: graphite).draw(at: CGPoint(x: pad, y: top))
+
+        // Horizon and compass points.
+        let horizon = point(0, 0).y
+        rule.setFill()
+        UIRectFill(CGRect(x: plot.minX, y: horizon, width: plot.width, height: 0.75))
+        for (az, label) in [(0.0, "N"), (90.0, "E"), (180.0, "S"), (270.0, "W"), (360.0, "N")] {
+            let x = point(az, 0).x
+            UIRectFill(CGRect(x: x - 0.375, y: plot.minY, width: 0.75, height: plot.height))
+            let t = text(label, font: mono(8), color: graphite)
+            t.draw(at: CGPoint(x: min(max(x - t.size().width / 2, plot.minX), plot.maxX - t.size().width), y: plot.maxY + 3))
+        }
+
+        // The path, split where it wraps past north; golden stretches drawn over it.
+        let path = UIBezierPath(), golden = UIBezierPath()
+        var last: Double?, lastGolden = false
+        let calendar = Calendar.current
+        for s in day.samples where s.position.elevation > -6 {
+            let p = point(s.position.azimuth, s.position.elevation)
+            let wrapped = last.map { abs($0 - s.position.azimuth) > 180 } ?? true
+            if wrapped { path.move(to: p) } else { path.addLine(to: p) }
+            let isGolden = s.position.elevation >= -4 && s.position.elevation < 6
+            if isGolden && lastGolden && !wrapped { golden.addLine(to: p) } else if isGolden { golden.move(to: p) }
+            last = s.position.azimuth
+            lastGolden = isGolden
+            let c = calendar.dateComponents([.hour, .minute], from: s.time)
+            if c.minute == 0, (c.hour ?? 1) % 2 == 0, s.position.elevation > 0 {
+                ink.setFill()
+                UIBezierPath(ovalIn: CGRect(x: p.x - 1.5, y: p.y - 1.5, width: 3, height: 3)).fill()
+                let t = text(String(format: "%02d", c.hour ?? 0), font: mono(7), color: graphite)
+                t.draw(at: CGPoint(x: p.x - t.size().width / 2, y: p.y - 11))
+            }
+        }
+        graphite.setStroke()
+        path.lineWidth = 1
+        path.stroke()
+        sun.setStroke()
+        golden.lineWidth = 2
+        golden.lineCapStyle = .round
+        golden.stroke()
+
+        // Which way each shot faced.
+        var placed: [CGFloat] = []
+        for shot in scene.shots {
+            guard let b = shot.bearing else { continue }
+            let x = point(b, 0).x
+            ink.setFill()
+            UIRectFill(CGRect(x: x - 0.5, y: horizon - 6, width: 1, height: 12))
+            // Stagger labels that would overlap.
+            let row = placed.filter { abs($0 - x) < 16 }.count
+            placed.append(x)
+            let t = text(shot.number, font: mono(7))
+            t.draw(at: CGPoint(x: x - t.size().width / 2, y: horizon + 7 + CGFloat(row) * 9))
+        }
+        return plot.maxY + 14
     }
 
     /// Sunrise, the evening golden and blue hours, and sunset for a place on the recce day.
@@ -291,10 +364,10 @@ enum Exporter {
         let cLens = cTime - 12 - 48
         let descW = cLens - 12 - cDesc
 
-        func header() {
+        func header(continued: Bool = false) {
             ctx.beginPage()
             y = pad
-            text("\(project.name) · scene \(String(format: "%02d", index))", font: mono(8.5), color: graphite).draw(at: CGPoint(x: pad, y: y))
+            text("\(project.name) · Scene \(String(format: "%02d", index))", font: mono(8.5), color: graphite).draw(at: CGPoint(x: pad, y: y))
             let brand = text("out & scout", font: sans(11, medium: true), kern: -0.2)
             brand.draw(at: CGPoint(x: page.width - pad - brand.size().width, y: y))
             y += 14
@@ -312,6 +385,10 @@ enum Exporter {
             if options.sunTimes, let loc {
                 let t = sunTimes(at: loc, on: recceDate([scene]))
                 y = grid([("Sunrise", t.rise, false), ("Golden hour", t.golden, false), ("Sunset", t.set, false), ("Location", coords(loc), false)], y: y) + 14
+                // The sun path once per scene, on its first page.
+                if !continued {
+                    y = sunPathChart(scene: scene, at: loc, on: recceDate([scene]), y: y) + 16
+                }
             }
             for (x, h) in [(cShot, "Shot"), (cFrame, options.frames ? "Frame" : ""), (cDesc, "Description"), (cLens, "Lens"), (cTime, "Time"), (cLight, "Light")] where !h.isEmpty {
                 text(h, font: mono(8.5), color: graphite).draw(at: CGPoint(x: x, y: y))
@@ -337,7 +414,7 @@ enum Exporter {
         for (i, shot) in scene.shots.enumerated() {
             if i > 0, i % perPage == 0 {
                 finishPage()
-                header()
+                header(continued: true)
             }
             let top = y + 9
             // Every column starts at the top of the row, level with the caption.
