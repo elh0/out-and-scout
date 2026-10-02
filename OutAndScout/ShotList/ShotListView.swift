@@ -23,12 +23,6 @@ struct ShotListView: View {
             if portrait {
                 portraitList
                     .foregroundStyle(Palette.ink)
-                    .overlay(alignment: .topTrailing) {
-                        TurnSidewaysButton(onDark: false)
-                            .padding(.top, 14 - 8)
-                            .padding(.trailing, Space.m)
-                            .ignoresSafeArea()
-                    }
                 portraitSheet
             } else {
                 HStack(spacing: 0) {

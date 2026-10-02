@@ -32,7 +32,7 @@ struct ExportPanel: View {
             .replacingOccurrences(of: ".\(ext)", with: "")
 
         // v3c export panel: 380 wide, 18/20 padding, 12 between blocks, scrolls when it runs out of room.
-        GeometryReader { geo in
+        VStack(spacing: 0) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     VStack(alignment: .leading, spacing: 2) {
@@ -51,11 +51,11 @@ struct ExportPanel: View {
                         SceneOrder(scenes: project.scenes) { store.moveScenes(from: $0, to: $1) }
                     }
 
-                    VStack(spacing: 6) {
-                        formatRow(.pdf, "pdf", "for the crew")
-                        formatRow(.csv, "csv", "for spreadsheets")
+                    HStack(spacing: 6) {
+                        formatRow(.pdf, "pdf", nil)
+                        formatRow(.csv, "csv", nil)
                         // The live link needs outandscout.com/s/<project> to exist first.
-                        formatRow(.link, "link", "view-only, live · soon")
+                        formatRow(.link, "link", "soon")
                             .opacity(0.45)
                             .disabled(true)
                     }
@@ -66,47 +66,52 @@ struct ExportPanel: View {
                         includeChip("sun times", on: options.sunTimes) { options.sunTimes.toggle() }
                     }
 
-                    Spacer(minLength: 0)
-
-                    if let error {
-                        Text(error).font(.osData).foregroundStyle(Palette.graphite)
-                    }
-
-                    Button { export(project: project, scene: target) } label: {
-                        Text("\(target == nil ? "export all scenes" : "export scene") · \(ext)")
-                            .font(.osTitle)
-                            .foregroundStyle(Palette.paper)
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 48)
-                            .background(Palette.ink, in: Capsule())
-                            .contentShape(Capsule())
-                    }
-                    .buttonStyle(.plain)
-
-                    // Tap the file name to rename the export.
-                    HStack(spacing: 0) {
-                        EditableName(text: customName ?? defaultName, font: .osData, color: Palette.graphite, title: "file name") {
-                            customName = Exporter.cleanName($0)
-                        }
-                        Text(".\(ext)").font(.osData).foregroundStyle(Palette.graphite)
-                    }
-                    .frame(maxWidth: .infinity)
-
-                    if format == .pdf {
-                        // Look before you send: opens the PDF in Quick Look.
-                        Button("preview the pdf →") { preview(project: project, scene: target) }
-                            .buttonStyle(.plain)
-                            .font(.osData)
-                            .underline()
-                            .foregroundStyle(Palette.ink)
-                            .frame(maxWidth: .infinity, minHeight: 28)
-                    }
                 }
-                .padding(.vertical, 18)
+                .padding(.top, 18)
                 .padding(.horizontal, 20)
-                .frame(minHeight: geo.size.height, alignment: .top)
+                .padding(.bottom, 12)
             }
             .scrollIndicators(.hidden)
+
+            // Always in reach: the export button, file name and preview stay put while the
+            // options above scroll.
+            VStack(spacing: 8) {
+                if let error {
+                    Text(error).font(.osData).foregroundStyle(Palette.graphite)
+                }
+
+                Button { export(project: project, scene: target) } label: {
+                    Text("\(target == nil ? "export all scenes" : "export scene") · \(ext)")
+                        .font(.osTitle)
+                        .foregroundStyle(Palette.paper)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 48)
+                        .background(Palette.ink, in: Capsule())
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+
+                // Tap the file name to rename the export.
+                HStack(spacing: 0) {
+                    EditableName(text: customName ?? defaultName, font: .osData, color: Palette.graphite, title: "file name") {
+                        customName = Exporter.cleanName($0)
+                    }
+                    Text(".\(ext)").font(.osData).foregroundStyle(Palette.graphite)
+                }
+                .frame(maxWidth: .infinity)
+
+                if format == .pdf {
+                    // Look before you send: opens the PDF in Quick Look.
+                    Button("preview the pdf →") { preview(project: project, scene: target) }
+                        .buttonStyle(.plain)
+                        .font(.osData)
+                        .underline()
+                        .foregroundStyle(Palette.ink)
+                        .frame(maxWidth: .infinity, minHeight: 28)
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.bottom, 12)
         }
         .frame(width: 380)
         .background(
@@ -145,14 +150,14 @@ struct ExportPanel: View {
         .buttonStyle(.plain)
     }
 
-    /// v3c format row: 42 high, radius 12, label left and what it's for on the right.
-    private func formatRow(_ choice: Choice, _ label: String, _ sub: String) -> some View {
+    /// v3c format card: 42 high, radius 12. No "for the crew" hints, as Elliot asked.
+    private func formatRow(_ choice: Choice, _ label: String, _ sub: String?) -> some View {
         Button { format = choice } label: {
-            HStack {
+            HStack(spacing: 6) {
                 Text(label).font(.osRow)
-                Spacer()
-                Text(sub).font(.osData).foregroundStyle(Palette.graphite)
+                if let sub { Text(sub).font(.osDataSmall).foregroundStyle(Palette.graphite) }
             }
+            .frame(maxWidth: .infinity)
             .padding(.horizontal, 14)
             .frame(height: 42)
             .modifier(Picked(selected: format == choice, radius: 12))

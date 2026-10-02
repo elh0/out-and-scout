@@ -56,11 +56,27 @@ struct KeyboardProofHost<Content: View>: UIViewControllerRepresentable {
     func updateUIViewController(_ host: KeyboardProofController<Content>, context: Context) {
         host.rootView = content()
     }
+
+    /// Fill whatever SwiftUI offers, so a rotation can't leave the app at the old size.
+    func sizeThatFits(_ proposal: ProposedViewSize, uiViewController: KeyboardProofController<Content>, context: Context) -> CGSize? {
+        let screen = uiViewController.view.window?.bounds.size ?? .zero
+        return CGSize(width: proposal.width ?? screen.width, height: proposal.height ?? screen.height)
+    }
 }
 
 /// Nested inside SwiftUI, this controller doesn't inherit the notch and
 /// home-indicator insets, so it tops them up from the window's own.
 final class KeyboardProofController<Content: View>: UIHostingController<Content> {
+    override func viewWillTransition(to size: CGSize, with coordinator: any UIViewControllerTransitionCoordinator) {
+        super.viewWillTransition(to: size, with: coordinator)
+        // Belt and braces: make sure the hosted app takes the new screen size.
+        coordinator.animate(alongsideTransition: nil) { [weak self] _ in
+            guard let self, let container = self.view.superview else { return }
+            if self.view.frame.size != container.bounds.size { self.view.frame = container.bounds }
+            self.view.setNeedsLayout()
+        }
+    }
+
     override func viewWillLayoutSubviews() {
         super.viewWillLayoutSubviews()
         guard let window = view.window else { return }
@@ -93,11 +109,9 @@ struct RootView: View {
     @Environment(MotionService.self) private var motion
 
     var body: some View {
-        // Taller than wide: the portrait layouts from the v3c Portrait board.
-        GeometryReader { geo in
-            let portrait = geo.size.height > geo.size.width
-            content(portrait: portrait).environment(\.isPortrait, portrait)
-        }
+        // Portrait or landscape comes from the layout switch, never from tilting the phone.
+        let portrait = LayoutMode.shared.portrait
+        content(portrait: portrait).environment(\.isPortrait, portrait)
     }
 
     private func content(portrait: Bool) -> some View {
@@ -134,7 +148,7 @@ struct RootView: View {
                     .background(Palette.paper, in: Capsule())
                     .frame(maxHeight: .infinity, alignment: .top)
                     // Over the frame when upright, like the Portrait board.
-                    .padding(.top, portrait ? 93 : 52)
+                    .padding(.top, portrait ? 92 : 52)
                     .transition(.opacity)
                     .zIndex(2)
                     .task(id: toast) {
@@ -167,7 +181,7 @@ struct RootView: View {
             }
             // Screenshot testing: -orientation portrait turns the screen upright.
             if let o = UserDefaults.standard.string(forKey: "orientation") {
-                Orientation.set(upright: o == "portrait", remember: false)
+                LayoutMode.shared.set(portrait: o == "portrait", remember: false)
             }
             #endif
         }

@@ -105,22 +105,23 @@ struct ViewfinderFrame: View {
                 camera.focus(atLayerPoint: p)
                 showFocus(at: p)
             }
-            // Pinch like the Camera app: out for a longer lens, in for a wider one. It snaps
-            // to the kit's focal lengths, so the frame always shows a real lens.
+            // Pinch like the Camera app: smooth while your fingers move (out for longer, in for
+            // wider), then it settles on the nearest lens in the kit when you let go.
             .simultaneousGesture(
                 MagnifyGesture()
                     .onChanged { v in
                         let start = pinchStartMM ?? store.lensMM
                         pinchStartMM = start
-                        let wanted = start * Double(v.magnification)
                         let focals = store.focalLengths
-                        if let nearest = focals.min(by: { abs(log($0 / wanted)) < abs(log($1 / wanted)) }),
-                           nearest != store.lensMM {
-                            store.lensMM = nearest
-                        }
+                        guard let lo = focals.first, let hi = focals.last else { return }
+                        store.lensMM = min(max((start * Double(v.magnification)).rounded(), lo), hi)
                     }
                     .onEnded { _ in
                         pinchStartMM = nil
+                        let mm = store.lensMM
+                        if let nearest = store.focalLengths.min(by: { abs(log($0 / mm)) < abs(log($1 / mm)) }) {
+                            store.lensMM = nearest
+                        }
                         store.save()
                     }
             )

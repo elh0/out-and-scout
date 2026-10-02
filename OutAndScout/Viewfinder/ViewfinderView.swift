@@ -29,12 +29,6 @@ struct ViewfinderView: View {
             if portrait {
                 portraitLayout(sun: sun, planned: planned)
                     // Board: top 14, right 16, beside the notch.
-                    .overlay(alignment: .topTrailing) {
-                        TurnSidewaysButton()
-                            .padding(.top, 14 - 8)
-                            .padding(.trailing, Space.m)
-                            .ignoresSafeArea()
-                    }
             } else {
                 landscapeLayout(sun: sun, planned: planned)
             }
@@ -77,39 +71,43 @@ struct ViewfinderView: View {
         .onAppear(perform: updateHeadingOrientation)
     }
 
-    /// Chips sit just under the top bar in landscape; upright they sit over the frame
-    /// (140 on the board, less the 47pt status bar).
-    private var chipTop: CGFloat { portrait ? 93 : 52 }
+    /// Chips sit just under the top bar in landscape; upright, just inside the frame.
+    private var chipTop: CGFloat { portrait ? 92 : 52 }
 
-    /// The v3c Portrait board, top to bottom: names and clock at 52, the frame from 124
-    /// to 594, ratio chips at 606, time and slider at 650, controls 40 from the bottom.
+    /// Upright, top to bottom: names, clock and kit; + scene, compass and the layout
+    /// switch; the frame; toggles and ratios; time over the sun timeline; shots, shutter, lens.
     private func portraitLayout(sun: SunPosition, planned: Date) -> some View {
         VStack(spacing: 0) {
             PortraitTopRow(planned: planned)
                 .padding(.horizontal, Space.m)
-                .frame(height: 36)
-                .padding(.top, 5)
+                .frame(height: 44)
+
+            PortraitCompassRow(
+                heading: motion.heading ?? location.heading,
+                headingAccuracy: location.headingAccuracy,
+                sunAzimuth: sun.azimuth
+            )
+            .padding(.horizontal, Space.m)
+            .frame(height: 36)
 
             ViewfinderFrame(sun: sun, sunDay: sunDay, planned: planned, frameFraction: $frameFraction, portrait: true)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .clipped()
-                .padding(.top, 36)
+                .padding(.top, 4)
 
-            PortraitAspectChips()
-                .padding(.horizontal, Space.l)
-                .frame(height: 28)
-                .padding(.top, 12)
+            PortraitToolsRow()
+                .padding(.horizontal, Space.m)
+                .frame(height: 44)
 
             PortraitTimeRow(sunDay: sunDay, planned: planned, sun: sun)
-                .padding(.horizontal, Space.xl)
-                .padding(.top, 16)
+                .padding(.horizontal, Space.l)
+                .padding(.top, 4)
 
             PortraitBottomRow(capturing: capturing) {
                 Task { await pin() }
             }
-            .frame(height: 72)
-            .padding(.top, 45)
-            .padding(.bottom, 6)
+            .frame(height: 92)
+            .padding(.top, 4)
         }
         .ignoresSafeArea(.keyboard)
     }

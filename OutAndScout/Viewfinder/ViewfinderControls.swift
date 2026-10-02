@@ -190,7 +190,7 @@ struct LeftRail: View {
             RailToggle(symbol: "grid", label: "grid", on: store.overlays.grid) { store.toggle(\.grid) }
             RailToggle(symbol: "level", label: "level", on: store.overlays.level) { store.toggle(\.level) }
             // Portrait layout, picked by hand rather than by tilting the phone.
-            RailToggle(symbol: "rectangle.portrait.rotate", label: "upright", on: false) { Orientation.set(upright: true) }
+            LayoutSwitch(vertical: true)
         }
         // Centred on the viewfinder, not on the viewfinder plus the bottom bar.
         .frame(maxHeight: .infinity)
@@ -244,7 +244,7 @@ struct RightRail: View {
             shutter
             Spacer(minLength: 0)
             // Down in line with the bottom bar, clear of the shutter.
-            shotStack
+            ShotStack()
                 .padding(.bottom, 6)
         }
         .frame(maxHeight: .infinity)
@@ -270,9 +270,13 @@ struct RightRail: View {
         }
         .animation(.easeOut(duration: 0.12), value: capturing)
     }
+}
 
-    /// Two stacked cards (the latest still on top) with the count in a paper badge.
-    private var shotStack: some View {
+/// Two stacked cards (the latest still on top) with the count in a paper badge.
+struct ShotStack: View {
+    @Environment(ScoutStore.self) private var store
+
+    var body: some View {
         let shots = store.currentScene.shots
         return Button { store.showingShotList = true } label: {
             ZStack(alignment: .topLeading) {
@@ -360,7 +364,7 @@ struct LensWheel: View {
                 }
                 .onEnded { _ in dragNotches = 0 }
         )
-        .sensoryFeedback(.selection, trigger: store.lensMM)
+        .sensoryFeedback(.selection, trigger: store.focalLengths.lastIndex { $0 <= store.lensMM + 0.01 })
     }
 
     private func arrow(_ icon: String, delta: Int, enabled: Bool) -> some View {
