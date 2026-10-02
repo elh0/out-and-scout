@@ -236,8 +236,8 @@ enum Exporter {
             .draw(with: CGRect(x: pad, y: y, width: 390, height: 40), options: .usesLineFragmentOrigin, context: nil)
         y += 46
 
-        if options.sunTimes {
-            let t = sunTimes(at: scenes.lazy.compactMap(place).first, on: date)
+        if options.sunTimes, let where_ = scenes.lazy.compactMap(place).first {
+            let t = sunTimes(at: where_, on: date)
             y = grid([("sunrise", t.rise, false), ("golden hour", t.golden, true), ("sunset", t.set, false), ("blue hour", t.blue, false)], y: y) + 16
         }
 
@@ -302,14 +302,16 @@ enum Exporter {
                 .draw(with: CGRect(x: pad, y: y, width: page.width - pad * 2 - 80, height: 34), options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], context: nil)
             y += 34
             let loc = place(of: scene)
-            let sub = [scene.note, Format.shortDate(recceDate([scene])), loc?.display].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
+            // scene.note is usually the date already; only add it when it isn't.
+            let date = scene.note.isEmpty ? Format.shortDate(recceDate([scene])) : scene.note
+            let sub = [date, loc?.display].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
             text(sub, font: mono(9), color: graphite)
                 .draw(with: CGRect(x: pad, y: y, width: page.width - pad * 2, height: 12), options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], context: nil)
             y += 22
-            if options.sunTimes {
+            // No place, no sun times: leave the strip out rather than fill it with dashes.
+            if options.sunTimes, let loc {
                 let t = sunTimes(at: loc, on: recceDate([scene]))
-                let coordsText = loc.map { String(format: "%.2f°%@ %.2f°%@", abs($0.latitude), $0.latitude >= 0 ? "N" : "S", abs($0.longitude), $0.longitude >= 0 ? "E" : "W") } ?? "–"
-                y = grid([("sunrise", t.rise, false), ("golden hour", t.golden, false), ("sunset", t.set, false), ("location", coordsText, false)], y: y) + 14
+                y = grid([("sunrise", t.rise, false), ("golden hour", t.golden, false), ("sunset", t.set, false), ("location", coords(loc), false)], y: y) + 14
             }
             for (x, h) in [(cShot, "shot"), (cFrame, options.frames ? "frame" : ""), (cDesc, "description"), (cLens, "lens"), (cTime, "time"), (cLight, "light")] where !h.isEmpty {
                 text(h, font: mono(8.5), color: graphite).draw(at: CGPoint(x: x, y: y))
@@ -338,11 +340,15 @@ enum Exporter {
                 header()
             }
             let top = y + 9
-            let midY = top + (rowH - 18) / 2
-            text(shot.number, font: sans(13.5, medium: true)).draw(at: CGPoint(x: cShot, y: midY - 8))
+            // Every column starts at the top of the row, level with the caption.
+            text(shot.number, font: sans(13.5, medium: true)).draw(at: CGPoint(x: cShot, y: top - 2))
 
             if options.frames {
-                let rect = CGRect(x: cFrame, y: top, width: frameW, height: rowH - 18)
+                // The box takes the shot's frame-line shape (a 9:16 shot stays tall).
+                let boxH = rowH - 18
+                let aspect = max(shot.aspect.value, 0.3)
+                let boxW = min(frameW, boxH * aspect)
+                let rect = CGRect(x: cFrame, y: top, width: boxW, height: min(boxH, boxW / aspect))
                 if let image = ThumbCache.full(for: shot).flatMap({ printable($0, for: rect) }) {
                     ctx.cgContext.saveGState()
                     UIBezierPath(roundedRect: rect, cornerRadius: 3).addClip()
@@ -356,31 +362,37 @@ enum Exporter {
                 }
             }
 
-            // Description: the caption, then where it was shot with a map link.
-            var dy = options.frames ? top + 6 : top
+            // Description: the caption, the place, which way the camera faced, a map link.
+            var dy = top
             text(shot.caption.isEmpty ? "untitled" : shot.caption, font: sans(10.5))
-                .draw(with: CGRect(x: cDesc, y: dy, width: descW, height: 28), options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], context: nil)
-            dy += options.frames ? 30 : 14
+                .draw(with: CGRect(x: cDesc, y: dy, width: descW, height: options.frames ? 28 : 14), options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], context: nil)
+            dy += options.frames ? 29 : 14
+            let small = { (s: String, y: CGFloat) in
+                text(s, font: mono(8), color: graphite)
+                    .draw(with: CGRect(x: cDesc, y: y, width: descW, height: 11), options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], context: nil)
+            }
             if let loc = shot.location {
-                var whereText = loc.label ?? coords(loc)
-                if let bearing = shot.bearing { whereText += " · facing \(Format.bearing(bearing))" }
-                text(whereText, font: mono(8), color: graphite)
-                    .draw(with: CGRect(x: cDesc, y: dy, width: descW, height: 11), options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], context: nil)
-                if let url = loc.mapURL, options.frames {
-                    let link = text("open in maps ↗", font: mono(8))
-                    let linkRect = CGRect(origin: CGPoint(x: cDesc, y: dy + 13), size: link.size())
-                    link.draw(at: linkRect.origin)
-                    ctx.setURL(url, for: linkRect)
-                }
+                small(loc.label ?? coords(loc), dy)
+                dy += 11
+            }
+            if let bearing = shot.bearing, options.frames {
+                small("facing \(Format.bearing(bearing))", dy)
+                dy += 11
+            }
+            if let url = shot.location?.mapURL, options.frames {
+                let link = text("open in maps ↗", font: mono(8))
+                let linkRect = CGRect(origin: CGPoint(x: cDesc, y: dy + 1), size: link.size())
+                link.draw(at: linkRect.origin)
+                ctx.setURL(url, for: linkRect)
             }
 
-            text("\(Format.mm(shot.lensMM))mm", font: mono(9)).draw(at: CGPoint(x: cLens, y: midY - 5))
-            text(Format.time(shot.plannedTime), font: mono(9)).draw(at: CGPoint(x: cTime, y: midY - 5))
-            if shot.isGolden { dot(at: CGPoint(x: cLight, y: midY - 1), golden: true) }
+            text("\(Format.mm(shot.lensMM))mm", font: mono(9)).draw(at: CGPoint(x: cLens, y: top + 1))
+            text(Format.time(shot.plannedTime), font: mono(9)).draw(at: CGPoint(x: cTime, y: top + 1))
+            if shot.isGolden { dot(at: CGPoint(x: cLight, y: top + 4), golden: true) }
             var lightText = lightWord(shot)
             if options.sunTimes { lightText += "\nsun \(Int(shot.sunAzimuth.rounded()))° / \(Int(shot.sunElevation.rounded()))°" }
             text(lightText, font: mono(9), color: shot.isGolden ? ink : graphite)
-                .draw(with: CGRect(x: cLight + (shot.isGolden ? 9 : 0), y: midY - 5, width: 82, height: 26), options: .usesLineFragmentOrigin, context: nil)
+                .draw(with: CGRect(x: cLight + (shot.isGolden ? 9 : 0), y: top + 1, width: 82, height: 26), options: .usesLineFragmentOrigin, context: nil)
 
             y += rowH
             line(at: y)
