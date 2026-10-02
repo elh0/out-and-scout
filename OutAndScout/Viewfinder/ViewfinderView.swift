@@ -67,8 +67,33 @@ struct ViewfinderView: View {
         .onReceive(NotificationCenter.default.publisher(for: UIDevice.orientationDidChangeNotification)) { _ in
             updateHeadingOrientation()
         }
-        .onChange(of: portrait) { updateHeadingOrientation() }
-        .onAppear(perform: updateHeadingOrientation)
+        .onChange(of: portrait) {
+            updateHeadingOrientation()
+            fitAspectToLayout()
+        }
+        .onAppear {
+            updateHeadingOrientation()
+            fitAspectToLayout()
+        }
+    }
+
+    /// The landscape ratio to go back to after portrait.
+    @State private var landscapeAspect: AspectRatio?
+
+    /// Upright, a wide cine ratio would leave most of the screen empty, so start on 9:16
+    /// unless one of the upright ratios (or the full frame) is already picked. Turning
+    /// back sideways restores the ratio you had.
+    private func fitAspectToLayout() {
+        let a = store.aspect
+        if portrait {
+            if !a.isFull && !PortraitToolsRow.ratios.contains(where: { $0.label == a.label }) {
+                landscapeAspect = a
+                store.setAspect(.vertical)
+            }
+        } else if let back = landscapeAspect {
+            landscapeAspect = nil
+            if a.label == "4:5" || a.label == "1:1" || a.label == AspectRatio.vertical.label { store.setAspect(back) }
+        }
     }
 
     /// Chips sit just under the top bar in landscape; upright, just inside the frame.

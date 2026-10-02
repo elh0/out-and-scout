@@ -63,7 +63,7 @@ struct ViewfinderFrame: View {
 
                 // Portrait board: the sun's height in the frame's top-right corner.
                 if portrait, sun.elevation > 0 {
-                    Text("el \(Int(sun.elevation.rounded()))°")
+                    Text("sun \(Int(sun.elevation.rounded()))° up")
                         .font(.osDataSmall)
                         .foregroundStyle(Palette.paper)
                         .padding(.horizontal, 6)
