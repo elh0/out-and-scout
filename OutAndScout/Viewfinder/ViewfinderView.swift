@@ -77,22 +77,26 @@ struct ViewfinderView: View {
         }
     }
 
-    /// The landscape ratio to go back to after portrait.
-    @State private var landscapeAspect: AspectRatio?
+    /// The landscape ratio to go back to after portrait, kept across launches.
+    private static let landscapeAspectKey = "landscapeAspect"
 
     /// Upright, a wide cine ratio would leave most of the screen empty, so start on 9:16
-    /// unless one of the upright ratios (or the full frame) is already picked. Turning
-    /// back sideways restores the ratio you had.
+    /// unless one of the upright ratios (or the full frame) is already picked. Whenever the
+    /// screen is sideways again, the ratio you had comes back.
     private func fitAspectToLayout() {
         let a = store.aspect
+        let defaults = UserDefaults.standard
         if portrait {
             if !a.isFull && !PortraitToolsRow.ratios.contains(where: { $0.label == a.label }) {
-                landscapeAspect = a
+                defaults.set(try? JSONEncoder().encode(a), forKey: Self.landscapeAspectKey)
                 store.setAspect(.vertical)
             }
-        } else if let back = landscapeAspect {
-            landscapeAspect = nil
-            if a.label == "4:5" || a.label == "1:1" || a.label == AspectRatio.vertical.label { store.setAspect(back) }
+        } else if let data = defaults.data(forKey: Self.landscapeAspectKey),
+                  let back = try? JSONDecoder().decode(AspectRatio.self, from: data) {
+            defaults.removeObject(forKey: Self.landscapeAspectKey)
+            if PortraitToolsRow.ratios.contains(where: { $0.label == a.label && $0.value < 1.5 }) {
+                store.setAspect(back)
+            }
         }
     }
 
