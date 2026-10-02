@@ -20,14 +20,17 @@ struct ViewfinderFrame: View {
     var body: some View {
         GeometryReader { geo in
             let size = geo.size
-            let frame = store.aspect.isFull ? CGRect(origin: .zero, size: size) : FrameMath.fit(aspect: store.aspect.value, in: size)
+            // The viewfinder fills the space between the rails. Inside it, the sensor mode's
+            // shape is the "full" frame (the lens's field of view spans its width, and that's
+            // what the still keeps); the chosen ratio's lines sit inside that. Everything
+            // outside the lines is dimmed, like the v3c prototype.
+            let sensor = FrameMath.fit(aspect: store.kit.frameAspect, in: size)
+            let frame = store.aspect.isFull ? sensor : FrameMath.fit(aspect: store.aspect.value, in: sensor)
 
             ZStack(alignment: .topLeading) {
                 cameraLayer
 
-                if !store.aspect.isFull {
-                    AspectMask(frame: frame)
-                }
+                AspectMask(frame: frame)
 
                 if store.overlays.grid {
                     ThirdsGrid().frame(width: frame.width, height: frame.height).offset(x: frame.minX, y: frame.minY)
@@ -78,11 +81,11 @@ struct ViewfinderFrame: View {
                 camera.lock(atLayerPoint: p)
                 showFocus(at: p)
             }
-            .onAppear { syncLens(size: size, frame: frame) }
+            .onAppear { syncLens(size: size, sensor: sensor) }
             .onChange(of: LensKey(lens: store.lensMM, kit: store.kit, aspect: store.aspect.value, size: size)) {
-                syncLens(size: size, frame: frame)
+                syncLens(size: size, sensor: sensor)
             }
-            .onChange(of: camera.status) { syncLens(size: size, frame: frame) }
+            .onChange(of: camera.status) { syncLens(size: size, sensor: sensor) }
         }
     }
 
@@ -121,12 +124,13 @@ struct ViewfinderFrame: View {
         focusShownAt = Date()
     }
 
-    private func syncLens(size: CGSize, frame: CGRect) {
+    private func syncLens(size: CGSize, sensor: CGRect) {
         guard size.width > 0 else { return }
-        // The lens's field of view spans the whole 16:9 viewfinder, which is what every
-        // still keeps, so changing frame lines later never changes the lens framing.
-        frameFraction = 1
-        camera.match(targetHFOV: store.kit.horizontalFOV(focal: store.lensMM), frameFraction: 1)
+        // The lens's field of view spans the sensor frame, which is what every still keeps,
+        // so changing frame lines later never changes the lens framing.
+        let fraction = min(max(Double(sensor.width / size.width), 0.05), 1)
+        frameFraction = fraction
+        camera.match(targetHFOV: store.kit.horizontalFOV(focal: store.lensMM), frameFraction: fraction)
     }
 
     private struct LensKey: Equatable {

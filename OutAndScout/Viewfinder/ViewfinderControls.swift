@@ -197,7 +197,10 @@ struct LeftRail: View {
             RailToggle(symbol: "sun.horizon", label: "sun path", on: store.overlays.sunPath) { store.toggle(\.sunPath) }
             RailToggle(symbol: "grid", label: "grid", on: store.overlays.grid) { store.toggle(\.grid) }
             RailToggle(symbol: "level", label: "level", on: store.overlays.level) { store.toggle(\.level) }
+            Spacer(minLength: 0)
         }
+        // Up near the top, level with the top of the viewfinder, rather than floating mid-rail.
+        .padding(.top, Space.xs)
         .frame(maxHeight: .infinity)
     }
 }
@@ -241,10 +244,13 @@ struct RightRail: View {
     let onShutter: () -> Void
 
     var body: some View {
-        VStack(spacing: 8) {
+        // Lens at the top, shutter under it where the thumb sits, shots below; spare room
+        // goes to the bottom rather than pushing everything to the middle.
+        VStack(spacing: 6) {
             LensWheel()
             shutter
             shotStack
+            Spacer(minLength: 0)
         }
         .frame(maxHeight: .infinity)
     }

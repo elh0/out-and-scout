@@ -224,41 +224,47 @@ struct KitPanel: View {
                 action: ("done", { store.panel = nil })
             )
 
-            HStack(spacing: Space.xxs) {
-                Chip(label: "camera", selected: tab == .camera, onDark: false, mono: false) { tab = .camera }
-                Chip(label: "lenses", selected: tab == .lenses, onDark: false, mono: false) { tab = .lenses }
-            }
-
-            if tab == .camera, store.kit.camera.modes.count > 1 {
-                Text("sensor mode").font(.osDataSmall).foregroundStyle(Palette.graphite)
-                FadingHScroll {
+            // Everything under the header scrolls together, so the tabs, sensor modes and
+            // search slide away and the list gets the whole panel.
+            ScrollView {
+                VStack(alignment: .leading, spacing: Space.s) {
                     HStack(spacing: Space.xxs) {
-                        ForEach(store.kit.camera.modes) { mode in
-                            Chip(label: mode.name, selected: mode == store.kit.mode, onDark: false) {
-                                var kit = store.kit
-                                kit.mode = mode
-                                store.setKit(kit)
+                        Chip(label: "camera", selected: tab == .camera, onDark: false, mono: false) { tab = .camera }
+                        Chip(label: "lenses", selected: tab == .lenses, onDark: false, mono: false) { tab = .lenses }
+                    }
+
+                    if tab == .camera, store.kit.camera.modes.count > 1 {
+                        Text("sensor mode").font(.osDataSmall).foregroundStyle(Palette.graphite)
+                        FadingHScroll {
+                            HStack(spacing: Space.xxs) {
+                                ForEach(store.kit.camera.modes) { mode in
+                                    Chip(label: mode.name, selected: mode == store.kit.mode, onDark: false) {
+                                        var kit = store.kit
+                                        kit.mode = mode
+                                        store.setKit(kit)
+                                    }
+                                }
                             }
                         }
                     }
-                }
-            }
 
-            SheetField(placeholder: "search kit", text: $query)
+                    SheetField(placeholder: "search kit", text: $query)
 
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 0) {
-                    if tab == .camera {
-                        let cams = KitCatalog.cameras.filter(matchesCamera)
-                        ForEach(cams) { cam in cameraRow(cam) }
-                        if cams.isEmpty { empty }
-                    } else {
-                        let sets = KitCatalog.lenses.filter(matchesLens)
-                        ForEach(sets) { set in lensRow(set) }
-                        if sets.isEmpty { empty }
+                    LazyVStack(alignment: .leading, spacing: 0) {
+                        if tab == .camera {
+                            let cams = KitCatalog.cameras.filter(matchesCamera)
+                            ForEach(cams) { cam in cameraRow(cam) }
+                            if cams.isEmpty { empty }
+                        } else {
+                            let sets = KitCatalog.lenses.filter(matchesLens)
+                            ForEach(sets) { set in lensRow(set) }
+                            if sets.isEmpty { empty }
+                        }
                     }
                 }
+                .padding(.bottom, Space.l)
             }
+            .scrollDismissesKeyboard(.immediately)
         }
     }
 
@@ -317,8 +323,8 @@ struct KitPanel: View {
                 .overlay(Circle().strokeBorder(Palette.rule, lineWidth: selected ? 0 : 1))
                 .frame(width: 10, height: 10)
         }
-        .padding(.vertical, Space.xs)
-        .frame(minHeight: 56)
+        .padding(.vertical, 6)
+        .frame(minHeight: 48)
         .overlay(alignment: .bottom) { Rule() }
         .contentShape(Rectangle())
     }

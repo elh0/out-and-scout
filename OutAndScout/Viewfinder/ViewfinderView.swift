@@ -43,10 +43,10 @@ struct ViewfinderView: View {
                         .padding(.leading, Space.s)
 
                     VStack(spacing: 0) {
-                        // Shaped like the sensor mode; frame lines for the chosen ratio sit inside it.
+                        // Fills the space between the rails; the sensor frame and ratio lines sit inside.
                         ViewfinderFrame(sun: sun, sunDay: sunDay, planned: planned, frameFraction: $frameFraction)
-                            .aspectRatio(store.kit.frameAspect, contentMode: .fit)
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .clipped()
 
                         BottomBar(sunDay: sunDay, planned: planned, sun: sun)
                             .frame(height: 56)
@@ -171,7 +171,7 @@ struct ViewfinderView: View {
         // Keep the whole sensor-mode frame; the frame lines are applied when the shot is shown
         // or exported, so they can be changed afterwards.
         let stillAspect = store.kit.frameAspect
-        let photo = await camera.capturePhoto(aspect: stillAspect, frameFraction: 1)
+        let photo = await camera.capturePhoto(aspect: stillAspect, frameFraction: frameFraction)
 
         let planned = store.plannedDate()
         let coord = location.coordinate
