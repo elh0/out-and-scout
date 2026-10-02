@@ -109,9 +109,12 @@ struct RootView: View {
     @Environment(MotionService.self) private var motion
 
     var body: some View {
-        // Portrait or landscape comes from the layout switch, never from tilting the phone.
-        let portrait = LayoutMode.shared.portrait
-        content(portrait: portrait).environment(\.isPortrait, portrait)
+        // The switch decides which way the screen may turn (never the gyro); the layout then
+        // follows the screen's actual shape, so one layout is never drawn in the other's space.
+        GeometryReader { geo in
+            let portrait = geo.size.height > geo.size.width
+            content(portrait: portrait).environment(\.isPortrait, portrait)
+        }
     }
 
     private func content(portrait: Bool) -> some View {
@@ -164,6 +167,12 @@ struct RootView: View {
         .statusBarHidden()
         .persistentSystemOverlays(.hidden)
         .task {
+            #if DEBUG
+            // Screenshot testing: -orientation portrait|landscape picks the layout (not remembered).
+            if let o = UserDefaults.standard.string(forKey: "orientation") {
+                LayoutMode.shared.set(portrait: o == "portrait", remember: false)
+            }
+            #endif
             await camera.start()
             location.start()
             motion.start()
@@ -178,10 +187,6 @@ struct RootView: View {
                 store.showingShotList = true
                 store.showingExport = true
             default: break
-            }
-            // Screenshot testing: -orientation portrait turns the screen upright.
-            if let o = UserDefaults.standard.string(forKey: "orientation") {
-                LayoutMode.shared.set(portrait: o == "portrait", remember: false)
             }
             #endif
         }
