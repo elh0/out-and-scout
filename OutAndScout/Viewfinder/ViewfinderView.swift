@@ -62,8 +62,8 @@ struct ViewfinderView: View {
                 .transition(.opacity)
             } else if let id = store.justSaved, let shot = store.shot(id) {
                 SavedChip(shot: shot)
-                    .frame(maxHeight: .infinity, alignment: .top)
-                    .padding(.top, 52 + Space.xs)
+                    .frame(maxHeight: .infinity, alignment: .bottom)
+                    .padding(.bottom, 52 + Space.xs)
                     .transition(.opacity)
                     .id(id)
             }
