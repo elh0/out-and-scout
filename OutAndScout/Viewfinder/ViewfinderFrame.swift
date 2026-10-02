@@ -567,7 +567,7 @@ enum VisionLabels {
             // Vision often says "people" or "adult" for crowds; the count above says it better.
             if people != nil { subjects.removeAll { ["person", "people", "adult", "child", "crowd"].contains($0) } }
             return VisionResult(subjects: Array(subjects.prefix(4)), setting: setting, people: people, sign: sign,
-                                lightCue: LightCues.read(data))
+                                lightCue: LightCues.read(data, labels: Set(scores.filter { $0.value >= 0.2 }.keys)))
         }.value
     }
 }
@@ -578,51 +578,62 @@ private extension CGRect {
 
 /// Lighting a DP would note that the classifier never will: a lamp glowing in a dark room
 /// (a practical), patches of sun on a dark surface, or a bright window in a dark frame.
-/// Read from a 48-pixel-wide greyscale copy of the still.
+/// Read from a 160-pixel copy of the still, brightness as the brightest of R, G and B so
+/// warm lamps count. Thresholds tuned on Elliot's recce stills (2 Oct 2026).
 enum LightCues {
-    static func read(_ data: Data) -> String? {
+    static func read(_ data: Data, labels: Set<String>) -> String? {
         guard let src = CGImageSourceCreateWithData(data as CFData, nil),
               let thumb = CGImageSourceCreateThumbnailAtIndex(src, 0, [
                   kCGImageSourceCreateThumbnailFromImageAlways: true,
-                  kCGImageSourceThumbnailMaxPixelSize: 48,
+                  kCGImageSourceThumbnailMaxPixelSize: 160,
                   kCGImageSourceCreateThumbnailWithTransform: true,
               ] as CFDictionary) else { return nil }
         let w = thumb.width, h = thumb.height
-        var px = [UInt8](repeating: 0, count: w * h)
-        guard let ctx = CGContext(data: &px, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w,
-                                  space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.none.rawValue)
+        var rgba = [UInt8](repeating: 0, count: w * h * 4)
+        guard let ctx = CGContext(data: &rgba, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
+                                  space: CGColorSpaceCreateDeviceRGB(),
+                                  bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)
         else { return nil }
         ctx.draw(thumb, in: CGRect(x: 0, y: 0, width: w, height: h))
 
-        let n = Double(px.count)
-        let mean = px.reduce(0.0) { $0 + Double($1) } / n / 255
-        let brightIdx = px.indices.filter { px[$0] > 225 }
-        let bright = Double(brightIdx.count) / n
-        let dark = Double(px.filter { $0 < 40 }.count) / n
-        guard !brightIdx.isEmpty else { return nil }
+        let n = w * h
+        var lum = [UInt8](repeating: 0, count: n)
+        var total = 0.0
+        for i in 0..<n {
+            let v = max(rgba[i * 4], rgba[i * 4 + 1], rgba[i * 4 + 2])
+            lum[i] = v
+            total += Double(v)
+        }
+        let mean = total / Double(n) / 255
 
-        // How many separate bright patches, and how much of the frame they span.
-        var seen = Set<Int>(), blobs = 0
-        for start in brightIdx where !seen.contains(start) {
-            blobs += 1
+        // Separate bright patches (over 200) and their share of the frame.
+        var seen = [Bool](repeating: false, count: n)
+        var blobs: [Double] = []
+        for start in 0..<n where lum[start] > 200 && !seen[start] {
+            var size = 0
             var stack = [start]
-            seen.insert(start)
+            seen[start] = true
             while let i = stack.popLast() {
+                size += 1
                 let x = i % w, y = i / w
                 for (dx, dy) in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
                     let nx = x + dx, ny = y + dy
                     guard nx >= 0, nx < w, ny >= 0, ny < h else { continue }
                     let j = ny * w + nx
-                    if px[j] > 225, !seen.contains(j) { seen.insert(j); stack.append(j) }
+                    if lum[j] > 200, !seen[j] { seen[j] = true; stack.append(j) }
                 }
             }
+            let share = Double(size) / Double(n)
+            if share >= 0.0005 { blobs.append(share) }
         }
-        let xs = brightIdx.map { $0 % w }, ys = brightIdx.map { $0 / w }
-        let span = Double((xs.max()! - xs.min()! + 1) * (ys.max()! - ys.min()! + 1)) / n
+        guard let largest = blobs.max() else { return nil }
 
-        if mean < 0.3, bright >= 0.003, bright < 0.15, blobs <= 2, span < 0.2 { return "practical" }
-        if mean < 0.4, bright >= 0.02, bright < 0.35, blobs >= 4 { return "dappled light" }
-        if bright >= 0.12, dark > 0.25 { return "backlit" }
+        let windowish = !labels.isDisjoint(with: ["window", "door", "sky", "sun", "sunset_sunrise"])
+        // Dappled first: sun patches on a cupboard door shouldn't read as a backlit door.
+        if blobs.count >= 4, mean < 0.3 { return "dappled light" }
+        if windowish || largest >= 0.1 { return "backlit" }
+        let real = blobs.filter { $0 >= 0.003 }
+        if mean < 0.38, (1...2).contains(real.count), largest <= 0.06 { return "practical" }
         return nil
     }
 }

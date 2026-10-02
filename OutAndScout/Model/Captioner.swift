@@ -84,11 +84,17 @@ enum Captioner {
             "people", "adult", "wood_processed", "wood_natural", "art", "decoration",
             "office_supplies", "housewares", "tool", "cord", "light", "sky",
             // Wrong or noisy on real recce stills (benchmark, 2 Oct 2026).
-            "screenshot", "document", "portal", "elevator", "raw_glass",
+            "screenshot", "document", "portal", "elevator", "raw_glass", "recreation",
         ]
         // Screens come back as three or four synonyms and crowd out the real subjects.
         let screens: Set<String> = ["computer", "computer_monitor", "monitor", "laptop", "computer_screen", "display"]
         let hasLaptop = identifiers.contains("laptop")
+        // A keyboard filling the frame should lead, not be folded into "screen".
+        if let k = identifiers.firstIndex(of: "computer_keyboard"), k == 0 || identifiers.prefix(k).allSatisfy(screens.contains) {
+            var rest = readable(identifiers.filter { $0 != "computer_keyboard" })
+            rest.removeAll { $0 == "keyboard" }
+            return ["keyboard"] + rest
+        }
         var out: [String] = []
         for id in identifiers where !skip.contains(id) {
             if screens.contains(id) {
@@ -100,6 +106,10 @@ enum Captioner {
                 .replacingOccurrences(of: "_other", with: "")
                 .replacingOccurrences(of: "_", with: " ")
             if !out.contains(words) { out.append(words) }
+        }
+        // Only screen-ish noise ("screenshot", "document")? Then it's a screen.
+        if out.isEmpty, identifiers.contains(where: { screens.contains($0) || $0 == "screenshot" || $0 == "document" }) {
+            out = ["screen"]
         }
         return out
     }
