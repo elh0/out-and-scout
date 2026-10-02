@@ -84,14 +84,15 @@ struct ViewfinderView: View {
     /// The landscape ratio to go back to after portrait, kept across launches.
     private static let landscapeAspectKey = "landscapeAspect"
 
-    /// Upright, a wide cine ratio would leave most of the screen empty, so start on 9:16
-    /// unless one of the upright ratios (or the full frame) is already picked. Whenever the
+    /// Upright, a wide ratio would leave most of the screen empty, so start on 9:16 unless a
+    /// tall or square ratio (or the full frame) is already picked. Whenever the
     /// screen is sideways again, the ratio you had comes back.
     private func fitAspectToLayout() {
         let a = store.aspect
         let defaults = UserDefaults.standard
         if portrait {
-            if !a.isFull && !PortraitToolsRow.ratios.contains(where: { $0.label == a.label }) {
+            // Any wide ratio (16:9 included) starts upright as 9:16; pick 16:9 again if you want it.
+            if !a.isFull && a.value > 1.01 {
                 defaults.set(try? JSONEncoder().encode(a), forKey: Self.landscapeAspectKey)
                 store.setAspect(.vertical)
             }
