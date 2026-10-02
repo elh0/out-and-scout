@@ -139,6 +139,15 @@ struct RootView: View {
             location.start()
             motion.start()
             store.askForLocationIfNeverAsked()
+            #if DEBUG
+            // Screenshot testing: launch with -openPanel kit|projects|shotlist.
+            switch UserDefaults.standard.string(forKey: "openPanel") {
+            case "kit": store.panel = .kit
+            case "projects": store.panel = .projects
+            case "shotlist": store.showingShotList = true
+            default: break
+            }
+            #endif
         }
     }
 }

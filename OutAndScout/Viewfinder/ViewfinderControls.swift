@@ -80,7 +80,7 @@ struct TopBar: View {
                     .accessibilityLabel("projects and scenes")
                 }
                 // Long names truncate rather than run under the compass.
-                .frame(maxWidth: 190, alignment: .leading)
+                .frame(maxWidth: 170, alignment: .leading)
 
                 NightPill(height: 26, action: { store.requestNewScene() }) {
                     Image(systemName: "plus").font(.system(size: 9, weight: .semibold))
@@ -89,7 +89,7 @@ struct TopBar: View {
                 .accessibilityLabel("new scene here")
 
                 // Room for the compass, which sits dead centre over this bar.
-                Spacer(minLength: 190)
+                Spacer(minLength: 204)
 
                 // Tap to snap back to now.
                 NightPill(action: { store.plannedMinutes = nil }) {
@@ -320,12 +320,17 @@ struct LensWheel: View {
             Button { stepUpWrapping() } label: {
                 VStack(spacing: 0) {
                     Text(Format.mm(store.lensMM)).font(Fonts.mono(20)).foregroundStyle(Palette.paper)
-                    Text("mm").font(.osDataSmall).foregroundStyle(Ink.muted)
-                    // The phone's zoom, like the Camera app. Greys out when the crop gets soft.
-                    Text(camera.lensLabel)
-                        .font(.osTiny)
-                        .foregroundStyle(camera.cropIsSoft ? Ink.faint : Ink.muted)
-                        .padding(.top, 3)
+                    // "mm" and the phone's zoom on one line, so the zoom doesn't read as the
+                    // next focal length. The zoom greys out when the crop gets soft.
+                    HStack(spacing: 4) {
+                        Text("mm").foregroundStyle(Ink.muted)
+                        Text(camera.lensLabel)
+                            .foregroundStyle(camera.cropIsSoft ? Ink.faint : Palette.paper.opacity(0.8))
+                            .padding(.horizontal, 4)
+                            .overlay(Capsule().strokeBorder(Palette.nightRule, lineWidth: 1))
+                    }
+                    .font(.osDataSmall)
+                    .padding(.bottom, 2)
                 }
                 .frame(width: 84)
                 .contentShape(Rectangle())
@@ -413,7 +418,11 @@ struct BottomBar: View {
             }
             .frame(maxWidth: 230)
             .fixedSize(horizontal: false, vertical: true)
-            .clipped()
+            // Fade the right edge so a chip that scrolls off doesn't look like a stray bracket.
+            .mask(
+                LinearGradient(stops: [.init(color: .black, location: 0.86), .init(color: .clear, location: 1)],
+                               startPoint: .leading, endPoint: .trailing)
+            )
             .layoutPriority(1)
 
             // Time at the chosen hour, the sun's height, and the light.
