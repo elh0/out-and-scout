@@ -101,6 +101,12 @@ extension EnvironmentValues {
     @Entry var isPortrait = false
 }
 
+#if DEBUG
+enum DebugLaunch {
+    @MainActor static var applied = false
+}
+#endif
+
 /// The Viewfinder is the dashboard. Everything else slides over it.
 struct RootView: View {
     @Environment(ScoutStore.self) private var store
@@ -168,16 +174,20 @@ struct RootView: View {
         .persistentSystemOverlays(.hidden)
         .task {
             #if DEBUG
-            // Screenshot testing: -orientation portrait|landscape picks the layout (not remembered).
-            if let o = UserDefaults.standard.string(forKey: "orientation") {
-                LayoutMode.shared.set(portrait: o == "portrait", remember: false)
-            }
-            // Screen recording: -toggleLayoutAfter 2 flips the layout after 2 seconds.
-            let flipAfter = UserDefaults.standard.double(forKey: "toggleLayoutAfter")
-            if flipAfter > 0 {
-                Task {
-                    try? await Task.sleep(for: .seconds(flipAfter))
-                    LayoutMode.shared.set(portrait: !LayoutMode.shared.portrait, remember: false)
+            // Launch arguments apply once, even if this view appears again after a switch.
+            if !DebugLaunch.applied {
+                DebugLaunch.applied = true
+                // Screenshot testing: -orientation portrait|landscape picks the layout (not remembered).
+                if let o = UserDefaults.standard.string(forKey: "orientation") {
+                    LayoutMode.shared.set(portrait: o == "portrait", remember: false)
+                }
+                // Screen recording: -toggleLayoutAfter 2 flips the layout after 2 seconds.
+                let flipAfter = UserDefaults.standard.double(forKey: "toggleLayoutAfter")
+                if flipAfter > 0 {
+                    Task {
+                        try? await Task.sleep(for: .seconds(flipAfter))
+                        LayoutMode.shared.set(portrait: !LayoutMode.shared.portrait, remember: false)
+                    }
                 }
             }
             #endif

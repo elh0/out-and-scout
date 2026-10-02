@@ -13,19 +13,34 @@ struct CameraPreview: UIViewRepresentable {
 
     @MainActor private static var shared: PreviewView?
 
-    func makeUIView(context: Context) -> UIView {
-        let container = UIView()
+    /// The newest container owns the preview. During a switch the old viewfinder lingers for
+    /// a moment and can still be updated; it must not take the preview back.
+    @MainActor private static var newest = 0
+
+    final class Container: UIView {
+        let serial: Int
+        init(serial: Int) {
+            self.serial = serial
+            super.init(frame: .zero)
+        }
+        required init?(coder: NSCoder) { fatalError("not used") }
+    }
+
+    func makeUIView(context: Context) -> Container {
+        Self.newest += 1
+        let container = Container(serial: Self.newest)
         container.backgroundColor = UIColor(Palette.night)
         container.clipsToBounds = true
         return container
     }
 
-    func updateUIView(_ container: UIView, context: Context) {
+    func updateUIView(_ container: Container, context: Context) {
         let view = Self.sharedView(for: camera)
-        if view.superview !== container {
+        if container.serial == Self.newest, view.superview !== container {
             view.removeFromSuperview()
             view.frame = container.bounds
             view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            view.isHidden = false
             container.addSubview(view)
         }
         if view.coordinator == nil, let device = camera.device {
