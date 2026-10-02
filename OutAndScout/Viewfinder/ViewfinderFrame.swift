@@ -471,6 +471,10 @@ struct VisionResult {
     var subjects: [String] = []
     /// "int" or "ext", when Vision is fairly sure.
     var setting: String?
+    /// "person", "two people", "a group", when people are in frame.
+    var people: String?
+    /// A sign or shopfront word Vision could read, if one stands out.
+    var sign: String?
 }
 
 enum VisionLabels {
@@ -483,7 +487,41 @@ enum VisionLabels {
             let handler = VNImageRequestHandler(data: data)
             let whole = VNClassifyImageRequest()
             let saliency = VNGenerateAttentionBasedSaliencyImageRequest()
-            try? handler.perform([whole, saliency])
+            // People, animals and readable signs say far more about a shot than the scene
+            // classifier alone ("two people", "dog", "sign: Bakery").
+            let humans = VNDetectHumanRectanglesRequest()
+            humans.upperBodyOnly = false
+            let animals = VNRecognizeAnimalsRequest()
+            let words = VNRecognizeTextRequest()
+            words.recognitionLevel = .fast
+            words.usesLanguageCorrection = true
+            try? handler.perform([whole, saliency, humans, animals, words])
+
+            // Count people big enough to matter (not specks in the distance).
+            let bodies = (humans.results ?? []).filter { $0.confidence > 0.5 && $0.boundingBox.area > 0.01 }
+            let people: String? = switch bodies.count {
+            case 0: nil
+            case 1: "person"
+            case 2: "two people"
+            case 3: "three people"
+            default: "a group"
+            }
+
+            let animal = (animals.results ?? [])
+                .compactMap { $0.labels.first }
+                .filter { $0.confidence > 0.6 }
+                .max { $0.confidence < $1.confidence }?
+                .identifier.lowercased()
+
+            // The largest confident line of text, 3 to 24 characters, as a sign.
+            let sign = (words.results ?? [])
+                .filter { ($0.topCandidates(1).first?.confidence ?? 0) > 0.8 }
+                .compactMap { o -> (String, CGFloat)? in
+                    guard let t = o.topCandidates(1).first?.string.trimmingCharacters(in: .whitespacesAndNewlines),
+                          (3...24).contains(t.count), t.contains(where: \.isLetter) else { return nil }
+                    return (t, o.boundingBox.height)
+                }
+                .max { $0.1 < $1.1 }?.0
 
             var scores: [String: Float] = [:]
             for o in whole.results ?? [] { scores[o.identifier] = o.confidence }
@@ -511,7 +549,11 @@ enum VisionLabels {
                 .filter { $0.value >= 0.25 }
                 .sorted { abs($0.value - $1.value) > 0.001 ? $0.value > $1.value : $0.key.count > $1.key.count }
                 .map(\.key)
-            return VisionResult(subjects: Array(Captioner.readable(ranked).prefix(4)), setting: setting)
+            var subjects = Captioner.readable(ranked)
+            if let animal, !subjects.contains(animal) { subjects.insert(animal, at: 0) }
+            // Vision often says "people" or "adult" for crowds; the count above says it better.
+            if people != nil { subjects.removeAll { ["person", "people", "adult", "child", "crowd"].contains($0) } }
+            return VisionResult(subjects: Array(subjects.prefix(4)), setting: setting, people: people, sign: sign)
         }.value
     }
 }

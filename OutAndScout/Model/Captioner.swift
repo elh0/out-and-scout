@@ -34,9 +34,15 @@ enum Captioner {
         sunInFrame: Bool
     ) -> [CaptionSuggestion] {
         let (size, alt) = shotSize(lensMM: lensMM, sensorWidthMM: sensorWidthMM)
-        let subjects = seen.subjects.isEmpty ? ["location"] : seen.subjects
+        // People lead when they're in frame: "Mid · two people by the bench".
+        var subjects = seen.subjects
+        if let people = seen.people {
+            subjects = [subjects.first.map { "\(people) by the \($0)" } ?? people] + subjects.dropFirst()
+        }
+        if subjects.isEmpty { subjects = [seen.sign.map { "sign: \($0)" } ?? "location"] }
         let a = subjects[0]
-        let b = subjects.count > 1 ? subjects[1] : nil
+        // A readable sign makes a good second subject ("sign: Bakery").
+        let b = subjects.count > 1 ? subjects[1] : seen.sign.flatMap { s in a.contains(s) ? nil : "sign: \(s)" }
 
         let lightBit: String
         switch light {
