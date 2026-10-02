@@ -142,35 +142,29 @@ struct ViewfinderView: View {
                 && abs(sun.elevation - motion.cameraElevation) < hfov / (store.aspect.isFull ? stillAspect : store.aspect.value) / 2
         }
 
-        let shot = PendingShot(
+        async let seen = VisionLabels.see(photo)
+        async let place = location.shotLocation()
+
+        let suggestions = Captioner.suggestions(
+            lensMM: lens,
+            sensorWidthMM: store.kit.mode.widthMM * store.kit.lenses.squeeze,
+            seen: await seen,
+            light: light,
+            sunInFrame: sunInFrame
+        )
+
+        store.pending = PendingShot(
             number: number,
             photo: photo,
-            suggestions: [],
+            suggestions: suggestions,
             lensMM: lens,
             plannedTime: planned,
             sun: sun,
             light: light,
             bearing: location.heading,
-            location: nil,
+            location: await place,
             stillAspect: stillAspect
         )
-        // Save now so the shutter is ready again at once; the caption and place name
-        // arrive in the background and can be edited later in the Shot List.
-        store.addShot(shot, caption: "")
-
-        let sensorWidth = store.kit.mode.widthMM * store.kit.lenses.squeeze
-        Task {
-            async let seen = VisionLabels.see(photo)
-            async let place = location.shotLocation()
-            let suggestions = Captioner.suggestions(
-                lensMM: lens,
-                sensorWidthMM: sensorWidth,
-                seen: await seen,
-                light: light,
-                sunInFrame: sunInFrame
-            )
-            store.fillIn(shot.id, caption: suggestions.first?.text, location: await place)
-        }
     }
 
     private func updateHeadingOrientation() {
