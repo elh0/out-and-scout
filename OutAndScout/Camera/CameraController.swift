@@ -60,6 +60,10 @@ final class CameraController: NSObject {
         // Launch and returning from the permission prompt both call this. Only one may
         // configure the session; a second would fail to add the input and mark it unavailable.
         guard status != .running, !isStarting else { return }
+        #if DEBUG
+        // Simulator screenshots: -noCamera YES skips the camera and its permission prompt.
+        if UserDefaults.standard.bool(forKey: "noCamera") { return }
+        #endif
         isStarting = true
         defer { isStarting = false }
 

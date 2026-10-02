@@ -46,38 +46,47 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
     }
 }
 
-/// Portrait | landscape, as two icons in one outlined pill. The picked one is filled.
+/// One clear button that says where it takes you: "Portrait" with a turning phone in
+/// landscape, "Landscape" upright. Stacked with its label on the landscape rail; a pill
+/// with the word inside upright.
 struct LayoutSwitch: View {
     /// Stacked for the landscape rail, side by side upright.
     var vertical = false
 
     var body: some View {
         let mode = LayoutMode.shared
-        let layout = vertical ? AnyLayout(VStackLayout(spacing: 0)) : AnyLayout(HStackLayout(spacing: 0))
-        VStack(spacing: 4) {
-            layout {
-                option("rectangle.portrait", "portrait", on: mode.portrait) { mode.set(portrait: true) }
-                option("rectangle", "landscape", on: !mode.portrait) { mode.set(portrait: false) }
-            }
-            .padding(2)
-            .overlay(Capsule().strokeBorder(Palette.nightRule, lineWidth: 1))
+        let target = mode.portrait ? "Landscape" : "Portrait"
+        let symbol = mode.portrait ? "rectangle.landscape.rotate" : "rectangle.portrait.rotate"
+        Button { mode.set(portrait: !mode.portrait) } label: {
             if vertical {
-                Text("Layout").font(.osTiny).foregroundStyle(Palette.nightMuted)
-            }
-        }
-    }
-
-    private func option(_ symbol: String, _ label: String, on: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: symbol)
-                .font(.system(size: 12))
-                .foregroundStyle(on ? Palette.ink : Palette.paper.opacity(0.8))
-                .frame(width: 30, height: 28)
-                .background(on ? Palette.paper : .clear, in: Capsule())
+                VStack(spacing: 4) {
+                    Image(systemName: symbol)
+                        .font(.system(size: 15))
+                        .foregroundStyle(Palette.paper.opacity(0.8))
+                        .frame(width: 40, height: 40)
+                        .overlay(Circle().strokeBorder(Palette.nightRule, lineWidth: 1))
+                    Text(target)
+                        .font(.osTiny)
+                        .foregroundStyle(Palette.nightMuted)
+                        .lineLimit(1)
+                        .fixedSize()
+                }
+                .frame(minWidth: 44)
                 .contentShape(Rectangle())
+            } else {
+                HStack(spacing: 6) {
+                    Image(systemName: symbol).font(.system(size: 11))
+                    Text(target).font(.osData)
+                }
+                .foregroundStyle(Palette.paper)
+                .padding(.horizontal, 12)
+                .frame(height: 28)
+                .overlay(Capsule().strokeBorder(Palette.nightRule, lineWidth: 1))
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
+            }
         }
         .buttonStyle(.plain)
-        .accessibilityLabel(label)
-        .accessibilityAddTraits(on ? .isSelected : [])
+        .accessibilityLabel("Switch to \(target.lowercased()) layout")
     }
 }

@@ -58,7 +58,7 @@ struct TopBar: View {
                             .frame(minHeight: 44)
                             .contentShape(Rectangle())
                     }
-                    .frame(maxWidth: 64, alignment: .leading)
+                    .frame(maxWidth: 84, alignment: .leading)
                     .buttonStyle(.plain)
                     .accessibilityHint("tap to rename the project")
                     Button { store.startRenamingCurrentScene() } label: {
@@ -83,7 +83,7 @@ struct TopBar: View {
                     .accessibilityLabel("projects and scenes")
                 }
                 // Long names truncate rather than run under the compass.
-                .frame(maxWidth: 170, alignment: .leading)
+                .frame(maxWidth: 210, alignment: .leading)
 
                 NightPill(height: 26, action: { store.requestNewScene() }) {
                     Image(systemName: "plus").font(.system(size: 9, weight: .semibold))
@@ -92,18 +92,13 @@ struct TopBar: View {
                 .accessibilityLabel("new scene here")
 
                 // Room for the compass, which sits dead centre over this bar.
-                Spacer(minLength: 204)
+                Spacer(minLength: 170)
 
+                // Just the time: white for now, orange when the sun timeline is scrubbed.
                 // Tap to snap back to now.
                 NightPill(action: { store.plannedMinutes = nil }) {
-                    Text(Format.time(Date()))
-                    if store.plannedMinutes == nil {
-                        Text("Now").foregroundStyle(Ink.muted)
-                    } else {
-                        Text("→").foregroundStyle(Ink.muted)
-                        Text(Format.time(planned)).foregroundStyle(Palette.sun)
-                        Text(BottomBar.offset(from: Date(), to: planned)).foregroundStyle(Ink.muted)
-                    }
+                    Text(Format.time(store.plannedMinutes == nil ? Date() : planned))
+                        .foregroundStyle(store.plannedMinutes == nil ? Palette.paper : Palette.sun)
                 }
                 .lineLimit(1)
                 .fixedSize()
@@ -118,7 +113,7 @@ struct TopBar: View {
             // Just the tape: letters, ticks, the sun and where you're pointing. No readout
             // underneath, so nothing hangs over the viewfinder.
             CompassTape(heading: heading, accuracy: headingAccuracy, sunAzimuth: sunAzimuth)
-                .frame(width: 180, height: 26)
+                .frame(width: 150, height: 26)
         }
     }
 }
@@ -185,16 +180,24 @@ struct LeftRail: View {
     @Environment(ScoutStore.self) private var store
 
     var body: some View {
-        VStack(spacing: 10) {
-            RailToggle(symbol: "sun.horizon", label: "Sun Path", on: store.overlays.sunPath) { store.toggle(\.sunPath) }
-            RailToggle(symbol: "grid", label: "Grid", on: store.overlays.grid) { store.toggle(\.grid) }
-            RailToggle(symbol: "level", label: "Level", on: store.overlays.level) { store.toggle(\.level) }
-            // Portrait layout, picked by hand rather than by tilting the phone.
-            LayoutSwitch(vertical: true)
+        ZStack(alignment: .bottom) {
+            VStack(spacing: 10) {
+                RailToggle(symbol: "sun.horizon", label: "Sun Path", on: store.overlays.sunPath) { store.toggle(\.sunPath) }
+                RailToggle(symbol: "grid", label: "Grid", on: store.overlays.grid) { store.toggle(\.grid) }
+                RailToggle(symbol: "level", label: "Level", on: store.overlays.level) { store.toggle(\.level) }
+                // Portrait layout, picked by hand rather than by tilting the phone.
+                LayoutSwitch(vertical: true)
+            }
+            // Centred on the viewfinder, not on the viewfinder plus the bottom bar.
+            .frame(maxHeight: .infinity)
+            .padding(.bottom, 56)
+
+            // A bit of branding, level with the ratio strip.
+            SunMark()
+                .frame(width: 30, height: 22)
+                .padding(.bottom, 17)
+                .accessibilityHidden(true)
         }
-        // Centred on the viewfinder, not on the viewfinder plus the bottom bar.
-        .frame(maxHeight: .infinity)
-        .padding(.bottom, 56)
     }
 }
 
@@ -240,6 +243,8 @@ struct RightRail: View {
         // Lens at the top, shots at the bottom, and the shutter centred in the room between
         // them, lower down where the thumb rests (Elliot found it sat too high).
         VStack(spacing: 6) {
+            // A little room above the lens wheel, so it sits nearer the thumb.
+            Spacer(minLength: 0).frame(maxHeight: 18)
             LensWheel()
             Spacer(minLength: 0)
             shutter
@@ -600,5 +605,38 @@ enum ThumbCache {
     static func full(for shot: Shot) -> UIImage? {
         guard let url = ScoutStore.photoURL(for: shot) else { return nil }
         return UIImage(contentsOfFile: url.path)
+    }
+}
+
+/// The hand-drawn sun from the logo: half a sun on the horizon with five rays, in orange,
+/// drawn with a slight wobble. A stand-in until the drawn artwork is exported as an asset.
+struct SunMark: View {
+    var body: some View {
+        Canvas { ctx, size in
+            let w = size.width, h = size.height
+            let horizonY = h * 0.78
+            let c = CGPoint(x: w / 2, y: horizonY)
+            let r = w * 0.24
+            var sun = Path()
+            sun.move(to: CGPoint(x: c.x - r, y: horizonY))
+            sun.addArc(center: c, radius: r, startAngle: .degrees(180), endAngle: .degrees(360), clockwise: false)
+            sun.closeSubpath()
+            ctx.fill(sun, with: .color(Palette.sun))
+
+            var lines = Path()
+            // Horizon, a touch uneven.
+            lines.move(to: CGPoint(x: w * 0.04, y: horizonY + 0.4))
+            lines.addQuadCurve(to: CGPoint(x: w * 0.96, y: horizonY - 0.3), control: CGPoint(x: w * 0.5, y: horizonY + 0.9))
+            // Five rays, each slightly different in length.
+            let lengths: [CGFloat] = [0.15, 0.19, 0.21, 0.18, 0.14]
+            for (i, angle) in [200.0, 235.0, 270.0, 305.0, 340.0].enumerated() {
+                let a = angle * .pi / 180
+                let start = r + w * 0.07
+                let end = start + w * lengths[i]
+                lines.move(to: CGPoint(x: c.x + cos(a) * start, y: c.y + sin(a) * start))
+                lines.addLine(to: CGPoint(x: c.x + cos(a) * end, y: c.y + sin(a) * end))
+            }
+            ctx.stroke(lines, with: .color(Palette.sun), style: StrokeStyle(lineWidth: 1.6, lineCap: .round))
+        }
     }
 }

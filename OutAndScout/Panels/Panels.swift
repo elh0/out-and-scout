@@ -58,7 +58,6 @@ struct PanelHeader: View {
 struct ProjectsPanel: View {
     @Environment(ScoutStore.self) private var store
     @State private var expanded: UUID?
-    @State private var newName = ""
     @State private var confirmDeleteAll = false
     /// The project the "delete project" dialog is asking about.
     @State private var deleting: Project?
@@ -87,7 +86,7 @@ struct ProjectsPanel: View {
                                 store.panel = nil
                                 store.requestNewScene()
                             } label: {
-                                Text("+ scene")
+                                Text("+ Scene")
                                     .font(.osSupport)
                                     .padding(.leading, Space.m)
                                     .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
@@ -100,12 +99,14 @@ struct ProjectsPanel: View {
                 }
             }
 
-            HStack(spacing: Space.xs) {
-                SheetField(placeholder: "New project name", text: $newName, onSubmit: addProject)
-                Button("+ new project", action: addProject)
-                    .buttonStyle(PillButtonStyle(kind: .secondary))
-                    .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
+            // Opens the floating name bar straight away; the project is made when you press Done.
+            Button("+ New Project") {
+                store.rename = RenameRequest(title: "New Project", text: "") { [store] in
+                    store.addProject(named: $0)
+                    store.panel = nil
+                }
             }
+            .buttonStyle(PillButtonStyle(kind: .secondary))
 
             // Small and grey on purpose, and it asks first: a clean slate, not a slip.
             Button("Delete All Projects") { confirmDeleteAll = true }
@@ -200,12 +201,6 @@ struct ProjectsPanel: View {
         }
         .accessibilityAddTraits(current ? [.isButton, .isSelected] : .isButton)
     }
-
-    private func addProject() {
-        store.addProject(named: newName)
-        newName = ""
-        store.panel = nil
-    }
 }
 
 // MARK: - 05 Kit panel
@@ -259,6 +254,7 @@ struct KitPanel: View {
                             if cams.isEmpty { empty }
                         } else {
                             let sets = KitCatalog.lenses.filter(matchesLens)
+                            if query.isEmpty { customLensRow }
                             ForEach(sets) { set in lensRow(set) }
                             if sets.isEmpty { empty }
                         }
@@ -294,6 +290,32 @@ struct KitPanel: View {
             store.setKit(kit)
         } label: {
             row(brand: cam.brand, name: cam.name, sub: cam.resolution, tag: cam.format, selected: selected)
+        }
+        .buttonStyle(.plain)
+    }
+
+    /// Your own set: type the focal lengths you carry ("18 25 35 50 85") in the name bar.
+    private var customLensRow: some View {
+        let current = store.kit.lenses.brand == "Custom" ? store.kit.lenses : nil
+        return Button {
+            let text = current.map { $0.focals.map(Format.mm).joined(separator: " ") } ?? ""
+            store.rename = RenameRequest(title: "Your Lenses, in mm", text: text) { [store] typed in
+                let focals = Array(Set(typed
+                    .split(whereSeparator: { !"0123456789.".contains($0) })
+                    .compactMap { Double($0) }
+                    .filter { $0 >= 4 && $0 <= 1200 }))
+                    .sorted()
+                guard !focals.isEmpty else { return }
+                var kit = store.kit
+                kit.lenses = LensSeries(brand: "Custom", name: "My Lenses", type: "spherical", focals: focals)
+                store.setKit(kit)
+            }
+        } label: {
+            row(brand: "Custom",
+                name: current == nil ? "+ Your Own Lenses" : "My Lenses",
+                sub: current.map { $0.focals.map(Format.mm).joined(separator: " ") } ?? "Type the focal lengths you carry",
+                tag: current == nil ? "" : "Tap to edit",
+                selected: current != nil)
         }
         .buttonStyle(.plain)
     }

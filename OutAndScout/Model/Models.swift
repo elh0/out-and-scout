@@ -47,9 +47,9 @@ struct Shot: Identifiable, Codable, Hashable {
 
     var isGolden: Bool { light == .goldenHour }
 
-    /// "24mm · 19:12 · sun 247°"
+    /// "24mm · 19:12". The sun's bearing stays on the Viewfinder, as Elliot asked.
     var meta: String {
-        "\(Int(lensMM.rounded()))mm · \(Format.time(plannedTime)) · Sun \(Int(sunAzimuth.rounded()))°"
+        "\(Int(lensMM.rounded()))mm · \(Format.time(plannedTime))"
     }
 }
 

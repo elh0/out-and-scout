@@ -106,6 +106,7 @@ final class ScoutStore {
             overlays = Overlays()
             locationChoice = nil
         }
+        fixOldLowercaseNames()
     }
 
     // MARK: Lookups
@@ -207,6 +208,33 @@ final class ScoutStore {
         namingSceneID = scene.id
         save()
         return scene.id
+    }
+
+    /// Names and captions from before the switch to proper capitals were saved all
+    /// lowercase ("first recce", "queen's road"). Once, give those a capital: each word for
+    /// project and scene names, the first letter for captions. Anything with a capital
+    /// already is left as typed.
+    private func fixOldLowercaseNames() {
+        let key = "casingFixed"
+        guard !UserDefaults.standard.bool(forKey: key) else { return }
+        func isAllLower(_ t: String) -> Bool { t == t.lowercased() && t != t.uppercased() }
+        func words(_ t: String) -> String {
+            t.split(separator: " ", omittingEmptySubsequences: false)
+                .map { $0.prefix(1).uppercased() + $0.dropFirst() }
+                .joined(separator: " ")
+        }
+        func first(_ t: String) -> String { t.prefix(1).uppercased() + t.dropFirst() }
+        for p in projects.indices {
+            if isAllLower(projects[p].name) { projects[p].name = words(projects[p].name) }
+            for s in projects[p].scenes.indices {
+                if isAllLower(projects[p].scenes[s].name) { projects[p].scenes[s].name = words(projects[p].scenes[s].name) }
+                for i in projects[p].scenes[s].shots.indices where isAllLower(projects[p].scenes[s].shots[i].caption) {
+                    projects[p].scenes[s].shots[i].caption = first(projects[p].scenes[s].shots[i].caption)
+                }
+            }
+        }
+        save()
+        UserDefaults.standard.set(true, forKey: key)
     }
 
     /// Opens the name bar on the current scene, ready to type.

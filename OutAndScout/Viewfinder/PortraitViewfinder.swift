@@ -38,15 +38,10 @@ struct PortraitTopRow: View {
 
             // Tap to snap back to now.
             Button { store.plannedMinutes = nil } label: {
-                HStack(spacing: 6) {
-                    Text(Format.time(Date()))
-                    if store.plannedMinutes != nil {
-                        Text("→").foregroundStyle(PortraitInk.muted)
-                        Text(Format.time(planned)).foregroundStyle(Palette.sun)
-                    }
-                }
+                // Just the time: white for now, orange when scrubbed.
+                Text(Format.time(store.plannedMinutes == nil ? Date() : planned))
                 .font(.osData)
-                .foregroundStyle(Palette.paper)
+                .foregroundStyle(store.plannedMinutes == nil ? Palette.paper : Palette.sun)
                 .padding(.horizontal, 12)
                 .frame(height: 30)
                 .overlay(Capsule().strokeBorder(Palette.nightRule, lineWidth: 1))
