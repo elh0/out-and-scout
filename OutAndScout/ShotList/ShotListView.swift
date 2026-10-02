@@ -147,7 +147,7 @@ struct ShotListView: View {
                 Text(subtitle).font(.osSupport).foregroundStyle(Palette.graphite)
             }
 
-            ScrollView(.horizontal, showsIndicators: false) {
+            FadingHScroll {
                 HStack(spacing: Space.xxs) {
                     let total = project.scenes.reduce(0) { $0 + $1.shots.count }
                     Chip(label: "all scenes · \(total)", selected: sceneFilter == nil, onDark: false, mono: false) {
@@ -253,7 +253,7 @@ struct ShotListView: View {
                 Rule()
 
                 // Frame lines can be changed after the shot; "full" shows the whole frame.
-                ScrollView(.horizontal, showsIndicators: false) {
+                FadingHScroll {
                     HStack(spacing: Space.xxs) {
                         Text("frame lines").font(.osDataSmall).foregroundStyle(Palette.graphite)
                             .padding(.trailing, Space.xxs)

@@ -49,6 +49,7 @@ struct TopBar: View {
             HStack(spacing: Space.xs) {
                 // Tap a name to rename it in the floating name bar; the chevron opens Projects.
                 HStack(spacing: Space.xs) {
+                    // The scene name wins the space; the project name gives way first.
                     Button { store.startRenamingCurrentProject() } label: {
                         Text("\(store.currentProject.name) /")
                             .font(.osData)
@@ -57,6 +58,7 @@ struct TopBar: View {
                             .frame(minHeight: 44)
                             .contentShape(Rectangle())
                     }
+                    .frame(maxWidth: 64, alignment: .leading)
                     .buttonStyle(.plain)
                     .accessibilityHint("tap to rename the project")
                     Button { store.startRenamingCurrentScene() } label: {
@@ -69,6 +71,7 @@ struct TopBar: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityHint("tap to rename the scene")
+                    .layoutPriority(1)
                     Button { store.panel = .projects } label: {
                         Image(systemName: "chevron.down")
                             .font(.system(size: 9, weight: .semibold))
@@ -112,8 +115,10 @@ struct TopBar: View {
                 .frame(maxWidth: 110)
             }
 
+            // Pinned to the top of the bar so its bearing line clears the viewfinder.
             CompassTape(heading: heading, accuracy: headingAccuracy, sunAzimuth: sunAzimuth)
                 .frame(width: 180, height: 36)
+                .frame(maxHeight: .infinity, alignment: .top)
         }
     }
 }
@@ -170,7 +175,7 @@ struct CompassTape: View {
                     Text("±\(Int((accuracy ?? 5).rounded()))° true n").foregroundStyle(Ink.muted)
                 }
                 .font(.osDataSmall)
-                .offset(y: 25)
+                .offset(y: 23)
             }
             .accessibilityElement()
             .accessibilityLabel("facing \(Format.bearing(heading))")

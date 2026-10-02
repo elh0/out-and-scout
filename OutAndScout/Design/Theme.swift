@@ -159,3 +159,17 @@ struct Rule: View {
     var color = Palette.rule
     var body: some View { color.frame(height: 1) }
 }
+
+/// A horizontal chip row that fades out at its right edge, so a chip cut off by the edge
+/// reads as "more this way" rather than a stray sliver.
+struct FadingHScroll<Content: View>: View {
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        ScrollView(.horizontal, showsIndicators: false) { content }
+            .mask(
+                LinearGradient(stops: [.init(color: .black, location: 0.88), .init(color: .clear, location: 1)],
+                               startPoint: .leading, endPoint: .trailing)
+            )
+    }
+}

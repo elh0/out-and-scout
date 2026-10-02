@@ -231,7 +231,7 @@ struct KitPanel: View {
 
             if tab == .camera, store.kit.camera.modes.count > 1 {
                 Text("sensor mode").font(.osDataSmall).foregroundStyle(Palette.graphite)
-                ScrollView(.horizontal, showsIndicators: false) {
+                FadingHScroll {
                     HStack(spacing: Space.xxs) {
                         ForEach(store.kit.camera.modes) { mode in
                             Chip(label: mode.name, selected: mode == store.kit.mode, onDark: false) {
