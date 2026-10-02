@@ -567,7 +567,7 @@ enum VisionLabels {
             // Vision often says "people" or "adult" for crowds; the count above says it better.
             if people != nil { subjects.removeAll { ["person", "people", "adult", "child", "crowd"].contains($0) } }
             return VisionResult(subjects: Array(subjects.prefix(4)), setting: setting, people: people, sign: sign,
-                                lightCue: LightCues.read(data, labels: Set(scores.filter { $0.value >= 0.2 }.keys)))
+                                lightCue: LightCues.read(data, labels: scores))
         }.value
     }
 }
@@ -581,7 +581,7 @@ private extension CGRect {
 /// Read from a 160-pixel copy of the still, brightness as the brightest of R, G and B so
 /// warm lamps count. Thresholds tuned on Elliot's recce stills (2 Oct 2026).
 enum LightCues {
-    static func read(_ data: Data, labels: Set<String>) -> String? {
+    static func read(_ data: Data, labels: [String: Float]) -> String? {
         guard let src = CGImageSourceCreateWithData(data as CFData, nil),
               let thumb = CGImageSourceCreateThumbnailAtIndex(src, 0, [
                   kCGImageSourceCreateThumbnailFromImageAlways: true,
@@ -624,16 +624,17 @@ enum LightCues {
                 }
             }
             let share = Double(size) / Double(n)
-            if share >= 0.0005 { blobs.append(share) }
+            if share >= 0.001 { blobs.append(share) }
         }
         guard let largest = blobs.max() else { return nil }
 
-        let windowish = !labels.isDisjoint(with: ["window", "door", "sky", "sun", "sunset_sunrise"])
+        // A window has to be a confident label: laptop wallpaper and doors score ~0.3.
+        let windowish = ["window", "door", "sky", "sun", "sunset_sunrise"].contains { (labels[$0] ?? 0) >= 0.45 }
         // Dappled first: sun patches on a cupboard door shouldn't read as a backlit door.
         if blobs.count >= 4, mean < 0.3 { return "dappled light" }
         if windowish || largest >= 0.1 { return "backlit" }
-        let real = blobs.filter { $0 >= 0.003 }
-        if mean < 0.38, (1...2).contains(real.count), largest <= 0.06 { return "practical" }
+        let real = blobs.filter { $0 >= 0.005 }
+        if mean < 0.45, (1...2).contains(real.count), largest <= 0.10 { return "practical" }
         return nil
     }
 }

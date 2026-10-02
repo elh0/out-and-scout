@@ -40,8 +40,10 @@ enum Captioner {
             subjects = [subjects.first.map { "\(people) by the \($0)" } ?? people] + subjects.dropFirst()
         }
         // A lamp glowing in a dark frame is a practical; Vision rarely names it.
-        if seen.lightCue == "practical", !subjects.contains(where: { $0.contains("lamp") }) {
-            subjects.insert("practical lamp", at: min(1, subjects.count))
+        // It leads the caption, since it's usually why the frame was taken.
+        if seen.lightCue == "practical", seen.people == nil {
+            subjects.removeAll { $0.contains("lamp") }
+            subjects.insert("practical lamp", at: 0)
         }
         if subjects.isEmpty { subjects = [seen.sign.map { "sign: \($0)" } ?? "location"] }
         let a = subjects[0]
@@ -84,13 +86,15 @@ enum Captioner {
             "people", "adult", "wood_processed", "wood_natural", "art", "decoration",
             "office_supplies", "housewares", "tool", "cord", "light", "sky",
             // Wrong or noisy on real recce stills (benchmark, 2 Oct 2026).
-            "screenshot", "document", "portal", "elevator", "raw_glass", "recreation",
+            "screenshot", "document", "portal", "elevator", "raw_glass", "recreation", "sport", "games", "leisure",
         ]
         // Screens come back as three or four synonyms and crowd out the real subjects.
         let screens: Set<String> = ["computer", "computer_monitor", "monitor", "laptop", "computer_screen", "display"]
         let hasLaptop = identifiers.contains("laptop")
-        // A keyboard filling the frame should lead, not be folded into "screen".
-        if let k = identifiers.firstIndex(of: "computer_keyboard"), k == 0 || identifiers.prefix(k).allSatisfy(screens.contains) {
+        // A keyboard filling the frame should lead, not be folded into "screen". Its parents
+        // (machine, consumer_electronics) are skipped, so look past them too.
+        if let k = identifiers.firstIndex(of: "computer_keyboard"),
+           identifiers.prefix(k).allSatisfy({ screens.contains($0) || skip.contains($0) }) {
             var rest = readable(identifiers.filter { $0 != "computer_keyboard" })
             rest.removeAll { $0 == "keyboard" }
             return ["keyboard"] + rest
