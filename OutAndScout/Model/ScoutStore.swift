@@ -258,6 +258,12 @@ final class ScoutStore {
 
     func commitPending(caption: String) {
         guard let p = pending else { return }
+        addShot(p, caption: caption)
+        pending = nil
+    }
+
+    /// Saves a shot to the current scene straight away (the shutter doesn't wait on a caption).
+    func addShot(_ p: PendingShot, caption: String) {
         var photoFile: String?
         if let data = p.photo {
             let name = "\(p.id.uuidString).heic"
@@ -288,8 +294,26 @@ final class ScoutStore {
             stillAspect: p.stillAspect
         )
         updateScene(currentSceneID) { $0.shots.append(shot) }
-        pending = nil
         toast = "saved \(shot.number)"
+        save()
+    }
+
+    /// Fills in what arrives after the shutter: the auto caption (only if the shot is still
+    /// untitled, so a caption typed in the meantime wins) and the place name.
+    func fillIn(_ id: UUID, caption: String?, location: ShotLocation?) {
+        let trimmed = caption?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? ""
+        for p in projects.indices {
+            for s in projects[p].scenes.indices {
+                if let i = projects[p].scenes[s].shots.firstIndex(where: { $0.id == id }) {
+                    if !trimmed.isEmpty, projects[p].scenes[s].shots[i].caption.isEmpty {
+                        projects[p].scenes[s].shots[i].caption = trimmed
+                    }
+                    if let location, projects[p].scenes[s].shots[i].location == nil {
+                        projects[p].scenes[s].shots[i].location = location
+                    }
+                }
+            }
+        }
         save()
     }
 
