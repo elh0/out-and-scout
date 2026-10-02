@@ -232,14 +232,15 @@ struct ViewfinderView: View {
     /// Scenes where "keep" was picked, so the new-scene question isn't asked again there.
     @State private var keptScenes: Set<UUID> = []
 
-    /// How far you've walked from this scene's last shot, once it's more than 300 m.
+    /// How far you've walked from this scene's last shot, once it's more than 100 m. GPS has to be good to
+    /// within 30 m, or a poor fix could fake the move.
     private var movedMetres: Int? {
         guard !cardIsOpen, store.justSaved == nil, !keptScenes.contains(store.currentSceneID),
-              let here = location.location, here.horizontalAccuracy >= 0, here.horizontalAccuracy < 100,
+              let here = location.location, here.horizontalAccuracy >= 0, here.horizontalAccuracy < 30,
               let last = store.currentScene.shots.last(where: { $0.location != nil })?.location
         else { return nil }
         let d = here.distance(from: CLLocation(latitude: last.latitude, longitude: last.longitude))
-        return d > 300 ? Int((d / 10).rounded() * 10) : nil
+        return d > 100 ? Int((d / 10).rounded() * 10) : nil
     }
 
     private var cardIsOpen: Bool {
