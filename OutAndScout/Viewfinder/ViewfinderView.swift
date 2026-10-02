@@ -33,24 +33,9 @@ struct ViewfinderView: View {
                     landscapeLayout(sun: sun, planned: planned)
                 }
             }
-            // While the screen turns, the controls step back and fade in on the new layout,
-            // so you never see one layout stretched into the other.
+            // While the screen turns, the viewfinder steps back to black and fades in on the new
+            // layout, so you never see one layout stretched into the other.
             .opacity(LayoutMode.shared.turning ? 0 : 1)
-            // One live preview for both layouts, placed under the viewfinder area wherever the
-            // current layout puts it. It only moves and resizes on a switch, so the image keeps
-            // running through the turn, and it can't change the layout's size.
-            .backgroundPreferenceValue(PreviewAreaKey.self) { anchor in
-                GeometryReader { proxy in
-                    if let anchor, camera.status == .running {
-                        let r = proxy[anchor]
-                        CameraPreview(camera: camera)
-                            .frame(width: r.width, height: r.height)
-                            .clipped()
-                            .offset(x: r.minX, y: r.minY)
-                    }
-                }
-                .allowsHitTesting(false)
-            }
 
             if let metres = movedMetres {
                 SceneChangeChip(metres: metres) { newScene in

@@ -132,8 +132,6 @@ struct ViewfinderFrame: View {
                 camera.lock(atLayerPoint: p)
                 showFocus(at: p)
             }
-            // Tells ViewfinderView where to lay the live image, resolved fresh on every layout.
-            .anchorPreference(key: PreviewAreaKey.self, value: .bounds) { $0 }
             .onAppear { syncLens(size: size, frame: frame) }
             .onChange(of: LensKey(lens: store.lensMM, kit: store.kit, aspect: store.aspect, size: size, portrait: portrait)) {
                 syncLens(size: size, frame: frame)
@@ -145,9 +143,7 @@ struct ViewfinderFrame: View {
     @ViewBuilder private var cameraLayer: some View {
         switch camera.status {
         case .running:
-            // The live image is drawn once by ViewfinderView, under both layouts, so turning
-            // the phone doesn't tear down and reconnect the camera preview.
-            Color.clear
+            CameraPreview(camera: camera)
         case .unauthorized:
             placeholder("camera access is off. turn it on in settings to frame shots.", settingsButton: true)
         case .unavailable:
@@ -522,12 +518,4 @@ enum VisionLabels {
 
 private extension CGRect {
     var area: CGFloat { width * height }
-}
-
-/// The viewfinder area's bounds, for placing the one shared live preview.
-struct PreviewAreaKey: PreferenceKey {
-    static let defaultValue: Anchor<CGRect>? = nil
-    static func reduce(value: inout Anchor<CGRect>?, nextValue: () -> Anchor<CGRect>?) {
-        value = value ?? nextValue()
-    }
 }
