@@ -1,114 +1,183 @@
 import SwiftUI
 
-// MARK: - Top bar: project / scene, + scene, compass tape, kit chip
+// The Viewfinder chrome, laid out like the v3c prototype: Geist Mono, small type,
+// thin outlined pills, paper-on-night.
+
+private enum Ink {
+    /// Dim labels on the dark viewfinder (#8A8A83).
+    static let muted = Palette.nightMuted
+    /// Next/previous focal lengths (#45453F).
+    static let faint = Color(hex: 0x45453F)
+    /// Compass letters and hour ticks (#66665F).
+    static let tick = Palette.graphite
+    /// Light label under the time (#B5B5AE).
+    static let soft = Color(hex: 0xB5B5AE)
+}
+
+/// Outlined pill on the dark viewfinder, 30 tall (hit area padded to 44).
+private struct NightPill<Label: View>: View {
+    var height: CGFloat = 30
+    let action: () -> Void
+    @ViewBuilder let label: Label
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) { label }
+                .font(.osData)
+                .foregroundStyle(Palette.paper)
+                .padding(.horizontal, 12)
+                .frame(height: height)
+                .overlay(Capsule().strokeBorder(Palette.nightRule, lineWidth: 1))
+                .padding(.vertical, (44 - height) / 2)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// MARK: - Top bar: project / scene, + scene, compass, clock, kit
 
 struct TopBar: View {
     @Environment(ScoutStore.self) private var store
     let heading: Double?
+    let headingAccuracy: Double?
     let sunAzimuth: Double
+    let planned: Date
 
     var body: some View {
-        HStack(spacing: Space.xs) {
-            Button { store.panel = .projects } label: {
-                Image(systemName: "square.stack")
-                    .font(.system(size: 15))
-                    .foregroundStyle(Palette.nightMuted)
-                    .frame(width: 36, height: 44)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("switch project or scene")
-
-            // Tap either name to rename it in the name bar, which floats over the viewfinder,
-            // so typing never pushes the top bar about.
-            HStack(spacing: Space.xxs) {
-                Button { store.startRenamingCurrentProject() } label: {
-                    Text(store.currentProject.name)
-                        .font(.osRow)
-                        .foregroundStyle(Palette.nightMuted)
-                        .lineLimit(1)
-                        .frame(minHeight: 44)
-                        .contentShape(Rectangle())
+        ZStack {
+            HStack(spacing: Space.xs) {
+                // Tap a name to rename it in the floating name bar; the chevron opens Projects.
+                HStack(spacing: Space.xs) {
+                    Button { store.startRenamingCurrentProject() } label: {
+                        Text("\(store.currentProject.name) /")
+                            .font(.osData)
+                            .foregroundStyle(Ink.muted)
+                            .lineLimit(1)
+                            .frame(minHeight: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("tap to rename the project")
+                    Button { store.startRenamingCurrentScene() } label: {
+                        Text(store.currentScene.name)
+                            .font(.osRow)
+                            .foregroundStyle(Palette.paper)
+                            .lineLimit(1)
+                            .frame(minHeight: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("tap to rename the scene")
+                    Button { store.panel = .projects } label: {
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 9, weight: .semibold))
+                            .foregroundStyle(Ink.muted)
+                            .frame(width: 24, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("projects and scenes")
                 }
-                .buttonStyle(.plain)
-                .accessibilityHint("tap to rename")
-                Text("/").font(.osRow).foregroundStyle(Palette.nightMuted)
-                Button { store.startRenamingCurrentScene() } label: {
-                    Text(store.currentScene.name)
-                        .font(.osRow)
-                        .foregroundStyle(Palette.paper)
-                        .lineLimit(1)
-                        .frame(minHeight: 44)
-                        .contentShape(Rectangle())
+                // Long names truncate rather than run under the compass.
+                .frame(maxWidth: 190, alignment: .leading)
+
+                NightPill(height: 26, action: { store.requestNewScene() }) {
+                    Image(systemName: "plus").font(.system(size: 9, weight: .semibold))
+                    Text("scene")
                 }
-                .buttonStyle(.plain)
-                .accessibilityHint("tap to rename")
-            }
-            .frame(height: 44)
+                .accessibilityLabel("new scene here")
 
-            Chip(label: "+ scene", mono: false) { store.requestNewScene() }
+                // Room for the compass, which sits dead centre over this bar.
+                Spacer(minLength: 190)
 
-            Spacer(minLength: Space.xs)
-            CompassTape(heading: heading, sunAzimuth: sunAzimuth)
-                .frame(width: 168, height: 30)
-            Spacer(minLength: Space.xs)
-
-            Chip(label: store.kit.label) { store.panel = .kit }
+                // Tap to snap back to now.
+                NightPill(action: { store.plannedMinutes = nil }) {
+                    Text(Format.time(Date()))
+                    if store.plannedMinutes == nil {
+                        Text("now").foregroundStyle(Ink.muted)
+                    } else {
+                        Text("→").foregroundStyle(Ink.muted)
+                        Text(Format.time(planned)).foregroundStyle(Palette.sun)
+                        Text(BottomBar.offset(from: Date(), to: planned)).foregroundStyle(Ink.muted)
+                    }
+                }
                 .lineLimit(1)
+                .fixedSize()
+                .accessibilityHint("back to now")
+
+                NightPill(action: { store.panel = .kit }) {
+                    Text(store.kit.label).lineLimit(1)
+                }
+                .frame(maxWidth: 110)
+            }
+
+            CompassTape(heading: heading, accuracy: headingAccuracy, sunAzimuth: sunAzimuth)
+                .frame(width: 180, height: 36)
         }
     }
 }
 
-/// A strip of compass ticks centred on the camera's bearing, with the sun marked.
+/// Compass ticks centred on the camera's bearing, letters above, the sun marked in orange,
+/// and the bearing underneath: "103° e ±3° true n".
 struct CompassTape: View {
     let heading: Double?
+    var accuracy: Double?
     let sunAzimuth: Double
     /// Degrees shown across the width.
     private let span = 90.0
 
     var body: some View {
         if let heading {
-            Canvas { ctx, size in
-                let w = size.width
-                let mid = w / 2
-                let x = { (deg: Double) in mid + CGFloat(Bearing.difference(deg, heading) / span) * w }
+            ZStack(alignment: .top) {
+                Canvas { ctx, size in
+                    let w = size.width
+                    let mid = w / 2
+                    let x = { (deg: Double) in mid + CGFloat(Bearing.difference(deg, heading) / span) * w }
+                    let base: CGFloat = 24
 
-                let first = (Int(heading - span / 2) / 5 - 1) * 5
-                for d in stride(from: first, through: Int(heading + span / 2) + 5, by: 5) {
-                    let px = x(Double(d))
-                    guard px >= 0, px <= w else { continue }
-                    let major = d % 45 == 0
-                    var tick = Path()
-                    tick.move(to: CGPoint(x: px, y: size.height))
-                    tick.addLine(to: CGPoint(x: px, y: size.height - (major ? 8 : 4)))
-                    ctx.stroke(tick, with: .color(Palette.paper.opacity(major ? 0.8 : 0.35)), lineWidth: 1)
-                    if major {
-                        let names = ["n", "ne", "e", "se", "s", "sw", "w", "nw"]
-                        let name = names[((d / 45) % 8 + 8) % 8]
-                        ctx.draw(Text(name).font(.osDataSmall).foregroundColor(Palette.nightMuted), at: CGPoint(x: px, y: 6))
+                    let first = (Int(heading - span / 2) / 5 - 1) * 5
+                    for d in stride(from: first, through: Int(heading + span / 2) + 5, by: 5) {
+                        let px = x(Double(d))
+                        guard px >= 0, px <= w else { continue }
+                        let major = d % 45 == 0
+                        let h: CGFloat = major ? 8 : (d % 15 == 0 ? 5 : 3)
+                        var tick = Path()
+                        tick.move(to: CGPoint(x: px, y: base))
+                        tick.addLine(to: CGPoint(x: px, y: base - h))
+                        ctx.stroke(tick, with: .color(Palette.paper.opacity(major ? 0.7 : 0.3)), lineWidth: 1)
+                        if major {
+                            let names = ["n", "ne", "e", "se", "s", "sw", "w", "nw"]
+                            let name = names[((d / 45) % 8 + 8) % 8]
+                            ctx.draw(Text(name).font(.osTiny).foregroundColor(Ink.tick), at: CGPoint(x: px, y: 5))
+                        }
                     }
-                }
 
-                // Sun: on the tape if it's within the span, otherwise pinned to the edge it's beyond.
-                let sx = min(max(x(sunAzimuth), 4), w - 4)
-                let inView = abs(Bearing.difference(sunAzimuth, heading)) <= span / 2
-                let dot = Path(ellipseIn: CGRect(x: sx - 4, y: size.height - 16, width: 8, height: 8))
-                if inView {
-                    ctx.fill(dot, with: .color(Palette.sun))
-                } else {
-                    ctx.stroke(dot, with: .color(Palette.sun), lineWidth: 1.5)
-                }
+                    // The sun: an orange tick, pinned to the edge when it's beyond the span.
+                    let sx = min(max(x(sunAzimuth), 1), w - 1)
+                    var sunTick = Path()
+                    sunTick.move(to: CGPoint(x: sx, y: base))
+                    sunTick.addLine(to: CGPoint(x: sx, y: base - 10))
+                    ctx.stroke(sunTick, with: .color(Palette.sun.opacity(0.9)), lineWidth: 1)
 
-                var caret = Path()
-                caret.move(to: CGPoint(x: mid, y: size.height - 10))
-                caret.addLine(to: CGPoint(x: mid, y: size.height))
-                ctx.stroke(caret, with: .color(Palette.paper), lineWidth: 2)
+                    // Where the camera points.
+                    ctx.fill(Path(CGRect(x: mid - 1, y: 10, width: 2, height: 16)), with: .color(Palette.sun))
+                }
+                .frame(height: 26)
+
+                HStack(spacing: 4) {
+                    Text(Format.bearing(heading)).foregroundStyle(Palette.paper)
+                    Text("±\(Int((accuracy ?? 5).rounded()))° true n").foregroundStyle(Ink.muted)
+                }
+                .font(.osDataSmall)
+                .offset(y: 25)
             }
+            .accessibilityElement()
             .accessibilityLabel("facing \(Format.bearing(heading))")
         } else {
             Text("finding north…")
                 .font(.osDataSmall)
-                .foregroundStyle(Palette.nightMuted)
+                .foregroundStyle(Ink.muted)
         }
     }
 }
@@ -119,30 +188,125 @@ struct LeftRail: View {
     @Environment(ScoutStore.self) private var store
 
     var body: some View {
-        VStack(spacing: Space.xs) {
-            Spacer(minLength: 0)
-            LensWheel()
-            Spacer(minLength: 0)
-            VStack(spacing: Space.xxs) {
-                RailToggle(symbol: "sun.horizon", label: "sun path", on: store.overlays.sunPath) { store.toggle(\.sunPath) }
-                RailToggle(symbol: "grid", label: "grid", on: store.overlays.grid) { store.toggle(\.grid) }
-                RailToggle(symbol: "level", label: "level", on: store.overlays.level) { store.toggle(\.level) }
-            }
+        VStack(spacing: 10) {
+            RailToggle(symbol: "sun.horizon", label: "sun path", on: store.overlays.sunPath) { store.toggle(\.sunPath) }
+            RailToggle(symbol: "grid", label: "grid", on: store.overlays.grid) { store.toggle(\.grid) }
+            RailToggle(symbol: "level", label: "level", on: store.overlays.level) { store.toggle(\.level) }
         }
         .frame(maxHeight: .infinity)
     }
 }
 
-// MARK: - Lens wheel (left rail)
+/// A 40pt round toggle with a 9pt label under it. Filled paper when on.
+struct RailToggle: View {
+    let symbol: String
+    let label: String
+    let on: Bool
+    let action: () -> Void
 
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 4) {
+                Image(systemName: symbol)
+                    .font(.system(size: 15, weight: .regular))
+                    .foregroundStyle(on ? Palette.ink : Palette.paper.opacity(0.8))
+                    .frame(width: 40, height: 40)
+                    .background(on ? Palette.paper : .clear, in: Circle())
+                    .overlay(Circle().strokeBorder(on ? .clear : Palette.nightRule, lineWidth: 1))
+                Text(label)
+                    .font(.osTiny)
+                    .foregroundStyle(Ink.muted)
+                    .lineLimit(1)
+                    .fixedSize()
+            }
+            .frame(minWidth: 44)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(label)
+        .accessibilityAddTraits(on ? .isSelected : [])
+    }
+}
+
+// MARK: - Right rail: lens, shutter, shot stack
+
+struct RightRail: View {
+    @Environment(ScoutStore.self) private var store
+    let capturing: Bool
+    let onShutter: () -> Void
+
+    var body: some View {
+        VStack(spacing: 8) {
+            LensWheel()
+            shutter
+            shotStack
+        }
+        .frame(maxHeight: .infinity)
+    }
+
+    private var shutter: some View {
+        VStack(spacing: 2) {
+            Button(action: onShutter) {
+                ZStack {
+                    Circle().strokeBorder(Palette.paper, lineWidth: 3).frame(width: 64, height: 64)
+                    Circle().fill(Palette.paper).frame(width: 48, height: 48)
+                        .scaleEffect(capturing ? 0.85 : 1)
+                }
+                .contentShape(Circle())
+            }
+            .buttonStyle(.plain)
+            .disabled(capturing)
+            .accessibilityLabel("pin as shot \(store.nextShotNumber)")
+
+            Text("next \(store.nextShotNumber)")
+                .font(.osDataSmall)
+                .foregroundStyle(Ink.muted)
+        }
+        .animation(.easeOut(duration: 0.12), value: capturing)
+    }
+
+    /// Two stacked cards (the latest still on top) with the count in a paper badge.
+    private var shotStack: some View {
+        let shots = store.currentScene.shots
+        return Button { store.showingShotList = true } label: {
+            ZStack(alignment: .topLeading) {
+                RoundedRectangle(cornerRadius: 4).strokeBorder(Ink.faint, lineWidth: 1)
+                    .frame(width: 32, height: 24).offset(x: 8, y: 4)
+                Group {
+                    if let last = shots.last {
+                        ShotThumb(shot: last)
+                    } else {
+                        Color(hex: 0x2B2B28)
+                    }
+                }
+                .frame(width: 32, height: 24)
+                .clipShape(RoundedRectangle(cornerRadius: 4))
+                .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(Palette.graphite, lineWidth: 1))
+                .offset(x: 4, y: 10)
+                Text("\(shots.count)")
+                    .font(.osDataSmall)
+                    .foregroundStyle(Palette.ink)
+                    .padding(.horizontal, 4)
+                    .frame(minWidth: 18, minHeight: 18)
+                    .background(Palette.paper, in: Capsule())
+                    .offset(x: 26, y: 24)
+            }
+            .frame(width: 44, height: 44, alignment: .topLeading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("shot list, \(shots.count) shots in this scene")
+    }
+}
+
+/// Up and down step through the kit's focal lengths. Tap the big number to go up
+/// (wrapping back to the widest), tap the arrows, or drag. Dragging steps once per notch
+/// as you move, not just when you let go.
 struct LensWheel: View {
     @Environment(ScoutStore.self) private var store
     @Environment(CameraController.self) private var camera
     @State private var dragNotches = 0
 
-    /// Up and down step through the kit's focal lengths. Tap the big number to go up
-    /// (wrapping back to the widest), tap the small ones or the arrows, or drag.
-    /// Dragging steps once per notch as you move, not just when you let go.
     var body: some View {
         let focals = store.focalLengths
         let i = focals.firstIndex { $0 >= store.lensMM } ?? 0
@@ -150,20 +314,18 @@ struct LensWheel: View {
         let prev = i > 0 ? focals[i - 1] : nil
 
         return VStack(spacing: 0) {
-            stepButton(icon: "chevron.up", label: next, delta: 1)
+            arrow("chevron.up", delta: 1, enabled: next != nil)
+            Text(next.map(Format.mm) ?? " ").font(.osDataSmall).foregroundStyle(Ink.faint)
 
             Button { stepUpWrapping() } label: {
                 VStack(spacing: 0) {
-                    HStack(alignment: .firstTextBaseline, spacing: 1) {
-                        Text(Format.mm(store.lensMM)).font(Fonts.sans(28, .medium))
-                        Text("mm").font(.osDataSmall)
-                    }
-                    .foregroundStyle(Palette.paper)
-
-                    // Which iPhone lens is live. Greys out when the digital crop gets soft.
+                    Text(Format.mm(store.lensMM)).font(Fonts.mono(20)).foregroundStyle(Palette.paper)
+                    Text("mm").font(.osDataSmall).foregroundStyle(Ink.muted)
+                    // The phone's zoom, like the Camera app. Greys out when the crop gets soft.
                     Text(camera.lensLabel)
-                        .font(.osDataSmall)
-                        .foregroundStyle(camera.cropIsSoft ? Palette.nightMuted.opacity(0.4) : Palette.nightMuted)
+                        .font(.osTiny)
+                        .foregroundStyle(camera.cropIsSoft ? Ink.faint : Ink.muted)
+                        .padding(.top, 3)
                 }
                 .frame(width: 84)
                 .contentShape(Rectangle())
@@ -172,7 +334,8 @@ struct LensWheel: View {
             .accessibilityLabel("lens \(Format.mm(store.lensMM)) millimetres, iphone \(camera.readout)")
             .accessibilityHint("tap for the next lens")
 
-            stepButton(icon: "chevron.down", label: prev, delta: -1)
+            Text(prev.map(Format.mm) ?? " ").font(.osDataSmall).foregroundStyle(Ink.faint)
+            arrow("chevron.down", delta: -1, enabled: prev != nil)
         }
         .contentShape(Rectangle())
         .simultaneousGesture(
@@ -189,20 +352,17 @@ struct LensWheel: View {
         .sensoryFeedback(.selection, trigger: store.lensMM)
     }
 
-    private func stepButton(icon: String, label: Double?, delta: Int) -> some View {
+    private func arrow(_ icon: String, delta: Int, enabled: Bool) -> some View {
         Button { store.stepLens(delta) } label: {
-            VStack(spacing: 0) {
-                if delta < 0 { Text(label.map(Format.mm) ?? " ").font(.osData) }
-                Image(systemName: icon).font(.system(size: 11, weight: .semibold))
-                if delta > 0 { Text(label.map(Format.mm) ?? " ").font(.osData) }
-            }
-            .foregroundStyle(Palette.nightMuted)
-            .opacity(label == nil ? 0.25 : 1)
-            .frame(width: 60, height: 40)
-            .contentShape(Rectangle())
+            Image(systemName: icon)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(Ink.muted)
+                .opacity(enabled ? 1 : 0.3)
+                .frame(width: 44, height: 30)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .disabled(label == nil)
+        .disabled(!enabled)
         .accessibilityLabel(delta > 0 ? "longer lens" : "wider lens")
     }
 
@@ -214,98 +374,6 @@ struct LensWheel: View {
             store.stepLens(1)
         }
     }
-}
-
-struct RailToggle: View {
-    let symbol: String
-    let label: String
-    let on: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            VStack(spacing: 3) {
-                Image(systemName: symbol)
-                    .font(.system(size: 17, weight: .regular))
-                    .frame(width: 36, height: 28)
-                Text(label)
-                    .font(.osDataSmall)
-                    .lineLimit(1)
-                    .fixedSize()
-            }
-            .foregroundStyle(on ? Palette.paper : Palette.nightMuted.opacity(0.7))
-            .frame(minWidth: 44, minHeight: 44)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(on ? .isSelected : [])
-    }
-}
-
-// MARK: - Right rail: shutter, shot stack
-
-struct RightRail: View {
-    @Environment(ScoutStore.self) private var store
-    @Environment(CameraController.self) private var camera
-    let capturing: Bool
-    let onShutter: () -> Void
-
-    var body: some View {
-        // The shutter sits dead centre, where a thumb expects it; the shot stack below.
-        ZStack {
-            shutter
-            VStack {
-                Spacer(minLength: 0)
-                shotStack
-            }
-        }
-        .frame(maxHeight: .infinity)
-    }
-
-    private var shutter: some View {
-        // A little air between the shutter ring and the "next 4A" label.
-        VStack(spacing: Space.xs) {
-            Button(action: onShutter) {
-                ZStack {
-                    Circle().strokeBorder(Palette.paper, lineWidth: 3).frame(width: 64, height: 64)
-                    Circle().fill(Palette.paper).frame(width: 50, height: 50)
-                        .scaleEffect(capturing ? 0.85 : 1)
-                }
-                .contentShape(Circle())
-            }
-            .buttonStyle(.plain)
-            .disabled(capturing)
-            .accessibilityLabel("pin as shot \(store.nextShotNumber)")
-
-            Text("next \(store.nextShotNumber)")
-                .font(.osDataSmall)
-                .foregroundStyle(Palette.nightMuted)
-        }
-        .animation(.easeOut(duration: 0.12), value: capturing)
-    }
-
-    private var shotStack: some View {
-        let shots = store.currentScene.shots
-        return Button { store.showingShotList = true } label: {
-            HStack(spacing: Space.xs) {
-                if let last = shots.last {
-                    ShotThumb(shot: last).frame(width: 40, height: 40)
-                } else {
-                    RoundedRectangle(cornerRadius: Radius.readout)
-                        .strokeBorder(Palette.nightRule, lineWidth: 1)
-                        .frame(width: 40, height: 40)
-                }
-                Text("\(shots.count)")
-                    .font(.osData)
-                    .foregroundStyle(Palette.paper)
-            }
-            .frame(minHeight: 44)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("shot list, \(shots.count) shots in this scene")
-    }
-
 }
 
 // MARK: - Bottom bar: aspect strip, time + light, sun timeline
@@ -321,45 +389,65 @@ struct BottomBar: View {
         let hour = Double(comps.hour ?? 12) + Double(comps.minute ?? 0) / 60
         let light = LightPhase.from(elevation: sun.elevation, localHour: hour)
 
-        HStack(spacing: Space.s) {
+        HStack(spacing: Space.m) {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: Space.xxs) {
                     ForEach(store.aspectStrip) { a in
                         // Tap the selected ratio again to drop the frame lines and see the full frame.
-                        Chip(label: a.label, selected: a == store.aspect) {
+                        aspectChip(a.label, selected: a == store.aspect) {
                             store.setAspect(a == store.aspect ? .full : a)
                         }
                     }
-                    Chip(label: "+") { store.showingCustomAspect = true }
-                        .accessibilityLabel("custom aspect")
+                    Button { store.showingCustomAspect = true } label: {
+                        Image(systemName: "plus")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(Palette.paper)
+                            .frame(width: 28, height: 28)
+                            .overlay(Circle().strokeBorder(Palette.nightRule, lineWidth: 1))
+                            .padding(.vertical, 8)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("custom aspect")
                 }
             }
-            .frame(maxWidth: 300)
+            .frame(maxWidth: 230)
             .fixedSize(horizontal: false, vertical: true)
-            // Keep the strip's chips inside its own box, clear of the time readout.
             .clipped()
             .layoutPriority(1)
 
-            Button { store.plannedMinutes = nil } label: {
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(Format.time(planned))
-                        .font(.osData)
-                        .foregroundStyle(store.plannedMinutes == nil ? Palette.sun : Palette.paper)
-                    // When scrubbed, how far from now, e.g. "+2h10 · golden". Tap to snap back.
-                    Text(store.plannedMinutes == nil ? light.label : "\(Self.offset(from: Date(), to: planned)) · \(light.label)")
-                        .font(.osDataSmall)
-                        .foregroundStyle(Palette.nightMuted)
-                        .lineLimit(1)
-                        .fixedSize()
+            // Time at the chosen hour, the sun's height, and the light.
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(alignment: .firstTextBaseline, spacing: Space.xs) {
+                    Text(Format.time(planned)).font(Fonts.mono(13)).foregroundStyle(Palette.paper)
+                    Text("sun \(Int(sun.elevation.rounded()))°").font(.osDataSmall).foregroundStyle(Ink.muted)
                 }
-                .frame(minWidth: 70, minHeight: 44, alignment: .leading)
-                .contentShape(Rectangle())
+                HStack(spacing: 6) {
+                    LightDot(golden: light == .goldenHour, size: 6)
+                    Text(light.label).font(.osData).foregroundStyle(Ink.soft).lineLimit(1)
+                }
             }
-            .buttonStyle(.plain)
-            .accessibilityHint("back to now")
+            .frame(width: 112, alignment: .leading)
+            .fixedSize()
 
             SunTimeline(sunDay: sunDay, planned: planned)
         }
+    }
+
+    private func aspectChip(_ label: String, selected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(label)
+                .font(.osData)
+                .foregroundStyle(selected ? Palette.ink : Palette.paper)
+                .padding(.horizontal, 8)
+                .frame(height: 28)
+                .background(selected ? Palette.paper : .clear, in: Capsule())
+                .overlay(Capsule().strokeBorder(selected ? .clear : Palette.nightRule, lineWidth: 1))
+                .padding(.vertical, 8)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
     /// "+2h10", "−45m", "now".
@@ -372,8 +460,8 @@ struct BottomBar: View {
     }
 }
 
-/// Drag to pick a time of day. Golden-hour windows are the sun colour at 30%.
-/// Double-tap to go back to now.
+/// Drag to pick a time of day: a hairline track, golden hour as a soft orange band, an
+/// orange thumb, hours underneath. Double-tap to go back to now.
 struct SunTimeline: View {
     @Environment(ScoutStore.self) private var store
     let sunDay: SunDay?
@@ -388,29 +476,28 @@ struct SunTimeline: View {
             let x = { (minutes: Double) in CGFloat((minutes - Double(range.lowerBound) * 60) / span) * w }
 
             ZStack(alignment: .topLeading) {
-                Rectangle().fill(Palette.nightRule).frame(height: 1).offset(y: 14)
-
                 ForEach(goldenSpans, id: \.self) { s in
                     let x0 = max(0, x(s.lowerBound))
                     let x1 = min(w, x(s.upperBound))
                     if x1 > x0 {
-                        Rectangle().fill(Palette.sun.opacity(0.3))
-                            .frame(width: x1 - x0, height: 8)
-                            .offset(x: x0, y: 10)
+                        RoundedRectangle(cornerRadius: 3).fill(Palette.sun.opacity(0.35))
+                            .frame(width: x1 - x0, height: 14)
+                            .offset(x: x0, y: 2)
                     }
                 }
 
+                Rectangle().fill(Palette.paper.opacity(0.5)).frame(height: 1).offset(y: 9)
+
                 ForEach(Array(stride(from: range.lowerBound, through: range.upperBound, by: 3)), id: \.self) { h in
                     Text(String(format: "%02d", h))
-                        .font(Fonts.mono(9))
-                        .foregroundStyle(Palette.nightMuted)
+                        .font(.osTiny)
+                        .foregroundStyle(Ink.tick)
                         .fixedSize()
-                        .position(x: x(Double(h) * 60), y: 30)
+                        .position(x: min(max(x(Double(h) * 60), 6), w - 6), y: 28)
                 }
 
-                let mx = min(max(x(minutes(of: planned)), 0), w)
-                Rectangle().fill(Palette.sun).frame(width: 1, height: 18).offset(x: mx, y: 5)
-                Circle().fill(Palette.sun).frame(width: 10, height: 10).position(x: mx, y: 14)
+                let mx = min(max(x(minutes(of: planned)), 8), w - 8)
+                Circle().fill(Palette.sun).frame(width: 16, height: 16).position(x: mx, y: 9)
             }
             .frame(width: w, height: 44, alignment: .topLeading)
             .contentShape(Rectangle())

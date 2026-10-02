@@ -49,24 +49,27 @@ enum Radius {
 }
 
 enum ButtonHeight {
-    static let primary: CGFloat = 56
+    static let primary: CGFloat = 48
     static let secondary: CGFloat = 44
-    static let chip: CGFloat = 36
+    static let chip: CGFloat = 30
 }
 
 extension Font {
-    /// 30/500, e.g. a scene name.
-    static let osTitle = Fonts.sans(30, .medium)
-    /// 17/500, e.g. "pin this spot".
-    static let osAction = Fonts.sans(17, .medium)
-    /// 16/500, e.g. a shot row title.
-    static let osRow = Fonts.sans(16, .medium)
-    /// 13/400, supporting text.
-    static let osSupport = Fonts.sans(13, .regular)
-    /// Mono 12, data and HUD readouts.
-    static let osData = Fonts.mono(12)
-    /// Mono 10, the smallest labels (e.g. "next 5A").
+    // v3c type: Geist Mono throughout, weight 400, small sizes (from the v3c prototype).
+    /// 13, a panel or scene title.
+    static let osTitle = Fonts.mono(13)
+    /// 12, button labels like "export list".
+    static let osAction = Fonts.mono(12)
+    /// 12, a shot row title or caption.
+    static let osRow = Fonts.mono(12)
+    /// 11, supporting text.
+    static let osSupport = Fonts.mono(11)
+    /// 11, data and readouts.
+    static let osData = Fonts.mono(11)
+    /// 10, small labels (e.g. "next 5A").
     static let osDataSmall = Fonts.mono(10)
+    /// 9, rail labels and hour ticks.
+    static let osTiny = Fonts.mono(9)
 }
 
 // MARK: - Buttons

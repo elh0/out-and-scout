@@ -227,7 +227,7 @@ struct ShotListView: View {
                             .font(.osData)
                             .foregroundStyle(Palette.graphite)
                         // Tap the caption to rewrite it; the export uses whatever's here.
-                        EditableName(text: shot.caption, font: Fonts.sans(22, .medium), lineLimit: 3, emptyLabel: "untitled", title: "edit caption") {
+                        EditableName(text: shot.caption, font: .osTitle, lineLimit: 3, emptyLabel: "untitled", title: "edit caption") {
                             store.setCaption(shot.id, to: $0)
                         }
                         .id(shot.id)

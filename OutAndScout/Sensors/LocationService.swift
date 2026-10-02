@@ -9,6 +9,8 @@ final class LocationService: NSObject {
     private(set) var location: CLLocation?
     /// Degrees from true north the camera faces. nil until the compass settles.
     private(set) var heading: Double?
+    /// The compass's own error estimate, degrees.
+    private(set) var headingAccuracy: Double?
     private(set) var authorization: CLAuthorizationStatus = .notDetermined
     private(set) var isPrecise = false
 
@@ -112,8 +114,12 @@ extension LocationService: CLLocationManagerDelegate {
 
     nonisolated func locationManager(_ manager: CLLocationManager, didUpdateHeading newHeading: CLHeading) {
         let value = newHeading.trueHeading >= 0 ? newHeading.trueHeading : newHeading.magneticHeading
-        guard newHeading.headingAccuracy >= 0 else { return }
-        Task { @MainActor in self.heading = value }
+        let accuracy = newHeading.headingAccuracy
+        guard accuracy >= 0 else { return }
+        Task { @MainActor in
+            self.heading = value
+            self.headingAccuracy = accuracy
+        }
     }
 
     nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {}

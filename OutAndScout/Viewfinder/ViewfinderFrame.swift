@@ -46,7 +46,13 @@ struct ViewfinderFrame: View {
                     )
                 }
 
-                hud.offset(x: frame.minX + Space.xs, y: frame.minY + Space.xs)
+                // Ratio and lens in the frame's bottom-left corner, like the v3c prototype.
+                // Time and bearing live in the top bar now.
+                Text("\(store.aspect.label) · \(Format.mm(store.lensMM))mm")
+                    .font(.osDataSmall)
+                    .foregroundStyle(Palette.paper.opacity(0.7))
+                    .fixedSize()
+                    .offset(x: frame.minX + Space.xs, y: frame.maxY - 20)
 
                 if let p = focusPoint {
                     FocusSquare(locked: camera.aeAfLocked, bias: camera.exposureBias) { camera.setExposureBias($0) }
@@ -109,20 +115,6 @@ struct ViewfinderFrame: View {
         .background(Color(hex: 0x1A1A18))
     }
 
-    /// Three readouts, max: lens, time, bearing.
-    private var hud: some View {
-        HStack(spacing: Space.s) {
-            Text("\(Int(store.lensMM.rounded()))mm")
-            Text(Format.time(planned))
-                .foregroundStyle(store.plannedMinutes == nil ? Palette.sun : Palette.paper)
-            Text((motion.heading ?? location.heading).map(Format.bearing) ?? "—")
-        }
-        .font(.osData)
-        .foregroundStyle(Palette.paper)
-        .padding(.horizontal, Space.xs)
-        .padding(.vertical, Space.xxs + 1)
-        .background(Palette.hud, in: RoundedRectangle(cornerRadius: Radius.readout))
-    }
 
     private func showFocus(at p: CGPoint) {
         focusPoint = p
@@ -168,7 +160,7 @@ struct AspectMask: View {
             var outside = Path(CGRect(origin: .zero, size: size))
             outside.addRect(frame)
             ctx.fill(outside, with: .color(Palette.hud), style: FillStyle(eoFill: true))
-            ctx.stroke(Path(frame.insetBy(dx: 0.5, dy: 0.5)), with: .color(Palette.paper.opacity(0.5)), lineWidth: 1)
+            ctx.stroke(Path(frame.insetBy(dx: 0.5, dy: 0.5)), with: .color(Palette.paper.opacity(0.85)), lineWidth: 1)
         }
         .allowsHitTesting(false)
     }

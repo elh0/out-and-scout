@@ -25,27 +25,39 @@ struct ViewfinderView: View {
         ZStack {
             Palette.night.ignoresSafeArea()
 
-            HStack(spacing: Space.xs) {
-                LeftRail()
-                    .frame(width: 88)
+            // v3c layout: the top bar across the whole width; under it the toggles, the
+            // viewfinder with the bottom bar beneath it, and the lens + shutter column.
+            VStack(spacing: 0) {
+                TopBar(
+                    heading: motion.heading ?? location.heading,
+                    headingAccuracy: location.headingAccuracy,
+                    sunAzimuth: sun.azimuth,
+                    planned: planned
+                )
+                .frame(height: 44)
+                .padding(.horizontal, Space.m)
 
-                VStack(spacing: Space.xs) {
-                    TopBar(heading: (motion.heading ?? location.heading), sunAzimuth: sun.azimuth)
-                        .frame(height: 44)
+                HStack(spacing: Space.s) {
+                    LeftRail()
+                        .frame(width: 48)
+                        .padding(.leading, Space.s)
 
-                    // Always 16:9, like a monitor; frame lines for the chosen ratio sit inside it.
-                    ViewfinderFrame(sun: sun, sunDay: sunDay, planned: planned, frameFraction: $frameFraction)
-                        .aspectRatio(store.kit.frameAspect, contentMode: .fit)
-                        .clipShape(RoundedRectangle(cornerRadius: Radius.viewfinder, style: .continuous))
+                    VStack(spacing: 0) {
+                        // Shaped like the sensor mode; frame lines for the chosen ratio sit inside it.
+                        ViewfinderFrame(sun: sun, sunDay: sunDay, planned: planned, frameFraction: $frameFraction)
+                            .aspectRatio(store.kit.frameAspect, contentMode: .fit)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                    BottomBar(sunDay: sunDay, planned: planned, sun: sun)
-                        .frame(height: 44)
+                        BottomBar(sunDay: sunDay, planned: planned, sun: sun)
+                            .frame(height: 56)
+                    }
+
+                    RightRail(capturing: capturing) {
+                        Task { await pin() }
+                    }
+                    .frame(width: 104)
+                    .padding(.trailing, Space.m)
                 }
-
-                RightRail(capturing: capturing) {
-                    Task { await pin() }
-                }
-                .frame(width: 80)
             }
             .padding(.vertical, Space.xs)
             // The keyboard slides over the viewfinder rather than shoving it off the top.
@@ -56,14 +68,13 @@ struct ViewfinderView: View {
                     keptScenes.insert(store.currentSceneID)
                     if newScene { store.requestNewScene() }
                 }
-                // Along the bottom of the frame, clear of the HUD in its top-left corner.
-                .frame(maxHeight: .infinity, alignment: .bottom)
-                .padding(.bottom, 52 + Space.xs)
+                .frame(maxHeight: .infinity, alignment: .top)
+                .padding(.top, 52)
                 .transition(.opacity)
             } else if let id = store.justSaved, let shot = store.shot(id) {
                 SavedChip(shot: shot)
-                    .frame(maxHeight: .infinity, alignment: .bottom)
-                    .padding(.bottom, 52 + Space.xs)
+                    .frame(maxHeight: .infinity, alignment: .top)
+                    .padding(.top, 52)
                     .transition(.opacity)
                     .id(id)
             }
@@ -239,32 +250,41 @@ enum Bearing {
     }
 }
 
-/// "5A · lamp, night   edit" for a few seconds after the shutter. The caption fills in when
-/// it's ready; tap edit to change it in the name bar.
+/// "● 5A · lamp, night  [edit]" for a few seconds after the shutter, a paper pill at the
+/// top like the v3c prototype. The caption fills in when it's ready; tap to change it.
 private struct SavedChip: View {
     @Environment(ScoutStore.self) private var store
     let shot: Shot
 
     var body: some View {
-        HStack(spacing: Space.s) {
-            Text("\(shot.number) · \(shot.caption.isEmpty ? "captioning…" : shot.caption)")
-                .font(.osData)
-                .foregroundStyle(Palette.paper)
-                .lineLimit(1)
-            Button("edit") {
-                store.justSaved = nil
-                store.rename = RenameRequest(title: "caption \(shot.number)", text: shot.caption) { [store, id = shot.id] in
-                    store.setCaption(id, to: $0)
-                }
+        Button {
+            store.justSaved = nil
+            store.rename = RenameRequest(title: "caption \(shot.number)", text: shot.caption) { [store, id = shot.id] in
+                store.setCaption(id, to: $0)
+            }
+        } label: {
+            HStack(spacing: 10) {
+                Circle().fill(Palette.sun).frame(width: 7, height: 7)
+                Text("\(shot.number) · \(shot.caption.isEmpty ? "captioning…" : shot.caption)")
+                    .lineLimit(1)
+                Text("edit")
+                    .foregroundStyle(Palette.paper)
+                    .padding(.horizontal, 10)
+                    .frame(height: 26)
+                    .background(Palette.ink, in: Capsule())
             }
             .font(.osData)
-            .foregroundStyle(Palette.nightMuted)
-            .underline()
+            .foregroundStyle(Palette.ink)
+            .padding(.leading, 14)
+            .padding(.trailing, 6)
+            .frame(height: 36)
+            .background(Palette.paper, in: Capsule())
             .frame(minHeight: 44)
+            .contentShape(Rectangle())
         }
-        .padding(.horizontal, Space.s)
-        .background(Palette.hud, in: Capsule())
-        .frame(maxWidth: 420)
+        .buttonStyle(.plain)
+        .frame(maxWidth: 440)
+        .accessibilityLabel("edit caption for shot \(shot.number)")
         .task {
             guard (try? await Task.sleep(for: .seconds(4))) != nil else { return }
             if store.justSaved == shot.id { store.justSaved = nil }
@@ -278,21 +298,29 @@ private struct SceneChangeChip: View {
     let choose: (Bool) -> Void
 
     var body: some View {
-        HStack(spacing: Space.s) {
-            Text("moved \(metres) m · new scene?")
-                .font(.osData)
-                .foregroundStyle(Palette.paper)
-                .lineLimit(1)
+        HStack(spacing: 10) {
+            Image(systemName: "location").font(.system(size: 11))
+            Text("moved \(metres) m · new scene?").lineLimit(1)
             Button("keep") { choose(false) }
-                .foregroundStyle(Palette.nightMuted)
+                .padding(.horizontal, 12)
+                .frame(height: 32)
+                .overlay(Capsule().strokeBorder(Palette.rule, lineWidth: 1))
                 .frame(minHeight: 44)
+                .contentShape(Rectangle())
             Button("new scene") { choose(true) }
                 .foregroundStyle(Palette.paper)
-                .underline()
+                .padding(.horizontal, 12)
+                .frame(height: 32)
+                .background(Palette.ink, in: Capsule())
                 .frame(minHeight: 44)
+                .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
         .font(.osData)
-        .padding(.horizontal, Space.s)
-        .background(Palette.hud, in: Capsule())
+        .foregroundStyle(Palette.ink)
+        .padding(.leading, 14)
+        .padding(.trailing, 4)
+        .frame(height: 40)
+        .background(Palette.paper, in: Capsule())
     }
 }

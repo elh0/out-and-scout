@@ -109,14 +109,17 @@ struct RootView: View {
             }
 
             if let toast = store.toast {
-                Text(toast)
+                HStack(spacing: Space.xs) {
+                    Circle().fill(Palette.sun).frame(width: 7, height: 7)
+                    Text(toast)
+                }
                     .font(.osData)
-                    .foregroundStyle(Palette.paper)
-                    .padding(.horizontal, Space.s)
+                    .foregroundStyle(Palette.ink)
+                    .padding(.horizontal, 14)
                     .padding(.vertical, Space.xs)
-                    .background(Palette.hud, in: Capsule())
+                    .background(Palette.paper, in: Capsule())
                     .frame(maxHeight: .infinity, alignment: .top)
-                    .padding(.top, Space.xs)
+                    .padding(.top, 52)
                     .transition(.opacity)
                     .zIndex(2)
                     .task(id: toast) {

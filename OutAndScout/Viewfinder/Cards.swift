@@ -147,7 +147,7 @@ struct LocationPermissionCard: View {
     var body: some View {
         SheetCard(eyebrow: "location permission", maxWidth: 520) {
             Text("Use your precise location?")
-                .font(Fonts.sans(22, .medium))
+                .font(Font.osTitle)
 
             VStack(alignment: .leading, spacing: Space.xs) {
                 reason("01", "Names each scene after the street you're on.")

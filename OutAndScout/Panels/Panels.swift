@@ -38,7 +38,7 @@ struct PanelHeader: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(Fonts.sans(22, .medium))
+                Text(title).font(Font.osTitle)
                 Text(sub).font(.osData).foregroundStyle(Palette.graphite).lineLimit(1)
             }
             Spacer()
