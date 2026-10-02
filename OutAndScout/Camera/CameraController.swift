@@ -40,7 +40,16 @@ final class CameraController: NSObject {
     /// Converts a device zoom factor to the number Apple shows (so the wide lens reads "1x").
     @ObservationIgnored private var displayMultiplier: CGFloat = 1
     /// Horizontal FOV at zoom factor 1.
-    @ObservationIgnored private var baseHFOV: Double = 70
+    /// The camera's long-side field of view at 1×.
+    @ObservationIgnored private var longSideFOV: Double = 70
+    /// Long side over short side of the camera's frames (4:3 on iPhone).
+    @ObservationIgnored private var formatAspect: Double = 4.0 / 3.0
+    /// Upright, the preview's width spans the camera's short side.
+    @ObservationIgnored var portrait = false
+    /// Field of view across the preview's width at 1×.
+    private var baseHFOV: Double {
+        portrait ? 2 * atan(tan(longSideFOV * .pi / 360) / formatAspect) * 180 / .pi : longSideFOV
+    }
     @ObservationIgnored private var configured = false
     @ObservationIgnored private var isStarting = false
     @ObservationIgnored private var inFlight: [Int64: PhotoDelegate] = [:]
@@ -142,7 +151,11 @@ final class CameraController: NSObject {
         let constituents = device.isVirtualDevice ? device.constituentDevices : [device]
         let hasUltraWide = constituents.first?.deviceType == .builtInUltraWideCamera
         displayMultiplier = hasUltraWide && !switches.isEmpty ? 1 / switches[0] : 1
-        baseHFOV = Double(device.activeFormat.videoFieldOfView)
+        longSideFOV = Double(device.activeFormat.videoFieldOfView)
+        let dims = CMVideoFormatDescriptionGetDimensions(device.activeFormat.formatDescription)
+        if dims.width > 0, dims.height > 0 {
+            formatAspect = Double(max(dims.width, dims.height)) / Double(min(dims.width, dims.height))
+        }
         previewHFOV = baseHFOV
     }
 

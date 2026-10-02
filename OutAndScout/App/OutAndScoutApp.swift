@@ -79,6 +79,11 @@ final class KeyboardProofController<Content: View>: UIHostingController<Content>
     }
 }
 
+extension EnvironmentValues {
+    /// The phone is upright, so screens use their portrait layouts.
+    @Entry var isPortrait = false
+}
+
 /// The Viewfinder is the dashboard. Everything else slides over it.
 struct RootView: View {
     @Environment(ScoutStore.self) private var store
@@ -87,6 +92,14 @@ struct RootView: View {
     @Environment(MotionService.self) private var motion
 
     var body: some View {
+        // Taller than wide: the portrait layouts from the v3c Portrait board.
+        GeometryReader { geo in
+            let portrait = geo.size.height > geo.size.width
+            content(portrait: portrait).environment(\.isPortrait, portrait)
+        }
+    }
+
+    private func content(portrait: Bool) -> some View {
         ZStack {
             ViewfinderView()
 
@@ -119,7 +132,8 @@ struct RootView: View {
                     .padding(.vertical, Space.xs)
                     .background(Palette.paper, in: Capsule())
                     .frame(maxHeight: .infinity, alignment: .top)
-                    .padding(.top, 52)
+                    // Over the frame when upright, like the Portrait board.
+                    .padding(.top, portrait ? 93 : 52)
                     .transition(.opacity)
                     .zIndex(2)
                     .task(id: toast) {
@@ -146,6 +160,11 @@ struct RootView: View {
             case "projects": store.panel = .projects
             case "shotlist": store.showingShotList = true
             default: break
+            }
+            // Screenshot testing: -orientation portrait turns the screen upright.
+            if UserDefaults.standard.string(forKey: "orientation") == "portrait",
+               let scene = UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }).first {
+                scene.requestGeometryUpdate(.iOS(interfaceOrientations: .portrait))
             }
             #endif
         }

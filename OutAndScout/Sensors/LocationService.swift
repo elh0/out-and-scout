@@ -60,7 +60,11 @@ final class LocationService: NSObject {
     /// which way up the phone is. The app is landscape only.
     func setInterfaceOrientation(_ orientation: UIInterfaceOrientation) {
         // UIInterfaceOrientation.landscapeRight == home edge on the right == CLDeviceOrientation.landscapeLeft
-        manager.headingOrientation = orientation == .landscapeLeft ? .landscapeRight : .landscapeLeft
+        switch orientation {
+        case .portrait: manager.headingOrientation = .portrait
+        case .landscapeLeft: manager.headingOrientation = .landscapeRight
+        default: manager.headingOrientation = .landscapeLeft
+        }
     }
 
     /// "brick lane, e1" for precise, "shoreditch" for approximate.

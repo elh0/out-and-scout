@@ -12,6 +12,7 @@ struct ViewfinderView: View {
     @Environment(CameraController.self) private var camera
     @Environment(LocationService.self) private var location
     @Environment(MotionService.self) private var motion
+    @Environment(\.isPortrait) private var portrait
 
     @State private var sunDay: SunDay?
     @State private var frameFraction: Double = 1
@@ -25,43 +26,11 @@ struct ViewfinderView: View {
         ZStack {
             Palette.night.ignoresSafeArea()
 
-            // v3c layout: the top bar across the whole width; under it the toggles, the
-            // viewfinder with the bottom bar beneath it, and the lens + shutter column.
-            VStack(spacing: 0) {
-                TopBar(
-                    heading: motion.heading ?? location.heading,
-                    headingAccuracy: location.headingAccuracy,
-                    sunAzimuth: sun.azimuth,
-                    planned: planned
-                )
-                .frame(height: 44)
-                .padding(.horizontal, Space.m)
-
-                HStack(spacing: Space.s) {
-                    LeftRail()
-                        .frame(width: 48)
-                        .padding(.leading, Space.s)
-
-                    VStack(spacing: 0) {
-                        // Fills the space between the rails; the sensor frame and ratio lines sit inside.
-                        ViewfinderFrame(sun: sun, sunDay: sunDay, planned: planned, frameFraction: $frameFraction)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                            .clipped()
-
-                        BottomBar(sunDay: sunDay, planned: planned, sun: sun)
-                            .frame(height: 56)
-                    }
-
-                    RightRail(capturing: capturing) {
-                        Task { await pin() }
-                    }
-                    .frame(width: 104)
-                    .padding(.trailing, Space.m)
-                }
+            if portrait {
+                portraitLayout(sun: sun, planned: planned)
+            } else {
+                landscapeLayout(sun: sun, planned: planned)
             }
-            .padding(.vertical, Space.xs)
-            // The keyboard slides over the viewfinder rather than shoving it off the top.
-            .ignoresSafeArea(.keyboard)
 
             if let metres = movedMetres {
                 SceneChangeChip(metres: metres) { newScene in
@@ -69,12 +38,14 @@ struct ViewfinderView: View {
                     if newScene { store.requestNewScene() }
                 }
                 .frame(maxHeight: .infinity, alignment: .top)
-                .padding(.top, 52)
+                .padding(.top, chipTop)
+                .padding(.horizontal, portrait ? Space.m : 0)
                 .transition(.opacity)
             } else if let id = store.justSaved, let shot = store.shot(id) {
                 SavedChip(shot: shot)
                     .frame(maxHeight: .infinity, alignment: .top)
-                    .padding(.top, 52)
+                    .padding(.top, chipTop)
+                    .padding(.horizontal, portrait ? Space.m : 0)
                     .transition(.opacity)
                     .id(id)
             }
@@ -95,7 +66,85 @@ struct ViewfinderView: View {
         .onReceive(NotificationCenter.default.publisher(for: UIDevice.orientationDidChangeNotification)) { _ in
             updateHeadingOrientation()
         }
+        .onChange(of: portrait) { updateHeadingOrientation() }
         .onAppear(perform: updateHeadingOrientation)
+    }
+
+    /// Chips sit just under the top bar in landscape; upright they sit over the frame
+    /// (140 on the board, less the 47pt status bar).
+    private var chipTop: CGFloat { portrait ? 93 : 52 }
+
+    /// The v3c Portrait board, top to bottom: names and clock at 52, the frame from 124
+    /// to 594, ratio chips at 606, time and slider at 650, controls 40 from the bottom.
+    private func portraitLayout(sun: SunPosition, planned: Date) -> some View {
+        VStack(spacing: 0) {
+            PortraitTopRow(planned: planned)
+                .padding(.horizontal, Space.m)
+                .frame(height: 36)
+                .padding(.top, 5)
+
+            ViewfinderFrame(sun: sun, sunDay: sunDay, planned: planned, frameFraction: $frameFraction, portrait: true)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipped()
+                .padding(.top, 36)
+
+            PortraitAspectChips()
+                .padding(.horizontal, Space.l)
+                .frame(height: 28)
+                .padding(.top, 12)
+
+            PortraitTimeRow(sunDay: sunDay, planned: planned, sun: sun)
+                .padding(.horizontal, Space.xl)
+                .padding(.top, 16)
+
+            PortraitBottomRow(capturing: capturing) {
+                Task { await pin() }
+            }
+            .frame(height: 72)
+            .padding(.top, 45)
+            .padding(.bottom, 6)
+        }
+        .ignoresSafeArea(.keyboard)
+    }
+
+    /// v3c layout: the top bar across the whole width; under it the toggles, the
+    /// viewfinder with the bottom bar beneath it, and the lens + shutter column.
+    private func landscapeLayout(sun: SunPosition, planned: Date) -> some View {
+        VStack(spacing: 0) {
+            TopBar(
+                heading: motion.heading ?? location.heading,
+                headingAccuracy: location.headingAccuracy,
+                sunAzimuth: sun.azimuth,
+                planned: planned
+            )
+            .frame(height: 44)
+            .padding(.horizontal, Space.m)
+
+            HStack(spacing: Space.s) {
+                LeftRail()
+                    .frame(width: 48)
+                    .padding(.leading, Space.s)
+
+                VStack(spacing: 0) {
+                    // Fills the space between the rails; the sensor frame and ratio lines sit inside.
+                    ViewfinderFrame(sun: sun, sunDay: sunDay, planned: planned, frameFraction: $frameFraction)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .clipped()
+
+                    BottomBar(sunDay: sunDay, planned: planned, sun: sun)
+                        .frame(height: 56)
+                }
+
+                RightRail(capturing: capturing) {
+                    Task { await pin() }
+                }
+                .frame(width: 104)
+                .padding(.trailing, Space.m)
+            }
+        }
+        .padding(.vertical, Space.xs)
+        // The keyboard slides over the viewfinder rather than shoving it off the top.
+        .ignoresSafeArea(.keyboard)
     }
 
     // MARK: Overlays (cards and panels slide over the Viewfinder, never replace it)
@@ -170,7 +219,7 @@ struct ViewfinderView: View {
         let lens = store.lensMM
         // Keep the whole sensor-mode frame; the frame lines are applied when the shot is shown
         // or exported, so they can be changed afterwards.
-        let stillAspect = store.kit.frameAspect
+        let stillAspect = ViewfinderFrame.sensorAspect(kit: store.kit, aspect: store.aspect, portrait: portrait)
         let photo = await camera.capturePhoto(aspect: stillAspect, frameFraction: frameFraction)
 
         let planned = store.plannedDate()
@@ -206,6 +255,7 @@ struct ViewfinderView: View {
         store.justSaved = shot.id
 
         let sensorWidth = store.kit.mode.widthMM * store.kit.lenses.squeeze
+            / (ViewfinderFrame.sensorOnSide(aspect: store.aspect, portrait: portrait) ? store.kit.frameAspect : 1)
         Task {
             async let seen = VisionLabels.see(photo)
             async let place = location.shotLocation()
@@ -300,7 +350,7 @@ private struct SceneChangeChip: View {
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: "location").font(.system(size: 11))
-            Text("moved \(metres) m · new scene?").lineLimit(1)
+            Text("moved \(metres) m · new scene?").lineLimit(1).minimumScaleFactor(0.8)
             Button("keep") { choose(false) }
                 .padding(.horizontal, 12)
                 .frame(height: 32)

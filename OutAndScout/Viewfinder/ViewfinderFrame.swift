@@ -13,6 +13,8 @@ struct ViewfinderFrame: View {
     let sunDay: SunDay?
     let planned: Date
     @Binding var frameFraction: Double
+    /// Upright phone: the v3c portrait frame (342 wide on a 390 screen).
+    var portrait = false
 
     @State private var focusPoint: CGPoint?
     @State private var focusShownAt = Date.distantPast
@@ -57,6 +59,19 @@ struct ViewfinderFrame: View {
                     .fixedSize()
                     .offset(x: frame.minX + Space.xs, y: frame.maxY - 20)
 
+                // Portrait board: the sun's height in the frame's top-right corner.
+                if portrait, sun.elevation > 0 {
+                    Text("el \(Int(sun.elevation.rounded()))°")
+                        .font(.osDataSmall)
+                        .foregroundStyle(Palette.paper)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Palette.night.opacity(0.72), in: RoundedRectangle(cornerRadius: 4))
+                        .fixedSize()
+                        .frame(width: frame.width - 16, alignment: .trailing)
+                        .offset(x: frame.minX + 8, y: frame.minY + 8)
+                }
+
                 // Honest about the phone's limit: say how wide it can really go here.
                 if camera.isTooWide, camera.status == .running {
                     Text("wider than the iphone can see · widest here ≈ \(widestFocal(size: size, frame: frame))mm")
@@ -95,7 +110,7 @@ struct ViewfinderFrame: View {
                 showFocus(at: p)
             }
             .onAppear { syncLens(size: size, frame: frame) }
-            .onChange(of: LensKey(lens: store.lensMM, kit: store.kit, aspect: store.aspect.value, size: size)) {
+            .onChange(of: LensKey(lens: store.lensMM, kit: store.kit, aspect: store.aspect, size: size, portrait: portrait)) {
                 syncLens(size: size, frame: frame)
             }
             .onChange(of: camera.status) { syncLens(size: size, frame: frame) }
@@ -137,27 +152,48 @@ struct ViewfinderFrame: View {
         focusShownAt = Date()
     }
 
+    /// Upright with a tall ratio (or "full"), the cine camera is turned on its side too.
+    static func sensorOnSide(aspect: AspectRatio, portrait: Bool) -> Bool {
+        portrait && (aspect.isFull || aspect.value < 1)
+    }
+
+    /// The shape of the sensor frame as it sits on screen.
+    static func sensorAspect(kit: Kit, aspect: AspectRatio, portrait: Bool) -> Double {
+        sensorOnSide(aspect: aspect, portrait: portrait) ? 1 / kit.frameAspect : kit.frameAspect
+    }
+
+    private var onSide: Bool { Self.sensorOnSide(aspect: store.aspect, portrait: portrait) }
+    private var sensorAspect: Double { Self.sensorAspect(kit: store.kit, aspect: store.aspect, portrait: portrait) }
+
     /// The ratio the lines are drawn at; "full" is the sensor mode's own shape.
     private var lineAspect: Double {
-        store.aspect.isFull ? store.kit.frameAspect : store.aspect.value
+        store.aspect.isFull ? sensorAspect : store.aspect.value
     }
 
     /// A small margin so even the widest ratio reads as a frame rather than full bleed.
+    /// Portrait follows the board: 24 each side, 5 top and bottom.
     private func inset(_ size: CGSize) -> CGRect {
-        CGRect(origin: .zero, size: size).insetBy(dx: 10, dy: 8)
+        CGRect(origin: .zero, size: size).insetBy(dx: portrait ? 24 : 10, dy: portrait ? 5 : 8)
     }
 
     /// How much of the sensor's width the lines take: 1 for ratios wider than the sensor
     /// (extracted across the full width), less for taller ones.
     private var linesToSensorWidth: Double {
-        let sensor = store.kit.frameAspect
-        return lineAspect >= sensor ? 1 : lineAspect / sensor
+        lineAspect >= sensorAspect ? 1 : lineAspect / sensorAspect
+    }
+
+    /// The cine lens's view across the sensor as it sits on screen.
+    private var sensorWidthFOV: Double {
+        let h = store.kit.horizontalFOV(focal: store.lensMM)
+        guard onSide else { return h }
+        return 2 * atan(tan(h * .pi / 360) / store.kit.frameAspect) * 180 / .pi
     }
 
     private func syncLens(size: CGSize, frame: CGRect) {
         guard size.width > 0, frame.width > 0 else { return }
+        camera.portrait = portrait
         let r = linesToSensorWidth
-        let sensorHFOV = store.kit.horizontalFOV(focal: store.lensMM)
+        let sensorHFOV = sensorWidthFOV
         // The lines see r of the sensor's width.
         let linesHFOV = 2 * atan(r * tan(sensorHFOV * .pi / 360)) * 180 / .pi
         let fraction = Double(frame.width / size.width)
@@ -171,15 +207,16 @@ struct ViewfinderFrame: View {
         guard size.width > 0 else { return "—" }
         let linesMax = camera.widestHFOV(frameFraction: Double(frame.width / size.width))
         let sensorHalf = tan(linesMax * .pi / 360) / linesToSensorWidth
-        let width = store.kit.mode.widthMM * store.kit.lenses.squeeze
+        let width = store.kit.mode.widthMM * store.kit.lenses.squeeze / (onSide ? store.kit.frameAspect : 1)
         return Format.mm((width / (2 * sensorHalf)).rounded())
     }
 
     private struct LensKey: Equatable {
         var lens: Double
         var kit: Kit
-        var aspect: Double
+        var aspect: AspectRatio
         var size: CGSize
+        var portrait: Bool
     }
 }
 

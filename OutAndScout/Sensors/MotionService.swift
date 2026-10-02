@@ -39,7 +39,10 @@ final class MotionService {
             // asin(g.z) with gravity as a unit vector.
             let elevation = asin(max(-1, min(1, g.z))) * 180 / .pi
             // In landscape, gravity lies along ±x when level; any y component is roll.
-            let roll = atan2(g.y, abs(g.x)) * 180 / .pi * (g.x < 0 ? 1 : -1)
+            // Upright, it lies along -y and any x component is roll.
+            let roll = abs(g.y) > abs(g.x)
+                ? -atan2(g.x, abs(g.y)) * 180 / .pi
+                : atan2(g.y, abs(g.x)) * 180 / .pi * (g.x < 0 ? 1 : -1)
             let azimuth = Self.cameraAzimuth(motion.attitude.rotationMatrix, gravity: g)
             MainActor.assumeIsolated {
                 self.cameraElevation = elevation

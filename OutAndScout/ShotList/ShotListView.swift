@@ -12,23 +12,33 @@ struct ShotListView: View {
     @State private var deletingScene: ScoutScene?
     /// The shot shown full screen, for holding the phone up to a director.
     @State private var enlarged: Shot?
+    /// Upright: the shot open in the bottom sheet.
+    @State private var sheetID: UUID?
+    @Environment(\.isPortrait) private var portrait
 
     var body: some View {
         ZStack {
             Palette.paper.ignoresSafeArea()
 
-            HStack(spacing: 0) {
-                listPane
-                    .frame(width: 300)
-                Palette.rule.frame(width: 1).ignoresSafeArea()
-                detailPane
-                    .frame(maxWidth: .infinity)
+            if portrait {
+                portraitList
+                    .foregroundStyle(Palette.ink)
+                portraitSheet
+            } else {
+                HStack(spacing: 0) {
+                    listPane
+                        .frame(width: 300)
+                    Palette.rule.frame(width: 1).ignoresSafeArea()
+                    detailPane
+                        .frame(maxWidth: .infinity)
+                }
+                .foregroundStyle(Palette.ink)
             }
-            .foregroundStyle(Palette.ink)
 
             ZStack {
                 if store.showingExport {
-                    Color.black.opacity(0.2).ignoresSafeArea()
+                    // v3c: rgba(17,17,17,0.45) behind the panel; tap it to close.
+                    Palette.ink.opacity(0.45).ignoresSafeArea()
                         .onTapGesture { store.showingExport = false }
                         .transition(.opacity)
                     ExportPanel(scene: sceneFilter.flatMap(scene(for:)))
@@ -45,6 +55,7 @@ struct ShotListView: View {
             }
         }
         .animation(.easeOut(duration: 0.2), value: enlarged?.id)
+        .animation(.snappy(duration: 0.25), value: sheetID)
         .confirmationDialog(
             "Delete \"\(deletingScene?.name ?? "")\"?",
             isPresented: Binding(get: { deletingScene != nil }, set: { if !$0 { deletingScene = nil } }),
@@ -208,6 +219,221 @@ struct ShotListView: View {
         return "\(scenes) · \(Self.shots(visible.count))"
     }
 
+    // MARK: Portrait (v3c Portrait board)
+
+    /// Header, scene tabs, the shots, and viewfinder / export along the bottom.
+    private var portraitList: some View {
+        let s = sceneFilter.flatMap(scene(for:)) ?? store.currentScene
+        return VStack(spacing: 0) {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    EditableName(text: project.name, font: .osData, color: Palette.graphite, title: "rename project") {
+                        store.renameProject(project.id, to: $0)
+                    }
+                    Spacer()
+                    Text(Format.time(Date())).font(.osData).foregroundStyle(Palette.graphite)
+                }
+                EditableName(text: s.name, font: Fonts.mono(20), title: "rename scene") { store.renameScene(s.id, to: $0) }
+                Text([s.note, Self.shots(s.shots.count)].filter { !$0.isEmpty }.joined(separator: " · "))
+                    .font(.osData).foregroundStyle(Palette.graphite).lineLimit(1)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, Space.l)
+            .padding(.top, 9)
+            .padding(.bottom, 12)
+
+            ScrollView(.horizontal) {
+                HStack(spacing: 6) {
+                    ForEach(project.scenes) { sc in
+                        let on = sc.id == s.id
+                        Button {
+                            sceneFilter = sc.id
+                            store.select(project: project.id, scene: sc.id)
+                        } label: {
+                            HStack(spacing: 4) {
+                                Text(sc.name)
+                                Text("\(sc.shots.count)").opacity(0.6)
+                            }
+                            .font(.osData)
+                            .foregroundStyle(on ? Palette.paper : Palette.ink)
+                            .padding(.horizontal, 12)
+                            .frame(height: 32)
+                            .background(on ? Palette.ink : .clear, in: Capsule())
+                            .overlay(Capsule().strokeBorder(on ? Palette.ink : Palette.rule, lineWidth: 1))
+                            .contentShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .contextMenu {
+                            // A project always keeps at least one scene.
+                            if project.scenes.count > 1 {
+                                Button("delete scene", systemImage: "trash", role: .destructive) { deletingScene = sc }
+                            }
+                        }
+                    }
+                }
+                .padding(.horizontal, Space.l)
+            }
+            .scrollIndicators(.hidden)
+            .padding(.bottom, 12)
+
+            Rule()
+            ScrollView {
+                LazyVStack(spacing: 0) {
+                    ForEach(s.shots) { shot in
+                        PortraitShotRow(shot: shot)
+                            .onTapGesture { sheetID = shot.id }
+                            // Press and hold a shot to delete it; it still asks first.
+                            .contextMenu {
+                                Button("delete \(shot.number)", systemImage: "trash", role: .destructive) {
+                                    selectedID = shot.id
+                                    confirmDelete = true
+                                }
+                            }
+                    }
+                    if s.shots.isEmpty {
+                        Text("No shots in this scene yet.")
+                            .font(.osRow)
+                            .foregroundStyle(Palette.graphite)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, 24)
+                            .padding(.horizontal, Space.l)
+                    }
+                }
+            }
+            .frame(maxHeight: .infinity)
+
+            Rule()
+            HStack(spacing: Space.xs) {
+                Button { store.showingShotList = false } label: {
+                    HStack(spacing: Space.xs) {
+                        Image(systemName: "camera.viewfinder").font(.system(size: 14))
+                        Text("viewfinder")
+                    }
+                    .font(.osTitle)
+                    .foregroundStyle(Palette.ink)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 48)
+                    .overlay(Capsule().strokeBorder(Palette.ink, lineWidth: 1))
+                    .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                Button { store.showingExport = true } label: {
+                    Text("export")
+                        .font(.osTitle)
+                        .foregroundStyle(Palette.paper)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 48)
+                        .background(Palette.ink, in: Capsule())
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
+            .padding(.horizontal, Space.l)
+            .padding(.top, 12)
+        }
+        .confirmationDialog(
+            "Delete \(selectedID.flatMap(store.shot)?.number ?? "")?",
+            isPresented: Binding(get: { confirmDelete && portrait }, set: { confirmDelete = $0 }),
+            titleVisibility: .visible
+        ) {
+            if let id = selectedID {
+                Button("delete \(store.shot(id)?.number ?? "shot")", role: .destructive) {
+                    store.deleteShot(id)
+                    selectedID = nil
+                    sheetID = nil
+                }
+            }
+        }
+    }
+
+    /// The shot as a bottom sheet: still, caption, lens / time / light, edit and reframe.
+    @ViewBuilder private var portraitSheet: some View {
+        if let id = sheetID, let shot = store.shot(id) {
+            ZStack(alignment: .bottom) {
+                Palette.ink.opacity(0.4).ignoresSafeArea()
+                    .onTapGesture { sheetID = nil }
+                    .transition(.opacity)
+
+                VStack(alignment: .leading, spacing: 14) {
+                    ShotThumb(shot: shot)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 150)
+                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                        .overlay(alignment: .bottomLeading) {
+                            Text("\(shot.number) · \(Format.mm(shot.lensMM))mm · \(Format.time(shot.plannedTime))")
+                                .font(.osDataSmall)
+                                .foregroundStyle(Palette.paper.opacity(0.8))
+                                .padding(.leading, 10)
+                                .padding(.bottom, 8)
+                        }
+                        .onTapGesture { enlarged = shot }
+                        .accessibilityAddTraits(.isButton)
+                        .accessibilityHint("tap to see it full screen")
+
+                    Text(shot.caption.isEmpty ? "untitled" : shot.caption)
+                        .font(Fonts.mono(15))
+                        .foregroundStyle(shot.caption.isEmpty ? Palette.graphite : Palette.ink)
+                        .lineLimit(3)
+
+                    HStack(alignment: .top, spacing: Space.xs) {
+                        sheetCell("lens", "\(Format.mm(shot.lensMM))mm")
+                        sheetCell("time", Format.time(shot.plannedTime))
+                        sheetCell("light", shot.light.label)
+                    }
+
+                    HStack(spacing: Space.xs) {
+                        Button {
+                            store.rename = RenameRequest(title: "edit caption", text: shot.caption) { [store] in
+                                store.setCaption(id, to: $0)
+                            }
+                        } label: {
+                            Text("edit caption")
+                                .font(.osRow)
+                                .foregroundStyle(Palette.ink)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 44)
+                                .overlay(Capsule().strokeBorder(Palette.rule, lineWidth: 1))
+                                .contentShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        Button {
+                            sheetID = nil
+                            reframe(shot)
+                        } label: {
+                            Text("reframe")
+                                .font(.osRow)
+                                .foregroundStyle(Palette.paper)
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 44)
+                                .background(Palette.ink, in: Capsule())
+                                .contentShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, Space.l)
+                .padding(.top, Space.l)
+                .padding(.bottom, Space.xs)
+                .background(
+                    UnevenRoundedRectangle(topLeadingRadius: 24, topTrailingRadius: 24, style: .continuous)
+                        .fill(Palette.paper)
+                        .ignoresSafeArea()
+                )
+                .foregroundStyle(Palette.ink)
+                .transition(.move(edge: .bottom))
+            }
+        }
+    }
+
+    private func sheetCell(_ label: String, _ value: String) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label).foregroundStyle(Palette.graphite)
+            Text(value).lineLimit(1).minimumScaleFactor(0.8)
+        }
+        .font(.osData)
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
     // MARK: Detail pane
 
     @ViewBuilder private var detailPane: some View {
@@ -348,6 +574,33 @@ struct ShotRow: View {
         .padding(.horizontal, Space.xs)
         .frame(minHeight: 56)
         .background(selected ? Palette.ink.opacity(0.05) : .clear, in: RoundedRectangle(cornerRadius: Radius.readout))
+        .overlay(alignment: .bottom) { Rule() }
+        .contentShape(Rectangle())
+    }
+}
+
+/// Portrait board row: 72 × 40 still, "1A" in graphite then the caption, lens · time · light.
+struct PortraitShotRow: View {
+    let shot: Shot
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ShotThumb(shot: shot)
+                .frame(width: 72, height: 40)
+            VStack(alignment: .leading, spacing: 3) {
+                (Text(shot.number).foregroundStyle(Palette.graphite)
+                    + Text(" " + (shot.caption.isEmpty ? "untitled" : shot.caption)))
+                    .font(Fonts.mono(13))
+                    .lineLimit(1)
+                Text("\(Format.mm(shot.lensMM))mm · \(Format.time(shot.plannedTime)) · \(shot.light.label)")
+                    .font(.osData)
+                    .foregroundStyle(Palette.graphite)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(.vertical, 12)
+        .padding(.horizontal, Space.l)
         .overlay(alignment: .bottom) { Rule() }
         .contentShape(Rectangle())
     }
