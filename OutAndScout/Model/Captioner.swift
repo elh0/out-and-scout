@@ -86,7 +86,7 @@ enum Captioner {
             "people", "adult", "wood_processed", "wood_natural", "art", "decoration",
             "office_supplies", "housewares", "tool", "cord", "light", "sky",
             // Wrong or noisy on real recce stills (benchmark, 2 Oct 2026).
-            "screenshot", "document", "portal", "elevator", "raw_glass", "recreation", "sport", "games", "leisure",
+            "screenshot", "document", "portal", "elevator", "raw_glass", "recreation", "sport", "sports_equipment", "ball", "games", "leisure",
         ]
         // Screens come back as three or four synonyms and crowd out the real subjects.
         let screens: Set<String> = ["computer", "computer_monitor", "monitor", "laptop", "computer_screen", "display"]
