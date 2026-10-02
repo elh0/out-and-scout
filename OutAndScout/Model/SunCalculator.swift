@@ -64,9 +64,13 @@ enum SunCalculator {
         var elevation = 90 - deg(zenith)
 
         // Atmospheric refraction (Bennett), only meaningful near and above the horizon.
-        if elevation > -1 {
-            let r = 1.02 / tan(rad(elevation + 10.3 / (elevation + 5.11))) / 60
-            elevation += r
+        // It's about 0.65° at -1°, so switching it off there made a step in the sun path
+        // right at sunset. Below -1° it now fades out to nothing by -4°, so the line bends
+        // smoothly through the horizon.
+        if elevation > -4 {
+            let e = max(elevation, -1)
+            let r = 1.02 / tan(rad(e + 10.3 / (e + 5.11))) / 60
+            elevation += r * min(1, (elevation + 4) / 3)
         }
 
         let azimuth = normalise(
