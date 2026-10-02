@@ -61,7 +61,7 @@ struct LayoutSwitch: View {
             .padding(2)
             .overlay(Capsule().strokeBorder(Palette.nightRule, lineWidth: 1))
             if vertical {
-                Text("layout").font(.osTiny).foregroundStyle(Palette.nightMuted)
+                Text("Layout").font(.osTiny).foregroundStyle(Palette.nightMuted)
             }
         }
     }

@@ -63,7 +63,7 @@ struct CaptionCard: View {
 
     var body: some View {
         if let p = store.pending {
-            SheetCard(eyebrow: typing ? "your own caption · \(p.number)" : "suggested caption") {
+            SheetCard(eyebrow: typing ? "Your own caption · \(p.number)" : "Suggested caption") {
                 // While typing, only the field and save stay, so the card fits above the keyboard.
                 // The field itself never moves between layouts, so it keeps focus.
                 if !typing {
@@ -108,19 +108,19 @@ struct CaptionCard: View {
                 }
 
                 HStack(spacing: Space.xs) {
-                    SheetField(placeholder: "your own caption", text: $custom) { save(p) }
+                    SheetField(placeholder: "Your own caption", text: $custom) { save(p) }
                         .focused($typing)
                     if typing {
-                        Button("save \(p.number)") { save(p) }
+                        Button("Save \(p.number)") { save(p) }
                             .buttonStyle(PillButtonStyle(kind: .secondary))
                     }
                 }
 
                 if !typing {
                     HStack(spacing: Space.xs) {
-                        Button("retake") { store.pending = nil }
+                        Button("Retake") { store.pending = nil }
                             .buttonStyle(PillButtonStyle(kind: .secondary))
-                        Button("save \(p.number)") { save(p) }
+                        Button("Save \(p.number)") { save(p) }
                             .buttonStyle(PillButtonStyle(kind: .primary))
                     }
                 }
@@ -145,7 +145,7 @@ struct LocationPermissionCard: View {
     @Environment(LocationService.self) private var location
 
     var body: some View {
-        SheetCard(eyebrow: "location permission", maxWidth: 520) {
+        SheetCard(eyebrow: "Location permission", maxWidth: 520) {
             Text("Use your precise location?")
                 .font(Font.osTitle)
 
@@ -162,11 +162,11 @@ struct LocationPermissionCard: View {
                 .foregroundStyle(Palette.graphite)
 
             HStack(spacing: Space.xs) {
-                Button("allow precise") { choose(.precise) }
+                Button("Allow Precise") { choose(.precise) }
                     .buttonStyle(PillButtonStyle(kind: .primary))
-                Button("approximate") { choose(.approximate) }
+                Button("Approximate") { choose(.approximate) }
                     .buttonStyle(PillButtonStyle(kind: .secondary))
-                Button("not now") { choose(.notNow) }
+                Button("Not Now") { choose(.notNow) }
                     .buttonStyle(PillButtonStyle(kind: .secondary))
             }
         }
@@ -201,11 +201,11 @@ struct NameSceneCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: Space.xxs) {
             HStack {
-                Text(store.namingProject ? "rename project" : store.namingByTyping ? "rename scene" : "name this scene")
+                Text(store.namingProject ? "Rename Project" : store.namingByTyping ? "Rename Scene" : "Name This Scene")
                     .font(.osDataSmall)
                     .foregroundStyle(Palette.nightMuted)
                 Spacer()
-                Button(store.namingByTyping ? "cancel" : "keep \"\(store.currentScene.name)\"") { store.namingSceneID = nil }
+                Button(store.namingByTyping ? "Cancel" : "Keep \"\(store.currentScene.name)\"") { store.namingSceneID = nil }
                     .font(.osSupport)
                     .foregroundStyle(Palette.nightMuted)
                     .buttonStyle(.plain)
@@ -213,7 +213,7 @@ struct NameSceneCard: View {
             }
 
             HStack(spacing: Space.xs) {
-                TextField("", text: $text, prompt: Text("type a name").foregroundStyle(Palette.nightMuted))
+                TextField("", text: $text, prompt: Text("Type a name").foregroundStyle(Palette.nightMuted))
                     .font(.osRow)
                     .foregroundStyle(Palette.paper)
                     .tint(Palette.paper)
@@ -227,7 +227,7 @@ struct NameSceneCard: View {
                     .overlay(Capsule().strokeBorder(Palette.nightRule, lineWidth: 1))
 
                 if typing || store.namingProject {
-                    Chip(label: "done") { done() }
+                    Chip(label: "Done") { done() }
                 } else {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: Space.xxs) {
@@ -283,17 +283,17 @@ struct CustomAspectCard: View {
     @State private var error = ""
 
     var body: some View {
-        SheetCard(eyebrow: "custom aspect · saved to your kit", maxWidth: 480) {
+        SheetCard(eyebrow: "Custom aspect · saved to your kit", maxWidth: 480) {
             HStack(spacing: Space.xxs) {
                 ForEach(AspectRatio.customPresets) { a in
                     Chip(label: a.label, onDark: false) { add(a) }
                 }
             }
             HStack(spacing: Space.xs) {
-                SheetField(placeholder: "aspect ratio, e.g. 2.2 or 4:3", text: $text, onSubmit: addTyped)
-                Button("add", action: addTyped)
+                SheetField(placeholder: "Aspect ratio, e.g. 2.2 or 4:3", text: $text, onSubmit: addTyped)
+                Button("Add", action: addTyped)
                     .buttonStyle(PillButtonStyle(kind: .secondary))
-                Button("close") { store.showingCustomAspect = false }
+                Button("Close") { store.showingCustomAspect = false }
                     .buttonStyle(PillButtonStyle(kind: .secondary))
             }
             if !error.isEmpty {

@@ -70,20 +70,20 @@ final class LocationService: NSObject {
     /// "brick lane, e1" for precise, "shoreditch" for approximate.
     func placeLabel(for location: CLLocation) async -> (label: String?, postcode: String?) {
         guard let mark = try? await geocoder.reverseGeocodeLocation(location).first else { return (nil, nil) }
-        let district = mark.postalCode?.split(separator: " ").first.map(String.init)?.lowercased()
-        if isPrecise, let street = mark.thoroughfare?.lowercased() {
+        let district = mark.postalCode?.split(separator: " ").first.map(String.init)
+        if isPrecise, let street = mark.thoroughfare {
             return ([street, district].compactMap { $0 }.joined(separator: ", "), mark.postalCode)
         }
-        return (mark.subLocality?.lowercased() ?? mark.locality?.lowercased(), nil)
+        return (mark.subLocality ?? mark.locality, nil)
     }
 
     /// Street, landmark and area for the Name-this-scene card.
     func nameSuggestions() async -> [String] {
         guard let location, let mark = try? await geocoder.reverseGeocodeLocation(location).first else { return [] }
         var out: [String] = []
-        if isPrecise, let street = mark.thoroughfare { out.append(street.lowercased()) }
-        if let landmark = mark.areasOfInterest?.first { out.append(landmark.lowercased()) }
-        if let area = mark.subLocality ?? mark.locality { out.append(area.lowercased()) }
+        if isPrecise, let street = mark.thoroughfare { out.append(street) }
+        if let landmark = mark.areasOfInterest?.first { out.append(landmark) }
+        if let area = mark.subLocality ?? mark.locality { out.append(area) }
         var seen = Set<String>()
         return out.filter { seen.insert($0).inserted }
     }

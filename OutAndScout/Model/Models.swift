@@ -91,6 +91,8 @@ struct AspectRatio: Codable, Hashable, Identifiable {
     static let viewfinderValue = 16.0 / 9.0
 
     var isFull: Bool { label == "full" }
+    /// What the chip shows: "Full" for the whole frame, otherwise the ratio itself.
+    var display: String { isFull ? "Full" : label }
 
     static let strip: [AspectRatio] = [.scope, .flat, .hd, .vertical]
     /// Offered on the Custom aspect card.
@@ -128,7 +130,8 @@ enum LightPhase: String, Codable, CaseIterable {
     case afternoon
     case afterDark = "after dark"
 
-    var label: String { rawValue }
+    /// "Golden hour": the stored value stays lowercase, the label reads like a sentence.
+    var label: String { rawValue.prefix(1).uppercased() + rawValue.dropFirst() }
 
     /// Golden hour: sun between -4° and 6°. Blue hour: -6° to -4°.
     static func from(elevation: Double, localHour: Double) -> LightPhase {
@@ -157,7 +160,7 @@ enum Format {
 
     /// "247° w"
     static func bearing(_ degrees: Double) -> String {
-        let names = ["n", "ne", "e", "se", "s", "sw", "w", "nw"]
+        let names = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
         let d = (degrees.truncatingRemainder(dividingBy: 360) + 360).truncatingRemainder(dividingBy: 360)
         return "\(Int(d.rounded()) % 360)° \(names[Int((d / 45).rounded()) % 8])"
     }
@@ -167,7 +170,7 @@ enum Format {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_GB")
         f.dateFormat = "d MMM"
-        return f.string(from: date).lowercased()
+        return f.string(from: date)
     }
 
     /// "night shift" -> "night-shift"

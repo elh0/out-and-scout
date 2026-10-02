@@ -55,7 +55,7 @@ struct Kit: Codable, Hashable {
     var lenses: LensSeries
 
     /// "alexa 35 · k35"
-    var label: String { "\(camera.name.lowercased()) · \(lenses.name.lowercased())" }
+    var label: String { "\(camera.name) · \(lenses.name)" }
 
     /// The viewfinder's shape: the whole recorded frame, desqueezed for anamorphics.
     /// Held between 4:3 (the iPhone's own sensor, so the lens maths stays true) and 2.4.

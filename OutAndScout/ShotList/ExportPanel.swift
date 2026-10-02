@@ -6,6 +6,7 @@ import UIKit
 /// then PDF for the crew, CSV for spreadsheets, or a view-only link.
 struct ExportPanel: View {
     @Environment(ScoutStore.self) private var store
+    @Environment(\.isPortrait) private var portrait
     /// The scene the Shot List is showing, or nil for all scenes.
     let scene: ScoutScene?
 
@@ -35,16 +36,17 @@ struct ExportPanel: View {
         VStack(spacing: 0) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("export panel").font(.osDataSmall).foregroundStyle(Palette.graphite)
-                        Text("export shot list").font(.osTitle)
-                        Text("\(project.name) · \(target.map { "\($0.name) · " } ?? "all scenes · ")\(ShotListView.shots(shots))")
-                            .font(.osData).foregroundStyle(Palette.graphite).lineLimit(1)
-                    }
+                    // Done is always here, so the panel can be closed however little room is left
+                    // around it (upright it fills the screen).
+                    PanelHeader(
+                        title: "Export Shot List",
+                        sub: "\(project.name) · \(target.map { "\($0.name) · " } ?? "All scenes · ")\(ShotListView.shots(shots))",
+                        action: ("Done", { store.showingExport = false })
+                    )
 
                     HStack(spacing: 6) {
-                        scopeCard("this scene", "\(thisScene.name) · \(ShotListView.shots(thisScene.shots.count))", selected: !allScenes) { allScenes = false }
-                        scopeCard("all scenes", "\(project.name) · \(ShotListView.shots(total))", selected: allScenes) { allScenes = true }
+                        scopeCard("This Scene", "\(thisScene.name) · \(ShotListView.shots(thisScene.shots.count))", selected: !allScenes) { allScenes = false }
+                        scopeCard("All Scenes", "\(project.name) · \(ShotListView.shots(total))", selected: allScenes) { allScenes = true }
                     }
 
                     if allScenes && project.scenes.count > 1 {
@@ -52,18 +54,18 @@ struct ExportPanel: View {
                     }
 
                     HStack(spacing: 6) {
-                        formatRow(.pdf, "pdf", nil)
-                        formatRow(.csv, "csv", nil)
+                        formatRow(.pdf, "PDF", nil)
+                        formatRow(.csv, "CSV", nil)
                         // The live link needs outandscout.com/s/<project> to exist first.
-                        formatRow(.link, "link", "soon")
+                        formatRow(.link, "Link", "soon")
                             .opacity(0.45)
                             .disabled(true)
                     }
 
                     HStack(spacing: 6) {
-                        includeChip("frames", on: options.frames) { options.frames.toggle() }
+                        includeChip("Frames", on: options.frames) { options.frames.toggle() }
                             .disabled(format == .csv)
-                        includeChip("sun times", on: options.sunTimes) { options.sunTimes.toggle() }
+                        includeChip("Sun Times", on: options.sunTimes) { options.sunTimes.toggle() }
                     }
 
                 }
@@ -81,7 +83,7 @@ struct ExportPanel: View {
                 }
 
                 Button { export(project: project, scene: target) } label: {
-                    Text("\(target == nil ? "export all scenes" : "export scene") · \(ext)")
+                    Text("\(target == nil ? "Export All Scenes" : "Export Scene") · \(ext.uppercased())")
                         .font(.osTitle)
                         .foregroundStyle(Palette.paper)
                         .frame(maxWidth: .infinity)
@@ -93,7 +95,7 @@ struct ExportPanel: View {
 
                 // Tap the file name to rename the export.
                 HStack(spacing: 0) {
-                    EditableName(text: customName ?? defaultName, font: .osData, color: Palette.graphite, title: "file name") {
+                    EditableName(text: customName ?? defaultName, font: .osData, color: Palette.graphite, title: "File Name") {
                         customName = Exporter.cleanName($0)
                     }
                     Text(".\(ext)").font(.osData).foregroundStyle(Palette.graphite)
@@ -102,7 +104,7 @@ struct ExportPanel: View {
 
                 if format == .pdf {
                     // Look before you send: opens the PDF in Quick Look.
-                    Button("preview the pdf →") { preview(project: project, scene: target) }
+                    Button("Preview the PDF →") { preview(project: project, scene: target) }
                         .buttonStyle(.plain)
                         .font(.osData)
                         .underline()
@@ -113,7 +115,7 @@ struct ExportPanel: View {
             .padding(.horizontal, 20)
             .padding(.bottom, 12)
         }
-        .frame(width: 380)
+        .frame(width: portrait ? nil : 380)
         .background(
             UnevenRoundedRectangle(topLeadingRadius: 20, bottomLeadingRadius: 20, style: .continuous)
                 .fill(Palette.paper)
@@ -225,9 +227,9 @@ private struct SceneOrder: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("scene order")
+                Text("Scene order")
                 Spacer()
-                Text("drag to reorder")
+                Text("Drag to reorder")
             }
             .font(.osDataSmall)
             .foregroundStyle(Palette.graphite)

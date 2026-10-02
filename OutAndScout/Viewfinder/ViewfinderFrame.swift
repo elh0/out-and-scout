@@ -55,7 +55,7 @@ struct ViewfinderFrame: View {
 
                 // Ratio and lens in the frame's bottom-left corner, like the v3c prototype.
                 // Time and bearing live in the top bar now.
-                Text("\(store.aspect.label) · \(Format.mm(store.lensMM))mm")
+                Text("\(store.aspect.display) · \(Format.mm(store.lensMM))mm")
                     .font(.osDataSmall)
                     .foregroundStyle(Palette.paper.opacity(0.7))
                     .fixedSize()
@@ -63,7 +63,7 @@ struct ViewfinderFrame: View {
 
                 // Portrait board: the sun's height in the frame's top-right corner.
                 if portrait, sun.elevation > 0 {
-                    Text("sun \(Int(sun.elevation.rounded()))° up")
+                    Text("Sun \(Int(sun.elevation.rounded()))° up")
                         .font(.osDataSmall)
                         .foregroundStyle(Palette.paper)
                         .padding(.horizontal, 6)
@@ -76,7 +76,7 @@ struct ViewfinderFrame: View {
 
                 // Honest about the phone's limit: say how wide it can really go here.
                 if camera.isTooWide, camera.status == .running {
-                    Text("wider than the iphone can see · widest here ≈ \(widestFocal(size: size, frame: frame))mm")
+                    Text("Wider than the iPhone can see · widest here ≈ \(widestFocal(size: size, frame: frame))mm")
                         .font(.osDataSmall)
                         .foregroundStyle(Palette.paper)
                         .padding(.horizontal, 6)
@@ -145,9 +145,9 @@ struct ViewfinderFrame: View {
         case .running:
             CameraPreview(camera: camera)
         case .unauthorized:
-            placeholder("camera access is off. turn it on in settings to frame shots.", settingsButton: true)
+            placeholder("Camera access is off. Turn it on in Settings to frame shots.", settingsButton: true)
         case .unavailable:
-            placeholder("no camera here. pins still work, without a still.", settingsButton: false)
+            placeholder("No camera here. Pins still work, without a still.", settingsButton: false)
         case .idle:
             Palette.night
         }
@@ -160,7 +160,7 @@ struct ViewfinderFrame: View {
                 .foregroundStyle(Palette.nightMuted)
                 .multilineTextAlignment(.center)
             if settingsButton, let url = URL(string: UIApplication.openSettingsURLString) {
-                Link("open settings", destination: url)
+                Link("Open Settings", destination: url)
                     .buttonStyle(PillButtonStyle(kind: .secondary, onDark: true))
             }
         }
@@ -323,7 +323,7 @@ struct FocusSquare: View {
                 .frame(width: 72, height: 72)
                 .overlay(alignment: .top) {
                     if locked {
-                        Text("ae/af lock")
+                        Text("AE/AF Lock")
                             .font(.osDataSmall)
                             .foregroundStyle(Palette.ink)
                             .padding(.horizontal, 4)
@@ -432,7 +432,7 @@ struct SunPathOverlay: View {
             if let now = nowSun, let p = projector.point(azimuth: now.azimuth, elevation: now.elevation), bounds.contains(p) {
                 let r: CGFloat = 7
                 ctx.stroke(Path(ellipseIn: CGRect(x: p.x - r, y: p.y - r, width: r * 2, height: r * 2)), with: .color(Palette.sun), lineWidth: 1.5)
-                ctx.draw(Text("now").font(.osDataSmall).foregroundColor(Palette.paper), at: CGPoint(x: p.x, y: p.y - r - 3), anchor: .bottom)
+                ctx.draw(Text("Now").font(.osDataSmall).foregroundColor(Palette.paper), at: CGPoint(x: p.x, y: p.y - r - 3), anchor: .bottom)
             }
 
             if let p = projector.point(azimuth: sun.azimuth, elevation: sun.elevation),
@@ -457,7 +457,7 @@ struct SunPathOverlay: View {
                 }
                 tri.closeSubpath()
                 ctx.fill(tri, with: .color(Palette.sun))
-                let label = Text("sun \(Int(sun.azimuth.rounded()))°").font(.osDataSmall).foregroundColor(Palette.paper)
+                let label = Text("Sun \(Int(sun.azimuth.rounded()))°").font(.osDataSmall).foregroundColor(Palette.paper)
                 ctx.draw(label, at: CGPoint(x: left ? x + 10 : x - 10, y: y + 16), anchor: left ? .leading : .trailing)
             }
         }
@@ -503,7 +503,7 @@ enum VisionLabels {
             // Vision has "interior_room" and "outdoor" but no "indoor".
             let inside = scores["interior_room"] ?? 0
             let outside = scores["outdoor"] ?? 0
-            let setting: String? = max(inside, outside) < 0.3 ? nil : (inside > outside ? "int" : "ext")
+            let setting: String? = max(inside, outside) < 0.3 ? nil : (inside > outside ? "INT" : "EXT")
 
             // Parents share their child's score (machine = computer = laptop), so on a tie
             // the longer, more specific identifier wins once the parents are skipped.

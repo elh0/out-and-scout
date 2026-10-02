@@ -13,7 +13,7 @@ struct EditableName: View {
     /// Shown greyed when the text is empty, e.g. "untitled" for a caption.
     var emptyLabel = ""
     /// The bar's heading, e.g. "rename scene".
-    var title = "rename"
+    var title = "Rename"
     let onRename: (String) -> Void
 
     var body: some View {
@@ -53,14 +53,14 @@ struct FloatingNameBar: View {
                     .font(.osDataSmall)
                     .foregroundStyle(Palette.nightMuted)
                 Spacer()
-                Button("cancel") { store.rename = nil }
+                Button("Cancel") { store.rename = nil }
                     .font(.osSupport)
                     .foregroundStyle(Palette.nightMuted)
                     .buttonStyle(.plain)
                     .frame(minHeight: 36)
             }
             HStack(spacing: Space.xs) {
-                TextField("", text: $text, prompt: Text("type a name").foregroundStyle(Palette.nightMuted))
+                TextField("", text: $text, prompt: Text("Type a name").foregroundStyle(Palette.nightMuted))
                     .font(.osRow)
                     .foregroundStyle(Palette.paper)
                     .tint(Palette.paper)
@@ -72,7 +72,7 @@ struct FloatingNameBar: View {
                     .padding(.horizontal, Space.s)
                     .frame(height: ButtonHeight.chip)
                     .overlay(Capsule().strokeBorder(Palette.nightRule, lineWidth: 1))
-                Chip(label: "done") { done() }
+                Chip(label: "Done") { done() }
             }
         }
         .padding(.horizontal, Space.m)

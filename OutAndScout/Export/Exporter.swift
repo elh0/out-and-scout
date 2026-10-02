@@ -160,7 +160,7 @@ enum Exporter {
     private static func footer(left: String, page pageNo: Int, of total: Int) {
         let y = page.height - pad - 9
         text(left, font: mono(8.5), color: graphite).draw(at: CGPoint(x: pad, y: y))
-        let right = text("page \(pageNo) of \(total)", font: mono(8.5), color: graphite)
+        let right = text("Page \(pageNo) of \(total)", font: mono(8.5), color: graphite)
         right.draw(at: CGPoint(x: page.width - pad - right.size().width, y: y))
     }
 
@@ -205,7 +205,7 @@ enum Exporter {
     }
 
     private static func lightWord(_ shot: Shot) -> String {
-        shot.light == .goldenHour ? "golden" : shot.light.label
+        shot.light == .goldenHour ? "Golden" : shot.light.label
     }
 
     private static func drawCover(_ ctx: UIGraphicsPDFRendererContext, project: Project, scenes: [ScoutScene],
@@ -214,7 +214,7 @@ enum Exporter {
         let w = page.width - pad * 2
         let date = recceDate(scenes)
         text("out & scout", font: sans(11, medium: true), kern: -0.2).draw(at: CGPoint(x: pad, y: pad))
-        let scope = text("shot list · \(scenes.count == 1 ? scenes[0].name : "all scenes")", font: mono(8.5), color: graphite)
+        let scope = text("Shot List · \(scenes.count == 1 ? scenes[0].name : "All scenes")", font: mono(8.5), color: graphite)
         scope.draw(at: CGPoint(x: page.width - pad - scope.size().width, y: pad + 2))
 
         var y = pad + 50
@@ -229,8 +229,8 @@ enum Exporter {
         let shotCount = scenes.reduce(0) { $0 + $1.shots.count }
         var kitLine = ["\(scenes.count) scene\(scenes.count == 1 ? "" : "s")", ShotListView.shots(shotCount)]
         if let first = scenes.flatMap(\.shots).first {
-            kitLine.append("camera \(first.cameraName.lowercased())")
-            kitLine.append("lenses \(first.lensSeries.lowercased())")
+            kitLine.append("Camera \(first.cameraName)")
+            kitLine.append("Lenses \(first.lensSeries)")
         }
         text(kitLine.joined(separator: " · "), font: sans(12), color: dark)
             .draw(with: CGRect(x: pad, y: y, width: 390, height: 40), options: .usesLineFragmentOrigin, context: nil)
@@ -238,12 +238,12 @@ enum Exporter {
 
         if options.sunTimes, let where_ = scenes.lazy.compactMap(place).first {
             let t = sunTimes(at: where_, on: date)
-            y = grid([("sunrise", t.rise, false), ("golden hour", t.golden, true), ("sunset", t.set, false), ("blue hour", t.blue, false)], y: y) + 16
+            y = grid([("Sunrise", t.rise, false), ("Golden hour", t.golden, true), ("Sunset", t.set, false), ("Blue hour", t.blue, false)], y: y) + 16
         }
 
         // Scene table: #, scene, location, light, shots.
         let cols: [CGFloat] = [pad, pad + 42, page.width - pad - 38 - 12 - 52 - 12 - 158, page.width - pad - 38 - 12 - 52, page.width - pad - 38]
-        for (i, h) in ["#", "scene", "location", "light", "shots"].enumerated() {
+        for (i, h) in ["#", "Scene", "Location", "Light", "Shots"].enumerated() {
             text(h, font: mono(8.5), color: graphite).draw(at: CGPoint(x: cols[i], y: y))
         }
         y += 15
@@ -254,7 +254,7 @@ enum Exporter {
             text(String(format: "%02d", i + 1), font: mono(10)).draw(at: CGPoint(x: cols[0], y: top + 2))
             text(scene.name, font: sans(13, medium: true))
                 .draw(with: CGRect(x: cols[1], y: top, width: cols[2] - cols[1] - 12, height: 18), options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], context: nil)
-            let pageNote = scene.shots.isEmpty ? "no shots yet" : "page \(firstPage[scene.id] ?? 2)"
+            let pageNote = scene.shots.isEmpty ? "No shots yet" : "Page \(firstPage[scene.id] ?? 2)"
             text([scene.note, pageNote].filter { !$0.isEmpty }.joined(separator: " · "), font: mono(8.5), color: graphite)
                 .draw(at: CGPoint(x: cols[1], y: top + 17))
             if let loc = place(of: scene) {
@@ -263,7 +263,7 @@ enum Exporter {
             }
             let golden = scene.shots.contains(where: \.isGolden)
             if let light = scene.shots.first.map(lightWord) {
-                let word = golden ? "golden" : light
+                let word = golden ? "Golden" : light
                 if golden { dot(at: CGPoint(x: cols[3], y: top + 5), golden: true) }
                 text(word, font: mono(8.5), color: golden ? ink : graphite).draw(at: CGPoint(x: cols[3] + (golden ? 9 : 0), y: top + 2))
             }
@@ -275,7 +275,7 @@ enum Exporter {
         let stamp = DateFormatter()
         stamp.locale = Locale(identifier: "en_GB")
         stamp.dateFormat = "d MMM yyyy, HH:mm"
-        footer(left: "exported from out & scout · \(stamp.string(from: Date()).lowercased())", page: 1, of: total)
+        footer(left: "Exported from Out & Scout · \(stamp.string(from: Date()))", page: 1, of: total)
     }
 
     private static func drawScene(_ ctx: UIGraphicsPDFRendererContext, project: Project, scene: ScoutScene, index: Int,
@@ -311,9 +311,9 @@ enum Exporter {
             // No place, no sun times: leave the strip out rather than fill it with dashes.
             if options.sunTimes, let loc {
                 let t = sunTimes(at: loc, on: recceDate([scene]))
-                y = grid([("sunrise", t.rise, false), ("golden hour", t.golden, false), ("sunset", t.set, false), ("location", coords(loc), false)], y: y) + 14
+                y = grid([("Sunrise", t.rise, false), ("Golden hour", t.golden, false), ("Sunset", t.set, false), ("Location", coords(loc), false)], y: y) + 14
             }
-            for (x, h) in [(cShot, "shot"), (cFrame, options.frames ? "frame" : ""), (cDesc, "description"), (cLens, "lens"), (cTime, "time"), (cLight, "light")] where !h.isEmpty {
+            for (x, h) in [(cShot, "Shot"), (cFrame, options.frames ? "Frame" : ""), (cDesc, "Description"), (cLens, "Lens"), (cTime, "Time"), (cLight, "Light")] where !h.isEmpty {
                 text(h, font: mono(8.5), color: graphite).draw(at: CGPoint(x: x, y: y))
             }
             y += 14
@@ -321,7 +321,7 @@ enum Exporter {
         }
 
         func finishPage() {
-            footer(left: "exported from out & scout", page: pageNo, of: total)
+            footer(left: "Exported from Out & Scout", page: pageNo, of: total)
             pageNo += 1
         }
 
@@ -364,7 +364,7 @@ enum Exporter {
 
             // Description: the caption, the place, which way the camera faced, a map link.
             var dy = top
-            text(shot.caption.isEmpty ? "untitled" : shot.caption, font: sans(10.5))
+            text(shot.caption.isEmpty ? "Untitled" : shot.caption, font: sans(10.5))
                 .draw(with: CGRect(x: cDesc, y: dy, width: descW, height: options.frames ? 28 : 14), options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], context: nil)
             dy += options.frames ? 29 : 14
             let small = { (s: String, y: CGFloat) in
@@ -380,7 +380,7 @@ enum Exporter {
                 dy += 11
             }
             if let url = shot.location?.mapURL, options.frames {
-                let link = text("open in maps ↗", font: mono(8))
+                let link = text("Open in Maps ↗", font: mono(8))
                 let linkRect = CGRect(origin: CGPoint(x: cDesc, y: dy + 1), size: link.size())
                 link.draw(at: linkRect.origin)
                 ctx.setURL(url, for: linkRect)

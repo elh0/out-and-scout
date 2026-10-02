@@ -48,10 +48,12 @@ enum Captioner {
         // "int. wide · lamp, night", like a slugline.
         let slug = seen.setting.map { "\($0). " } ?? ""
 
+        // Sentence case, so "Wide · lamp, night" or "INT. Wide · lamp, night".
+        let cap = { (t: String) in t.prefix(1).uppercased() + t.dropFirst() }
         return [
-            CaptionSuggestion(text: "\(slug)\(size) · \(a)\(lightBit)", tag: "best match"),
-            CaptionSuggestion(text: b.map { "\(size) · \(a) and \($0)" } ?? "\(size) · \(a)", tag: "also in frame"),
-            CaptionSuggestion(text: "\(slug)\(alt) · \(b ?? a)", tag: "alt framing"),
+            CaptionSuggestion(text: "\(slug)\(cap(size)) · \(a)\(lightBit)", tag: "Best match"),
+            CaptionSuggestion(text: cap(b.map { "\(size) · \(a) and \($0)" } ?? "\(size) · \(a)"), tag: "Also in frame"),
+            CaptionSuggestion(text: "\(slug)\(cap(alt)) · \(b ?? a)", tag: "Alt framing"),
         ]
     }
 

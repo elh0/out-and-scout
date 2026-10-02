@@ -94,8 +94,8 @@ final class ScoutStore {
                 try? FileManager.default.copyItem(at: fileURL, to: backup)
             }
             // No setup before first use: a project and a scene are ready to pin into.
-            let scene = ScoutScene(name: "scene 1", note: Format.shortDate(Date()))
-            let project = Project(name: "first recce", kind: "", scenes: [scene])
+            let scene = ScoutScene(name: "Scene 1", note: Format.shortDate(Date()))
+            let project = Project(name: "First Recce", kind: "", scenes: [scene])
             projects = [project]
             currentProjectID = project.id
             currentSceneID = scene.id
@@ -196,7 +196,7 @@ final class ScoutStore {
     func addScene(named name: String? = nil, location: ShotLocation? = nil) -> UUID {
         let index = currentProject.scenes.count + 1
         let scene = ScoutScene(
-            name: name ?? location?.label ?? "scene \(index)",
+            name: name ?? location?.label ?? "Scene \(index)",
             note: Format.shortDate(Date()),
             location: location
         )
@@ -224,14 +224,14 @@ final class ScoutStore {
     }
 
     func renameScene(_ id: UUID, to name: String) {
-        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         updateScene(id) { $0.name = trimmed }
         save()
     }
 
     func renameProject(_ id: UUID, to name: String) {
-        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         updateProject(id) { $0.name = trimmed }
         save()
@@ -246,9 +246,9 @@ final class ScoutStore {
     }
 
     func addProject(named name: String) {
-        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        let scene = ScoutScene(name: "scene 1", note: Format.shortDate(Date()))
+        let scene = ScoutScene(name: "Scene 1", note: Format.shortDate(Date()))
         let project = Project(name: trimmed, kind: "", scenes: [scene])
         projects.append(project)
         currentProjectID = project.id
@@ -274,13 +274,13 @@ final class ScoutStore {
                 try data.write(to: Self.shotsFolder.appendingPathComponent(name), options: .atomic)
                 photoFile = name
             } catch {
-                toast = "couldn't save the still"
+                toast = "Couldn't save the still"
             }
         }
         let shot = Shot(
             id: p.id,
             number: p.number,
-            caption: caption.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
+            caption: caption.trimmingCharacters(in: .whitespacesAndNewlines),
             lensMM: p.lensMM,
             aspect: aspect.isFull ? .full(p.stillAspect) : aspect,
             cameraName: kit.camera.name,
@@ -296,14 +296,14 @@ final class ScoutStore {
             stillAspect: p.stillAspect
         )
         updateScene(currentSceneID) { $0.shots.append(shot) }
-        toast = "saved \(shot.number)"
+        toast = "Saved \(shot.number)"
         save()
     }
 
     /// Fills in what arrives after the shutter: the auto caption (only if the shot is still
     /// untitled, so a caption typed in the meantime wins) and the place name.
     func fillIn(_ id: UUID, caption: String?, location: ShotLocation?) {
-        let trimmed = caption?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? ""
+        let trimmed = caption?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         for p in projects.indices {
             for s in projects[p].scenes.indices {
                 if let i = projects[p].scenes[s].shots.firstIndex(where: { $0.id == id }) {
@@ -337,7 +337,7 @@ final class ScoutStore {
     }
 
     func setCaption(_ id: UUID, to caption: String) {
-        let trimmed = caption.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let trimmed = caption.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         for p in projects.indices {
             for s in projects[p].scenes.indices {
@@ -420,8 +420,8 @@ final class ScoutStore {
     /// just like a first launch. Kit, lens and aspect stay as they are.
     func deleteAllProjects() {
         try? FileManager.default.removeItem(at: Self.shotsFolder)
-        let scene = ScoutScene(name: "scene 1", note: Format.shortDate(Date()))
-        let project = Project(name: "first recce", kind: "", scenes: [scene])
+        let scene = ScoutScene(name: "Scene 1", note: Format.shortDate(Date()))
+        let project = Project(name: "First Recce", kind: "", scenes: [scene])
         projects = [project]
         currentProjectID = project.id
         currentSceneID = scene.id
@@ -470,7 +470,7 @@ final class ScoutStore {
             let data = try JSONEncoder.scout.encode(snap)
             try data.write(to: fileURL, options: .atomic)
         } catch {
-            toast = "couldn't save"
+            toast = "Couldn't save"
         }
     }
 

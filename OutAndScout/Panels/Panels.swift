@@ -6,13 +6,15 @@ struct SidePanel<Content: View>: View {
     let edge: Edge
     var width: CGFloat = 380
     @ViewBuilder let content: Content
+    @Environment(\.isPortrait) private var portrait
 
     var body: some View {
         VStack(alignment: .leading, spacing: Space.s) {
             content
         }
         .padding(Space.l)
-        .frame(width: width)
+        // Upright the screen is narrower than the panel, so it takes the full width instead.
+        .frame(width: portrait ? nil : width)
         .frame(maxHeight: .infinity, alignment: .top)
         .keyboardPadding()
         .background(
@@ -66,9 +68,9 @@ struct ProjectsPanel: View {
     var body: some View {
         SidePanel(edge: .leading) {
             PanelHeader(
-                title: "projects",
+                title: "Projects",
                 sub: store.projects.count == 1 ? "1 project" : "\(store.projects.count) projects",
-                action: ("done", { store.panel = nil })
+                action: ("Done", { store.panel = nil })
             )
             Rule()
 
@@ -99,20 +101,20 @@ struct ProjectsPanel: View {
             }
 
             HStack(spacing: Space.xs) {
-                SheetField(placeholder: "new project name", text: $newName, onSubmit: addProject)
+                SheetField(placeholder: "New project name", text: $newName, onSubmit: addProject)
                 Button("+ new project", action: addProject)
                     .buttonStyle(PillButtonStyle(kind: .secondary))
                     .disabled(newName.trimmingCharacters(in: .whitespaces).isEmpty)
             }
 
             // Small and grey on purpose, and it asks first: a clean slate, not a slip.
-            Button("delete all projects") { confirmDeleteAll = true }
+            Button("Delete All Projects") { confirmDeleteAll = true }
                 .font(.osSupport)
                 .foregroundStyle(Palette.graphite)
                 .buttonStyle(.plain)
                 .frame(minHeight: 36)
                 .confirmationDialog("Delete every project?", isPresented: $confirmDeleteAll, titleVisibility: .visible) {
-                    Button("delete all projects and shots", role: .destructive) {
+                    Button("Delete All Projects and Shots", role: .destructive) {
                         store.deleteAllProjects()
                         expanded = store.currentProjectID
                     }
@@ -126,7 +128,7 @@ struct ProjectsPanel: View {
             titleVisibility: .visible,
             presenting: deleting
         ) { project in
-            Button("delete \(project.name)", role: .destructive) {
+            Button("Delete \(project.name)", role: .destructive) {
                 store.deleteProject(project.id)
                 expanded = store.currentProjectID
                 deleting = nil
@@ -142,7 +144,7 @@ struct ProjectsPanel: View {
             titleVisibility: .visible,
             presenting: deletingScene
         ) { scene in
-            Button("delete \(scene.name)", role: .destructive) {
+            Button("Delete \(scene.name)", role: .destructive) {
                 store.deleteScene(scene.id)
                 deletingScene = nil
             }
@@ -156,7 +158,7 @@ struct ProjectsPanel: View {
 
     private func projectRow(_ project: Project) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: Space.xs) {
-            EditableName(text: project.name, font: .osRow, title: "rename project") { store.renameProject(project.id, to: $0) }
+            EditableName(text: project.name, font: .osRow, title: "Rename Project") { store.renameProject(project.id, to: $0) }
             if !project.kind.isEmpty {
                 Text(project.kind).font(.osSupport).foregroundStyle(Palette.graphite)
             }
@@ -171,14 +173,14 @@ struct ProjectsPanel: View {
         }
         // Press and hold for delete; it still asks before anything goes.
         .contextMenu {
-            Button("delete project", systemImage: "trash", role: .destructive) { deleting = project }
+            Button("Delete Project", systemImage: "trash", role: .destructive) { deleting = project }
         }
     }
 
     private func sceneRow(project: Project, scene: ScoutScene) -> some View {
         let current = scene.id == store.currentSceneID
         return HStack(alignment: .firstTextBaseline, spacing: Space.xs) {
-            EditableName(text: scene.name, font: current ? .osRow : .osSupport, title: "rename scene") { store.renameScene(scene.id, to: $0) }
+            EditableName(text: scene.name, font: current ? .osRow : .osSupport, title: "Rename Scene") { store.renameScene(scene.id, to: $0) }
             Text(scene.note).font(.osData).foregroundStyle(Palette.graphite)
             Spacer()
             Text("\(scene.shots.count)").font(.osData).foregroundStyle(Palette.graphite)
@@ -193,7 +195,7 @@ struct ProjectsPanel: View {
         .contextMenu {
             // A project always keeps at least one scene.
             if project.scenes.count > 1 {
-                Button("delete scene", systemImage: "trash", role: .destructive) { deletingScene = scene }
+                Button("Delete Scene", systemImage: "trash", role: .destructive) { deletingScene = scene }
             }
         }
         .accessibilityAddTraits(current ? [.isButton, .isSelected] : .isButton)
@@ -219,9 +221,9 @@ struct KitPanel: View {
     var body: some View {
         SidePanel(edge: .trailing, width: 440) {
             PanelHeader(
-                title: "your kit",
-                sub: "\(store.kit.camera.name.lowercased()) · \(store.kit.mode.name) · \(store.kit.lenses.name.lowercased())",
-                action: ("done", { store.panel = nil })
+                title: "Your Kit",
+                sub: "\(store.kit.camera.name) · \(store.kit.mode.name) · \(store.kit.lenses.name)",
+                action: ("Done", { store.panel = nil })
             )
 
             // Everything under the header scrolls together, so the tabs, sensor modes and
@@ -229,12 +231,12 @@ struct KitPanel: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Space.s) {
                     HStack(spacing: Space.xxs) {
-                        Chip(label: "camera", selected: tab == .camera, onDark: false, mono: false) { tab = .camera }
-                        Chip(label: "lenses", selected: tab == .lenses, onDark: false, mono: false) { tab = .lenses }
+                        Chip(label: "Camera", selected: tab == .camera, onDark: false, mono: false) { tab = .camera }
+                        Chip(label: "Lenses", selected: tab == .lenses, onDark: false, mono: false) { tab = .lenses }
                     }
 
                     if tab == .camera, store.kit.camera.modes.count > 1 {
-                        Text("sensor mode").font(.osDataSmall).foregroundStyle(Palette.graphite)
+                        Text("Sensor mode").font(.osDataSmall).foregroundStyle(Palette.graphite)
                         FadingHScroll {
                             HStack(spacing: Space.xxs) {
                                 ForEach(store.kit.camera.modes) { mode in
@@ -248,7 +250,7 @@ struct KitPanel: View {
                         }
                     }
 
-                    SheetField(placeholder: "search kit", text: $query)
+                    SheetField(placeholder: "Search kit", text: $query)
 
                     LazyVStack(alignment: .leading, spacing: 0) {
                         if tab == .camera {
@@ -312,7 +314,7 @@ struct KitPanel: View {
     private func row(brand: String, name: String, sub: String, tag: String, selected: Bool) -> some View {
         HStack(alignment: .center, spacing: Space.s) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(brand.lowercased()).font(.osDataSmall).foregroundStyle(Palette.graphite)
+                Text(brand).font(.osDataSmall).foregroundStyle(Palette.graphite)
                 Text(name).font(.osRow)
                 Text(sub).font(.osData).foregroundStyle(Palette.graphite).lineLimit(1)
             }

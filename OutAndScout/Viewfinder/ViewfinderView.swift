@@ -348,15 +348,15 @@ private struct SavedChip: View {
     var body: some View {
         Button {
             store.justSaved = nil
-            store.rename = RenameRequest(title: "caption \(shot.number)", text: shot.caption) { [store, id = shot.id] in
+            store.rename = RenameRequest(title: "Caption \(shot.number)", text: shot.caption) { [store, id = shot.id] in
                 store.setCaption(id, to: $0)
             }
         } label: {
             HStack(spacing: 10) {
                 Circle().fill(Palette.sun).frame(width: 7, height: 7)
-                Text("\(shot.number) · \(shot.caption.isEmpty ? "captioning…" : shot.caption)")
+                Text("\(shot.number) · \(shot.caption.isEmpty ? "Captioning…" : shot.caption)")
                     .lineLimit(1)
-                Text("edit")
+                Text("Edit")
                     .foregroundStyle(Palette.paper)
                     .padding(.horizontal, 10)
                     .frame(height: 26)
@@ -389,14 +389,14 @@ private struct SceneChangeChip: View {
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: "location").font(.system(size: 11))
-            Text("moved \(metres) m · new scene?").lineLimit(1).minimumScaleFactor(0.8)
-            Button("keep") { choose(false) }
+            Text("Moved \(metres) m · new scene?").lineLimit(1).minimumScaleFactor(0.8)
+            Button("Keep") { choose(false) }
                 .padding(.horizontal, 12)
                 .frame(height: 32)
                 .overlay(Capsule().strokeBorder(Palette.rule, lineWidth: 1))
                 .frame(minHeight: 44)
                 .contentShape(Rectangle())
-            Button("new scene") { choose(true) }
+            Button("New Scene") { choose(true) }
                 .foregroundStyle(Palette.paper)
                 .padding(.horizontal, 12)
                 .frame(height: 32)

@@ -88,7 +88,7 @@ struct PortraitCompassRow: View {
                 Button { store.requestNewScene() } label: {
                     HStack(spacing: 6) {
                         Image(systemName: "plus").font(.system(size: 9, weight: .semibold))
-                        Text("scene")
+                        Text("Scene")
                     }
                     .font(.osData)
                     .foregroundStyle(Palette.paper)
@@ -178,7 +178,7 @@ struct PortraitTimeRow: View {
         VStack(spacing: 6) {
             HStack(alignment: .firstTextBaseline, spacing: Space.xs) {
                 Text(Format.time(planned)).font(Fonts.mono(13)).foregroundStyle(Palette.paper)
-                Text("sun \(Int(sun.elevation.rounded()))°").font(.osDataSmall).foregroundStyle(PortraitInk.muted)
+                Text("Sun \(Int(sun.elevation.rounded()))°").font(.osDataSmall).foregroundStyle(PortraitInk.muted)
                 Spacer()
                 LightDot(golden: light == .goldenHour, size: 6)
                 Text(light.label).font(.osData).foregroundStyle(PortraitInk.soft).lineLimit(1)
@@ -212,7 +212,7 @@ struct PortraitBottomRow: View {
                 .disabled(capturing)
                 .accessibilityLabel("pin as shot \(store.nextShotNumber)")
                 .animation(.easeOut(duration: 0.12), value: capturing)
-                Text("next \(store.nextShotNumber)").font(.osDataSmall).foregroundStyle(PortraitInk.muted)
+                Text("Next \(store.nextShotNumber)").font(.osDataSmall).foregroundStyle(PortraitInk.muted)
             }
 
             PortraitLensDial()

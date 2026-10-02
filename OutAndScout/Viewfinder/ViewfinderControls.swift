@@ -87,7 +87,7 @@ struct TopBar: View {
 
                 NightPill(height: 26, action: { store.requestNewScene() }) {
                     Image(systemName: "plus").font(.system(size: 9, weight: .semibold))
-                    Text("scene")
+                    Text("Scene")
                 }
                 .accessibilityLabel("new scene here")
 
@@ -98,7 +98,7 @@ struct TopBar: View {
                 NightPill(action: { store.plannedMinutes = nil }) {
                     Text(Format.time(Date()))
                     if store.plannedMinutes == nil {
-                        Text("now").foregroundStyle(Ink.muted)
+                        Text("Now").foregroundStyle(Ink.muted)
                     } else {
                         Text("→").foregroundStyle(Ink.muted)
                         Text(Format.time(planned)).foregroundStyle(Palette.sun)
@@ -151,7 +151,7 @@ struct CompassTape: View {
                         tick.addLine(to: CGPoint(x: px, y: base - h))
                         ctx.stroke(tick, with: .color(Palette.paper.opacity(major ? 0.7 : 0.3)), lineWidth: 1)
                         if major {
-                            let names = ["n", "ne", "e", "se", "s", "sw", "w", "nw"]
+                            let names = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
                             let name = names[((d / 45) % 8 + 8) % 8]
                             ctx.draw(Text(name).font(.osTiny).foregroundColor(Ink.tick), at: CGPoint(x: px, y: 5))
                         }
@@ -172,7 +172,7 @@ struct CompassTape: View {
             .accessibilityElement()
             .accessibilityLabel("facing \(Format.bearing(heading))")
         } else {
-            Text("finding north…")
+            Text("Finding north…")
                 .font(.osDataSmall)
                 .foregroundStyle(Ink.muted)
         }
@@ -186,9 +186,9 @@ struct LeftRail: View {
 
     var body: some View {
         VStack(spacing: 10) {
-            RailToggle(symbol: "sun.horizon", label: "sun path", on: store.overlays.sunPath) { store.toggle(\.sunPath) }
-            RailToggle(symbol: "grid", label: "grid", on: store.overlays.grid) { store.toggle(\.grid) }
-            RailToggle(symbol: "level", label: "level", on: store.overlays.level) { store.toggle(\.level) }
+            RailToggle(symbol: "sun.horizon", label: "Sun Path", on: store.overlays.sunPath) { store.toggle(\.sunPath) }
+            RailToggle(symbol: "grid", label: "Grid", on: store.overlays.grid) { store.toggle(\.grid) }
+            RailToggle(symbol: "level", label: "Level", on: store.overlays.level) { store.toggle(\.level) }
             // Portrait layout, picked by hand rather than by tilting the phone.
             LayoutSwitch(vertical: true)
         }
@@ -264,7 +264,7 @@ struct RightRail: View {
             .disabled(capturing)
             .accessibilityLabel("pin as shot \(store.nextShotNumber)")
 
-            Text("next \(store.nextShotNumber)")
+            Text("Next \(store.nextShotNumber)")
                 .font(.osDataSmall)
                 .foregroundStyle(Ink.muted)
         }
@@ -418,7 +418,7 @@ struct BottomBar: View {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(alignment: .firstTextBaseline, spacing: Space.xs) {
                     Text(Format.time(planned)).font(Fonts.mono(13)).foregroundStyle(Palette.paper)
-                    Text("sun \(Int(sun.elevation.rounded()))°").font(.osDataSmall).foregroundStyle(Ink.muted)
+                    Text("Sun \(Int(sun.elevation.rounded()))°").font(.osDataSmall).foregroundStyle(Ink.muted)
                 }
                 HStack(spacing: 6) {
                     LightDot(golden: light == .goldenHour, size: 6)
@@ -473,7 +473,7 @@ struct BottomBar: View {
     /// "+2h10", "−45m", "now".
     static func offset(from now: Date, to date: Date) -> String {
         let minutes = Int((date.timeIntervalSince(now) / 60).rounded())
-        if minutes == 0 { return "now" }
+        if minutes == 0 { return "Now" }
         let sign = minutes > 0 ? "+" : "−"
         let m = abs(minutes)
         return m < 60 ? "\(sign)\(m)m" : "\(sign)\(m / 60)h\(String(format: "%02d", m % 60))"
