@@ -31,14 +31,18 @@ struct ViewfinderView: View {
 
             // One live preview for both layouts. It just moves and resizes when the layout
             // changes, so the image keeps running through the turn.
-            if camera.status == .running {
-                CameraPreview(camera: camera)
-                    .frame(width: previewRect.width, height: previewRect.height)
-                    .clipped()
-                    .offset(x: previewRect.minX, y: previewRect.minY)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                    .allowsHitTesting(false)
-            }
+            // It hangs off an overlay so its size can never stretch the layout: a stale rect
+            // from before the turn would otherwise push the screen wider or taller than it is.
+            Color.clear
+                .overlay(alignment: .topLeading) {
+                    if camera.status == .running {
+                        CameraPreview(camera: camera)
+                            .frame(width: previewRect.width, height: previewRect.height)
+                            .clipped()
+                            .offset(x: previewRect.minX, y: previewRect.minY)
+                    }
+                }
+                .allowsHitTesting(false)
 
             Group {
                 if portrait {
