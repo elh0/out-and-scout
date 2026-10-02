@@ -13,6 +13,8 @@ struct ViewfinderFrame: View {
     let sunDay: SunDay?
     let planned: Date
     @Binding var frameFraction: Double
+    /// Where the live image should sit, in ViewfinderView's space.
+    @Binding var previewRect: CGRect
     /// Upright phone: the v3c portrait frame (342 wide on a 390 screen).
     var portrait = false
 
@@ -131,6 +133,9 @@ struct ViewfinderFrame: View {
                 camera.lock(atLayerPoint: p)
                 showFocus(at: p)
             }
+            .onGeometryChange(for: CGRect.self) { $0.frame(in: .named(ViewfinderView.space)) } action: {
+                previewRect = $0
+            }
             .onAppear { syncLens(size: size, frame: frame) }
             .onChange(of: LensKey(lens: store.lensMM, kit: store.kit, aspect: store.aspect, size: size, portrait: portrait)) {
                 syncLens(size: size, frame: frame)
@@ -142,7 +147,9 @@ struct ViewfinderFrame: View {
     @ViewBuilder private var cameraLayer: some View {
         switch camera.status {
         case .running:
-            CameraPreview(camera: camera)
+            // The live image is drawn once by ViewfinderView, under both layouts, so turning
+            // the phone doesn't tear down and reconnect the camera preview.
+            Color.clear
         case .unauthorized:
             placeholder("camera access is off. turn it on in settings to frame shots.", settingsButton: true)
         case .unavailable:

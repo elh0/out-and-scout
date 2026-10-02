@@ -17,6 +17,9 @@ struct ViewfinderView: View {
     @State private var sunDay: SunDay?
     @State private var frameFraction: Double = 1
     @State private var capturing = false
+    /// Where the viewfinder area sits; the one live preview is laid over it.
+    @State private var previewRect: CGRect = .zero
+    static let space = "viewfinder"
 
     var body: some View {
         let planned = store.plannedDate()
@@ -26,12 +29,27 @@ struct ViewfinderView: View {
         ZStack {
             Palette.night.ignoresSafeArea()
 
-            if portrait {
-                portraitLayout(sun: sun, planned: planned)
-                    // Board: top 14, right 16, beside the notch.
-            } else {
-                landscapeLayout(sun: sun, planned: planned)
+            // One live preview for both layouts. It just moves and resizes when the layout
+            // changes, so the image keeps running through the turn.
+            if camera.status == .running {
+                CameraPreview(camera: camera)
+                    .frame(width: previewRect.width, height: previewRect.height)
+                    .clipped()
+                    .offset(x: previewRect.minX, y: previewRect.minY)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .allowsHitTesting(false)
             }
+
+            Group {
+                if portrait {
+                    portraitLayout(sun: sun, planned: planned)
+                } else {
+                    landscapeLayout(sun: sun, planned: planned)
+                }
+            }
+            // While the screen turns, the controls step back and fade in on the new layout,
+            // so you never see one layout stretched into the other.
+            .opacity(LayoutMode.shared.turning ? 0 : 1)
 
             if let metres = movedMetres {
                 SceneChangeChip(metres: metres) { newScene in
@@ -53,6 +71,7 @@ struct ViewfinderView: View {
 
             overlays
         }
+        .coordinateSpace(name: Self.space)
         // The keyboard only ever slides over the app; nothing gets pushed up or squashed.
         .ignoresSafeArea(.keyboard)
         .animation(.easeOut(duration: 0.2), value: store.justSaved)
@@ -119,7 +138,7 @@ struct ViewfinderView: View {
             .padding(.horizontal, Space.m)
             .frame(height: 36)
 
-            ViewfinderFrame(sun: sun, sunDay: sunDay, planned: planned, frameFraction: $frameFraction, portrait: true)
+            ViewfinderFrame(sun: sun, sunDay: sunDay, planned: planned, frameFraction: $frameFraction, previewRect: $previewRect, portrait: true)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .clipped()
                 .padding(.top, 4)
@@ -161,7 +180,7 @@ struct ViewfinderView: View {
 
                 VStack(spacing: 0) {
                     // Fills the space between the rails; the sensor frame and ratio lines sit inside.
-                    ViewfinderFrame(sun: sun, sunDay: sunDay, planned: planned, frameFraction: $frameFraction)
+                    ViewfinderFrame(sun: sun, sunDay: sunDay, planned: planned, frameFraction: $frameFraction, previewRect: $previewRect)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .clipped()
 

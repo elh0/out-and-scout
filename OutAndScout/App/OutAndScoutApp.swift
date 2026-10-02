@@ -172,6 +172,14 @@ struct RootView: View {
             if let o = UserDefaults.standard.string(forKey: "orientation") {
                 LayoutMode.shared.set(portrait: o == "portrait", remember: false)
             }
+            // Screen recording: -toggleLayoutAfter 2 flips the layout after 2 seconds.
+            let flipAfter = UserDefaults.standard.double(forKey: "toggleLayoutAfter")
+            if flipAfter > 0 {
+                Task {
+                    try? await Task.sleep(for: .seconds(flipAfter))
+                    LayoutMode.shared.set(portrait: !LayoutMode.shared.portrait, remember: false)
+                }
+            }
             #endif
             await camera.start()
             location.start()

@@ -9,6 +9,8 @@ import UIKit
 
     /// The portrait layouts are showing.
     private(set) var portrait = UserDefaults.standard.bool(forKey: key)
+    /// True for the moment the screen is turning; the controls fade back in after.
+    private(set) var turning = false
 
     /// What the app allows right now; read by the app delegate.
     var mask: UIInterfaceOrientationMask { portrait ? .portrait : .landscape }
@@ -17,10 +19,17 @@ import UIKit
     func set(portrait: Bool, remember: Bool = true) {
         if remember { UserDefaults.standard.set(portrait, forKey: Self.key) }
         guard portrait != self.portrait else { return }
-        // Swap the layout without animating it, so nothing is drawn half in one and half in the other.
+        // Hide the controls straight away (no animation), turn the screen, then fade them in
+        // once the new layout is in place.
         var t = Transaction()
         t.disablesAnimations = true
-        withTransaction(t) { self.portrait = portrait }
+        withTransaction(t) {
+            turning = true
+            self.portrait = portrait
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            withAnimation(.easeOut(duration: 0.18)) { self.turning = false }
+        }
         for scene in UIApplication.shared.connectedScenes.compactMap({ $0 as? UIWindowScene }) {
             for window in scene.windows {
                 window.rootViewController?.setNeedsUpdateOfSupportedInterfaceOrientations()
