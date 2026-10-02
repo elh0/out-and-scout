@@ -56,8 +56,9 @@ struct ViewfinderView: View {
                     keptScenes.insert(store.currentSceneID)
                     if newScene { store.requestNewScene() }
                 }
-                .frame(maxHeight: .infinity, alignment: .top)
-                .padding(.top, 52 + Space.xs)
+                // Along the bottom of the frame, clear of the HUD in its top-left corner.
+                .frame(maxHeight: .infinity, alignment: .bottom)
+                .padding(.bottom, 52 + Space.xs)
                 .transition(.opacity)
             } else if let id = store.justSaved, let shot = store.shot(id) {
                 SavedChip(shot: shot)
