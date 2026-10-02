@@ -246,7 +246,8 @@ final class CameraController: NSObject {
         } else {
             settings = AVCapturePhotoSettings()
         }
-        settings.photoQualityPrioritization = .quality
+        // Balanced keeps the shutter quick; .quality waits on heavy multi-frame processing.
+        settings.photoQualityPrioritization = .balanced
         settings.maxPhotoDimensions = photoOutput.maxPhotoDimensions
         if let connection = photoOutput.connection(with: .video),
            connection.isVideoRotationAngleSupported(captureRotationAngle) {
