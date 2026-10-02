@@ -18,6 +18,8 @@ struct ViewfinderFrame: View {
 
     @State private var focusPoint: CGPoint?
     @State private var focusShownAt = Date.distantPast
+    /// The lens when the pinch began.
+    @State private var pinchStartMM: Double?
 
     var body: some View {
         GeometryReader { geo in
@@ -103,6 +105,25 @@ struct ViewfinderFrame: View {
                 camera.focus(atLayerPoint: p)
                 showFocus(at: p)
             }
+            // Pinch like the Camera app: out for a longer lens, in for a wider one. It snaps
+            // to the kit's focal lengths, so the frame always shows a real lens.
+            .simultaneousGesture(
+                MagnifyGesture()
+                    .onChanged { v in
+                        let start = pinchStartMM ?? store.lensMM
+                        pinchStartMM = start
+                        let wanted = start * Double(v.magnification)
+                        let focals = store.focalLengths
+                        if let nearest = focals.min(by: { abs(log($0 / wanted)) < abs(log($1 / wanted)) }),
+                           nearest != store.lensMM {
+                            store.lensMM = nearest
+                        }
+                    }
+                    .onEnded { _ in
+                        pinchStartMM = nil
+                        store.save()
+                    }
+            )
             .onLongPressGesture(minimumDuration: 0.6) {
                 // SwiftUI's long press doesn't report a location; lock where the last tap was, or the centre.
                 let p = focusPoint ?? CGPoint(x: size.width / 2, y: size.height / 2)
