@@ -196,6 +196,7 @@ final class ScoutStore {
     @discardableResult
     func addScene(named name: String? = nil, location: ShotLocation? = nil) -> UUID {
         let index = currentProject.scenes.count + 1
+        sceneBeforeNew = currentSceneID
         let scene = ScoutScene(
             name: name ?? location?.label ?? "Scene \(index)",
             note: Format.shortDate(Date()),
@@ -235,6 +236,21 @@ final class ScoutStore {
         }
         save()
         UserDefaults.standard.set(true, forKey: key)
+    }
+
+    /// The scene that was showing before "+ Scene", so Cancel can go back to it.
+    private var sceneBeforeNew: UUID?
+
+    /// Cancel on the name bar after "+ Scene": take the new scene away again (only while
+    /// it's still empty) and go back to the scene you were on.
+    func cancelNewScene() {
+        guard let id = namingSceneID else { return }
+        namingSceneID = nil
+        guard let scene = currentProject.scenes.first(where: { $0.id == id }), scene.shots.isEmpty else { return }
+        let back = sceneBeforeNew
+        deleteScene(id)
+        if let back, currentProject.scenes.contains(where: { $0.id == back }) { currentSceneID = back; save() }
+        sceneBeforeNew = nil
     }
 
     /// Opens the name bar on the current scene, ready to type.

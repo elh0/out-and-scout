@@ -20,7 +20,7 @@ struct ExportPanel: View {
     /// The PDF being previewed in Quick Look.
     @State private var previewURL: URL?
 
-    enum Choice: String, CaseIterable { case pdf, csv, link }
+    enum Choice: String, CaseIterable { case pdf, csv, photos, link }
 
     var body: some View {
         let project = store.currentProject
@@ -56,16 +56,18 @@ struct ExportPanel: View {
                     HStack(spacing: 6) {
                         formatRow(.pdf, "PDF", nil)
                         formatRow(.csv, "CSV", nil)
+                        formatRow(.photos, "Photos", nil)
                         // The live link needs outandscout.com/s/<project> to exist first.
-                        formatRow(.link, "Link", "soon")
+                        formatRow(.link, "Link", nil)
                             .opacity(0.45)
                             .disabled(true)
                     }
 
                     HStack(spacing: 6) {
                         includeChip("Frames", on: options.frames) { options.frames.toggle() }
-                            .disabled(format == .csv)
+                            .disabled(format == .csv || format == .photos)
                         includeChip("Sun Times", on: options.sunTimes) { options.sunTimes.toggle() }
+                            .disabled(format == .photos)
                     }
 
                 }
@@ -83,7 +85,9 @@ struct ExportPanel: View {
                 }
 
                 Button { export(project: project, scene: target) } label: {
-                    Text("\(target == nil ? "Export All Scenes" : "Export Scene") · \(ext.uppercased())")
+                    Text(format == .photos
+                         ? "Save \(shots == 1 ? "1 Still" : "\(shots) Stills") to Photos"
+                         : "\(target == nil ? "Export All Scenes" : "Export Scene") · \(ext.uppercased())")
                         .font(.osTitle)
                         .foregroundStyle(Palette.paper)
                         .frame(maxWidth: .infinity)
@@ -94,13 +98,13 @@ struct ExportPanel: View {
                 .buttonStyle(.plain)
 
                 // Tap the file name to rename the export.
-                HStack(spacing: 0) {
+                if format != .photos { HStack(spacing: 0) {
                     EditableName(text: customName ?? defaultName, font: .osData, color: Palette.graphite, title: "File Name") {
                         customName = Exporter.cleanName($0)
                     }
                     Text(".\(ext)").font(.osData).foregroundStyle(Palette.graphite)
                 }
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity) }
 
                 if format == .pdf {
                     // Look before you send: opens the PDF in Quick Look.
@@ -190,6 +194,21 @@ struct ExportPanel: View {
     }
 
     private func export(project: Project, scene: ScoutScene?) {
+        if format == .photos {
+            let shots = scene?.shots ?? project.scenes.flatMap(\.shots)
+            Task {
+                do {
+                    let n = try await PhotoSaver.save(shots)
+                    store.toast = "Saved \(n == 1 ? "1 still" : "\(n) stills") to Photos"
+                    error = nil
+                } catch PhotoSaver.Failure.nothingToSave {
+                    error = "No stills to save yet."
+                } catch {
+                    self.error = "Couldn't save to Photos. Check access in Settings."
+                }
+            }
+            return
+        }
         do {
             let url = try Exporter.export(project: project, scene: scene, format: format == .csv ? .csv : .pdf, options: options, name: customName)
             shareItem = ShareItem(url: url)

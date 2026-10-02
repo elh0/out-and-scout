@@ -221,6 +221,9 @@ struct ViewfinderView: View {
             } else if store.askingLocation {
                 LocationPermissionCard().transition(.move(edge: .bottom).combined(with: .opacity))
             } else if store.namingSceneID != nil {
+                // Tap anywhere else to close the name bar (the name stays as it is).
+                Color.black.opacity(0.001).ignoresSafeArea()
+                    .onTapGesture { store.namingSceneID = nil }
                 NameSceneCard().transition(.move(edge: .top).combined(with: .opacity))
             } else if store.showingCustomAspect {
                 CustomAspectCard().transition(.move(edge: .bottom).combined(with: .opacity))

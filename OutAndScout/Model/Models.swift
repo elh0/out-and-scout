@@ -47,9 +47,22 @@ struct Shot: Identifiable, Codable, Hashable {
 
     var isGolden: Bool { light == .goldenHour }
 
-    /// "24mm · 19:12". The sun's bearing stays on the Viewfinder, as Elliot asked.
+    /// Where the sun sits relative to the frame, from the way the camera faced: "Backlit"
+    /// (into the sun), "Sun left" / "Sun right" (side light), or "Sun behind" (front lit).
+    /// Nil without a bearing, or once the sun is down.
+    var sunSide: String? {
+        guard let bearing, sunElevation > -1 else { return nil }
+        let d = Bearing.difference(sunAzimuth, bearing)
+        switch abs(d) {
+        case ..<30: return "Backlit"
+        case ..<150: return d > 0 ? "Sun right" : "Sun left"
+        default: return "Sun behind"
+        }
+    }
+
+    /// "24mm · 19:12 · Sun left". The sun's bearing stays on the Viewfinder, as Elliot asked.
     var meta: String {
-        "\(Int(lensMM.rounded()))mm · \(Format.time(plannedTime))"
+        ["\(Int(lensMM.rounded()))mm", Format.time(plannedTime), sunSide].compactMap { $0 }.joined(separator: " · ")
     }
 }
 

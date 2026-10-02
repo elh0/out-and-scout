@@ -91,8 +91,12 @@ struct TopBar: View {
                 }
                 .accessibilityLabel("new scene here")
 
-                // Room for the compass, which sits dead centre over this bar.
-                Spacer(minLength: 170)
+                // The compass sits in the row between the two sides, so long names push it
+                // over rather than running underneath it.
+                Spacer(minLength: Space.xs)
+                CompassTape(heading: heading, accuracy: headingAccuracy, sunAzimuth: sunAzimuth)
+                    .frame(width: 150, height: 26)
+                Spacer(minLength: Space.xs)
 
                 // Just the time: white for now, orange when the sun timeline is scrubbed.
                 // Tap to snap back to now.
@@ -110,10 +114,6 @@ struct TopBar: View {
                 .frame(maxWidth: 110)
             }
 
-            // Just the tape: letters, ticks, the sun and where you're pointing. No readout
-            // underneath, so nothing hangs over the viewfinder.
-            CompassTape(heading: heading, accuracy: headingAccuracy, sunAzimuth: sunAzimuth)
-                .frame(width: 150, height: 26)
         }
     }
 }

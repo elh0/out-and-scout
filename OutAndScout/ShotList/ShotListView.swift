@@ -414,6 +414,7 @@ struct ShotListView: View {
                         sheetCell("Lens", "\(Format.mm(shot.lensMM))mm")
                         sheetCell("Time", Format.time(shot.plannedTime))
                         sheetCell("Light", shot.light.label)
+                        if let side = shot.sunSide { sheetCell("Sun", side.replacingOccurrences(of: "Sun ", with: "").capitalized) }
                     }
 
                     HStack(spacing: Space.xs) {
@@ -642,7 +643,7 @@ struct PortraitShotRow: View {
                     + Text(" " + (shot.caption.isEmpty ? "Untitled" : shot.caption)))
                     .font(Fonts.mono(13))
                     .lineLimit(1)
-                Text("\(Format.mm(shot.lensMM))mm · \(Format.time(shot.plannedTime)) · \(shot.light.label)")
+                Text(["\(Format.mm(shot.lensMM))mm", Format.time(shot.plannedTime), shot.light.label, shot.sunSide].compactMap { $0 }.joined(separator: " · "))
                     .font(.osData)
                     .foregroundStyle(Palette.graphite)
                     .lineLimit(1)
@@ -658,8 +659,10 @@ struct PortraitShotRow: View {
 
 /// One still, as big as the screen allows, cropped to its frame lines. Tap to close.
 struct ShotViewer: View {
+    @Environment(ScoutStore.self) private var store
     let shot: Shot
     let onClose: () -> Void
+    @State private var saving = false
 
     var body: some View {
         ZStack {
@@ -697,6 +700,33 @@ struct ShotViewer: View {
                 .background(Palette.hud, in: Circle())
                 .padding(Space.s)
                 .allowsHitTesting(false)
+        }
+        // Save just this still to Photos, cropped to its frame lines.
+        .overlay(alignment: .bottomTrailing) {
+            Button {
+                saving = true
+                Task {
+                    do {
+                        try await PhotoSaver.save([shot])
+                        store.toast = "Saved \(shot.number) to Photos"
+                    } catch {
+                        store.toast = "Couldn't save to Photos. Check access in Settings."
+                    }
+                    saving = false
+                }
+            } label: {
+                Label("Save to Photos", systemImage: "square.and.arrow.down")
+                    .font(.osData)
+                    .foregroundStyle(Palette.paper)
+                    .padding(.horizontal, 12)
+                    .frame(height: 36)
+                    .background(Palette.hud, in: Capsule())
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(saving)
+            .padding(Space.s)
         }
         .accessibilityAddTraits(.isButton)
         .accessibilityLabel("close full screen")

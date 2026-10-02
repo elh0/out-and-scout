@@ -45,7 +45,7 @@ enum Exporter {
     // MARK: CSV
 
     static func csv(project: Project, scenes: [ScoutScene], options: Options) -> String {
-        var header = ["project", "scene", "shot", "caption", "lens_mm", "aspect", "camera", "lens_set", "time", "light"]
+        var header = ["project", "scene", "shot", "caption", "lens_mm", "aspect", "camera", "lens_set", "time", "light", "sun_side"]
         if options.sunTimes { header += ["sun_azimuth", "sun_elevation"] }
         header += ["bearing", "location", "postcode", "latitude", "longitude", "map_link", "pinned_at"]
 
@@ -56,7 +56,7 @@ enum Exporter {
                 var row: [String] = [
                     project.name, scene.name, shot.number, shot.caption,
                     Format.mm(shot.lensMM), shot.aspect.label, shot.cameraName, shot.lensSeries,
-                    Format.time(shot.plannedTime), shot.light.label,
+                    Format.time(shot.plannedTime), shot.light.label, shot.sunSide ?? "",
                 ]
                 if options.sunTimes {
                     row += [String(format: "%.1f", shot.sunAzimuth), String(format: "%.1f", shot.sunElevation)]
@@ -467,7 +467,8 @@ enum Exporter {
             text(Format.time(shot.plannedTime), font: mono(9)).draw(at: CGPoint(x: cTime, y: top + 1))
             if shot.isGolden { dot(at: CGPoint(x: cLight, y: top + 4), golden: true) }
             var lightText = lightWord(shot)
-            if options.sunTimes { lightText += "\nsun \(Int(shot.sunAzimuth.rounded()))° / \(Int(shot.sunElevation.rounded()))°" }
+            // Where the sun sits in the frame, not its degrees (Elliot: degrees belong on the Viewfinder).
+            if let side = shot.sunSide { lightText += "\n\(side)" }
             text(lightText, font: mono(9), color: shot.isGolden ? ink : graphite)
                 .draw(with: CGRect(x: cLight + (shot.isGolden ? 9 : 0), y: top + 1, width: 82, height: 26), options: .usesLineFragmentOrigin, context: nil)
 

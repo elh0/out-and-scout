@@ -205,11 +205,26 @@ struct NameSceneCard: View {
                     .font(.osDataSmall)
                     .foregroundStyle(Palette.nightMuted)
                 Spacer()
-                Button(store.namingByTyping ? "Cancel" : "Keep \"\(store.currentScene.name)\"") { store.namingSceneID = nil }
-                    .font(.osSupport)
-                    .foregroundStyle(Palette.nightMuted)
-                    .buttonStyle(.plain)
-                    .frame(minHeight: 36)
+                if store.namingByTyping {
+                    Button("Cancel") { store.namingSceneID = nil }
+                        .font(.osSupport)
+                        .foregroundStyle(Palette.nightMuted)
+                        .buttonStyle(.plain)
+                        .frame(minHeight: 36)
+                } else {
+                    // Cancel undoes "+ Scene"; Keep keeps it with its default name.
+                    Button("Cancel") { store.cancelNewScene() }
+                        .font(.osSupport)
+                        .foregroundStyle(Palette.nightMuted)
+                        .buttonStyle(.plain)
+                        .frame(minHeight: 36)
+                        .padding(.trailing, Space.s)
+                    Button("Keep \"\(store.currentScene.name)\"") { store.namingSceneID = nil }
+                        .font(.osSupport)
+                        .foregroundStyle(Palette.paper)
+                        .buttonStyle(.plain)
+                        .frame(minHeight: 36)
+                }
             }
 
             HStack(spacing: Space.xs) {
