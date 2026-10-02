@@ -115,16 +115,15 @@ struct TopBar: View {
                 .frame(maxWidth: 110)
             }
 
-            // Pinned to the top of the bar so its bearing line clears the viewfinder.
+            // Just the tape: letters, ticks, the sun and where you're pointing. No readout
+            // underneath, so nothing hangs over the viewfinder.
             CompassTape(heading: heading, accuracy: headingAccuracy, sunAzimuth: sunAzimuth)
-                .frame(width: 180, height: 36)
-                .frame(maxHeight: .infinity, alignment: .top)
+                .frame(width: 180, height: 26)
         }
     }
 }
 
-/// Compass ticks centred on the camera's bearing, letters above, the sun marked in orange,
-/// and the bearing underneath: "103° e ±3° true n".
+/// Compass ticks centred on the camera's bearing, letters above, the sun marked in orange.
 struct CompassTape: View {
     let heading: Double?
     var accuracy: Double?
@@ -169,13 +168,6 @@ struct CompassTape: View {
                     ctx.fill(Path(CGRect(x: mid - 1, y: 10, width: 2, height: 16)), with: .color(Palette.sun))
                 }
                 .frame(height: 26)
-
-                HStack(spacing: 4) {
-                    Text(Format.bearing(heading)).foregroundStyle(Palette.paper)
-                    Text("±\(Int((accuracy ?? 5).rounded()))° true n").foregroundStyle(Ink.muted)
-                }
-                .font(.osDataSmall)
-                .offset(y: 23)
             }
             .accessibilityElement()
             .accessibilityLabel("facing \(Format.bearing(heading))")
@@ -197,11 +189,10 @@ struct LeftRail: View {
             RailToggle(symbol: "sun.horizon", label: "sun path", on: store.overlays.sunPath) { store.toggle(\.sunPath) }
             RailToggle(symbol: "grid", label: "grid", on: store.overlays.grid) { store.toggle(\.grid) }
             RailToggle(symbol: "level", label: "level", on: store.overlays.level) { store.toggle(\.level) }
-            Spacer(minLength: 0)
         }
-        // Up near the top, level with the top of the viewfinder, rather than floating mid-rail.
-        .padding(.top, Space.xs)
+        // Centred on the viewfinder, not on the viewfinder plus the bottom bar.
         .frame(maxHeight: .infinity)
+        .padding(.bottom, 56)
     }
 }
 
@@ -249,8 +240,10 @@ struct RightRail: View {
         VStack(spacing: 6) {
             LensWheel()
             shutter
-            shotStack
             Spacer(minLength: 0)
+            // Down in line with the bottom bar, clear of the shutter.
+            shotStack
+                .padding(.bottom, 6)
         }
         .frame(maxHeight: .infinity)
     }
@@ -406,34 +399,13 @@ struct BottomBar: View {
         let light = LightPhase.from(elevation: sun.elevation, localHour: hour)
 
         HStack(spacing: Space.m) {
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: Space.xxs) {
-                    ForEach(store.aspectStrip) { a in
-                        // Tap the selected ratio again to drop the frame lines and see the full frame.
-                        aspectChip(a.label, selected: a == store.aspect) {
-                            store.setAspect(a == store.aspect ? .full : a)
-                        }
-                    }
-                    Button { store.showingCustomAspect = true } label: {
-                        Image(systemName: "plus")
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundStyle(Palette.paper)
-                            .frame(width: 28, height: 28)
-                            .overlay(Circle().strokeBorder(Palette.nightRule, lineWidth: 1))
-                            .padding(.vertical, 8)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("custom aspect")
-                }
+            // All the chips when they fit; only a long custom list scrolls (with a fade).
+            ViewThatFits(in: .horizontal) {
+                aspectChips
+                FadingHScroll { aspectChips }
             }
-            .frame(maxWidth: 230)
+            .frame(maxWidth: 260, alignment: .leading)
             .fixedSize(horizontal: false, vertical: true)
-            // Fade the right edge so a chip that scrolls off doesn't look like a stray bracket.
-            .mask(
-                LinearGradient(stops: [.init(color: .black, location: 0.86), .init(color: .clear, location: 1)],
-                               startPoint: .leading, endPoint: .trailing)
-            )
             .layoutPriority(1)
 
             // Time at the chosen hour, the sun's height, and the light.
@@ -451,6 +423,28 @@ struct BottomBar: View {
             .fixedSize()
 
             SunTimeline(sunDay: sunDay, planned: planned)
+        }
+    }
+
+    private var aspectChips: some View {
+        HStack(spacing: Space.xxs) {
+            ForEach(store.aspectStrip) { a in
+                // Tap the selected ratio again to drop the frame lines and see the full frame.
+                aspectChip(a.label, selected: a == store.aspect) {
+                    store.setAspect(a == store.aspect ? .full : a)
+                }
+            }
+            Button { store.showingCustomAspect = true } label: {
+                Image(systemName: "plus")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(Palette.paper)
+                    .frame(width: 28, height: 28)
+                    .overlay(Circle().strokeBorder(Palette.nightRule, lineWidth: 1))
+                    .padding(.vertical, 8)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("custom aspect")
         }
     }
 

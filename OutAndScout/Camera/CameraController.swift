@@ -19,6 +19,8 @@ final class CameraController: NSObject {
     private(set) var lensLabel = ""
     /// True once the digital crop gets big enough to look soft. The readout greys out.
     private(set) var cropIsSoft = false
+    /// True when the cine lens sees wider than the phone can, even fully zoomed out.
+    private(set) var isTooWide = false
     private(set) var aeAfLocked = false
     private(set) var exposureBias: Float = 0
     /// Horizontal field of view of the live preview, degrees.
@@ -164,7 +166,15 @@ final class CameraController: NSObject {
         }
 
         previewHFOV = 2 * atan(tan(rad(baseHFOV) / 2) / Double(z)) * 180 / .pi
-        updateReadout(zoom: z, tooWide: CGFloat(wanted) < minZoom - 0.01)
+        isTooWide = CGFloat(wanted) < minZoom - 0.01
+        updateReadout(zoom: z, tooWide: isTooWide)
+    }
+
+    /// The widest view, in degrees, that a frame spanning `frameFraction` of the preview's
+    /// width can show with the phone fully zoomed out.
+    func widestHFOV(frameFraction: Double) -> Double {
+        let zMin = Double(device?.minAvailableVideoZoomFactor ?? 1)
+        return 2 * atan(tan(baseHFOV * .pi / 360) * frameFraction / zMin) * 180 / .pi
     }
 
     private func updateReadout(zoom z: CGFloat, tooWide: Bool) {

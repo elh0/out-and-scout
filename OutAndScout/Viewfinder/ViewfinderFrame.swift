@@ -20,12 +20,12 @@ struct ViewfinderFrame: View {
     var body: some View {
         GeometryReader { geo in
             let size = geo.size
-            // The viewfinder fills the space between the rails. Inside it, the sensor mode's
-            // shape is the "full" frame (the lens's field of view spans its width, and that's
-            // what the still keeps); the chosen ratio's lines sit inside that. Everything
-            // outside the lines is dimmed, like the v3c prototype.
-            let sensor = FrameMath.fit(aspect: store.kit.frameAspect, in: size)
-            let frame = store.aspect.isFull ? sensor : FrameMath.fit(aspect: store.aspect.value, in: sensor.size).offsetBy(dx: sensor.minX, dy: sensor.minY)
+            // The viewfinder fills the space between the rails. The chosen ratio's lines are
+            // made as big as they'll go (with a small margin so they read as a frame), and the
+            // phone zooms so the lines show exactly what the cine lens would. Everything outside
+            // is dimmed, like the v3c prototype. "full" is the whole sensor mode.
+            let frame = FrameMath.fit(aspect: lineAspect, in: inset(size).size)
+                .offsetBy(dx: inset(size).minX, dy: inset(size).minY)
 
             ZStack(alignment: .topLeading) {
                 cameraLayer
@@ -57,6 +57,19 @@ struct ViewfinderFrame: View {
                     .fixedSize()
                     .offset(x: frame.minX + Space.xs, y: frame.maxY - 20)
 
+                // Honest about the phone's limit: say how wide it can really go here.
+                if camera.isTooWide, camera.status == .running {
+                    Text("wider than the iphone can see · widest here ≈ \(widestFocal(size: size, frame: frame))mm")
+                        .font(.osDataSmall)
+                        .foregroundStyle(Palette.paper)
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 2)
+                        .background(Palette.hud, in: RoundedRectangle(cornerRadius: 4))
+                        .fixedSize()
+                        .frame(width: frame.width)
+                        .offset(x: frame.minX, y: frame.minY + Space.xs)
+                }
+
                 if let p = focusPoint {
                     FocusSquare(locked: camera.aeAfLocked, bias: camera.exposureBias) { camera.setExposureBias($0) }
                         .position(p)
@@ -81,11 +94,11 @@ struct ViewfinderFrame: View {
                 camera.lock(atLayerPoint: p)
                 showFocus(at: p)
             }
-            .onAppear { syncLens(size: size, sensor: sensor) }
+            .onAppear { syncLens(size: size, frame: frame) }
             .onChange(of: LensKey(lens: store.lensMM, kit: store.kit, aspect: store.aspect.value, size: size)) {
-                syncLens(size: size, sensor: sensor)
+                syncLens(size: size, frame: frame)
             }
-            .onChange(of: camera.status) { syncLens(size: size, sensor: sensor) }
+            .onChange(of: camera.status) { syncLens(size: size, frame: frame) }
         }
     }
 
@@ -124,13 +137,42 @@ struct ViewfinderFrame: View {
         focusShownAt = Date()
     }
 
-    private func syncLens(size: CGSize, sensor: CGRect) {
-        guard size.width > 0 else { return }
-        // The lens's field of view spans the sensor frame, which is what every still keeps,
-        // so changing frame lines later never changes the lens framing.
-        let fraction = min(max(Double(sensor.width / size.width), 0.05), 1)
-        frameFraction = fraction
-        camera.match(targetHFOV: store.kit.horizontalFOV(focal: store.lensMM), frameFraction: fraction)
+    /// The ratio the lines are drawn at; "full" is the sensor mode's own shape.
+    private var lineAspect: Double {
+        store.aspect.isFull ? store.kit.frameAspect : store.aspect.value
+    }
+
+    /// A small margin so even the widest ratio reads as a frame rather than full bleed.
+    private func inset(_ size: CGSize) -> CGRect {
+        CGRect(origin: .zero, size: size).insetBy(dx: 10, dy: 8)
+    }
+
+    /// How much of the sensor's width the lines take: 1 for ratios wider than the sensor
+    /// (extracted across the full width), less for taller ones.
+    private var linesToSensorWidth: Double {
+        let sensor = store.kit.frameAspect
+        return lineAspect >= sensor ? 1 : lineAspect / sensor
+    }
+
+    private func syncLens(size: CGSize, frame: CGRect) {
+        guard size.width > 0, frame.width > 0 else { return }
+        let r = linesToSensorWidth
+        let sensorHFOV = store.kit.horizontalFOV(focal: store.lensMM)
+        // The lines see r of the sensor's width.
+        let linesHFOV = 2 * atan(r * tan(sensorHFOV * .pi / 360)) * 180 / .pi
+        let fraction = Double(frame.width / size.width)
+        camera.match(targetHFOV: linesHFOV, frameFraction: fraction)
+        // The still keeps the whole sensor frame, which is 1/r times as wide as the lines.
+        frameFraction = min(fraction / r, 1)
+    }
+
+    /// The widest cine focal length the phone can show truthfully in these frame lines.
+    private func widestFocal(size: CGSize, frame: CGRect) -> String {
+        guard size.width > 0 else { return "—" }
+        let linesMax = camera.widestHFOV(frameFraction: Double(frame.width / size.width))
+        let sensorHalf = tan(linesMax * .pi / 360) / linesToSensorWidth
+        let width = store.kit.mode.widthMM * store.kit.lenses.squeeze
+        return Format.mm((width / (2 * sensorHalf)).rounded())
     }
 
     private struct LensKey: Equatable {

@@ -1,3 +1,4 @@
+import QuickLook
 import SwiftUI
 import UIKit
 
@@ -15,6 +16,8 @@ struct ExportPanel: View {
     @State private var error: String?
     /// A name typed over the default file name, without the extension.
     @State private var customName: String?
+    /// The PDF being previewed in Quick Look.
+    @State private var previewURL: URL?
 
     enum Choice: String, CaseIterable { case pdf, csv, link }
 
@@ -78,9 +81,16 @@ struct ExportPanel: View {
                 Text(error).font(.osSupport).foregroundStyle(Palette.graphite)
             }
 
-            Button("export \(format.rawValue)") { export(project: project, scene: target) }
+            Button("\(target == nil ? "export all scenes" : "export scene") · \(format.rawValue)") { export(project: project, scene: target) }
                 .buttonStyle(PillButtonStyle(kind: .primary))
                 .disabled(format == .link)
+            if format == .pdf {
+                // Look before you send: opens the PDF in Quick Look.
+                Button("preview the pdf →") { preview(project: project, scene: target) }
+                    .font(.osData)
+                    .foregroundStyle(Palette.ink)
+                    .frame(maxWidth: .infinity, minHeight: 32)
+            }
             // Tap the file name to rename the export.
             let ext = format == .csv ? "csv" : "pdf"
             let defaultName = Exporter.filename(project: project, scene: target, format: format == .csv ? .csv : .pdf)
@@ -97,6 +107,7 @@ struct ExportPanel: View {
         }
         // The Shot List was showing every scene, so start there.
         .onAppear { allScenes = scene == nil }
+        .quickLookPreview($previewURL)
         .sheet(item: $shareItem) { item in
             ActivityView(items: [item.url])
                 .presentationDetents([.large])
@@ -120,6 +131,11 @@ struct ExportPanel: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+    }
+
+    private func preview(project: Project, scene: ScoutScene?) {
+        previewURL = try? Exporter.export(project: project, scene: scene, format: .pdf, options: options, name: customName)
+        if previewURL == nil { error = "Couldn't make the preview. Try again." }
     }
 
     private func export(project: Project, scene: ScoutScene?) {
