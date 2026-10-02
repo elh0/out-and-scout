@@ -1,5 +1,6 @@
 import SwiftUI
 import Vision
+import ImageIO
 
 /// The live image with frame lines for the chosen aspect, the sun path, grid, level, HUD,
 /// and tap-to-focus / long-press AE/AF lock with the sun (exposure) slider.
@@ -475,6 +476,8 @@ struct VisionResult {
     var people: String?
     /// A sign or shopfront word Vision could read, if one stands out.
     var sign: String?
+    /// A lighting cue from the still's brightness: "practical", "dappled light", "backlit".
+    var lightCue: String?
 }
 
 enum VisionLabels {
@@ -538,10 +541,15 @@ enum VisionLabels {
                 }
             }
 
-            // Vision has "interior_room" and "outdoor" but no "indoor".
+            // Vision has "interior_room" and "outdoor" but no "indoor". A bright laptop screen
+            // can score "outdoor", so furniture and screens rule EXT out.
             let inside = scores["interior_room"] ?? 0
             let outside = scores["outdoor"] ?? 0
-            let setting: String? = max(inside, outside) < 0.3 ? nil : (inside > outside ? "INT" : "EXT")
+            let indoorCues = ["table", "desk", "bookshelf", "cabinet", "computer", "laptop", "bed", "sofa", "couch", "chair", "lamp"]
+            let looksIndoor = indoorCues.contains { (scores[$0] ?? 0) > 0.25 }
+            let setting: String? = max(inside, outside) < 0.3 ? nil
+                : inside > outside ? "INT"
+                : looksIndoor ? nil : "EXT"
 
             // Parents share their child's score (machine = computer = laptop), so on a tie
             // the longer, more specific identifier wins once the parents are skipped.
@@ -550,14 +558,71 @@ enum VisionLabels {
                 .sorted { abs($0.value - $1.value) > 0.001 ? $0.value > $1.value : $0.key.count > $1.key.count }
                 .map(\.key)
             var subjects = Captioner.readable(ranked)
+            // Never come back empty: the best label Vision had, however unsure.
+            if subjects.isEmpty {
+                let weak = scores.filter { $0.value >= 0.03 }.sorted { $0.value > $1.value }.map(\.key)
+                subjects = Array(Captioner.readable(weak).prefix(1))
+            }
             if let animal, !subjects.contains(animal) { subjects.insert(animal, at: 0) }
             // Vision often says "people" or "adult" for crowds; the count above says it better.
             if people != nil { subjects.removeAll { ["person", "people", "adult", "child", "crowd"].contains($0) } }
-            return VisionResult(subjects: Array(subjects.prefix(4)), setting: setting, people: people, sign: sign)
+            return VisionResult(subjects: Array(subjects.prefix(4)), setting: setting, people: people, sign: sign,
+                                lightCue: LightCues.read(data))
         }.value
     }
 }
 
 private extension CGRect {
     var area: CGFloat { width * height }
+}
+
+/// Lighting a DP would note that the classifier never will: a lamp glowing in a dark room
+/// (a practical), patches of sun on a dark surface, or a bright window in a dark frame.
+/// Read from a 48-pixel-wide greyscale copy of the still.
+enum LightCues {
+    static func read(_ data: Data) -> String? {
+        guard let src = CGImageSourceCreateWithData(data as CFData, nil),
+              let thumb = CGImageSourceCreateThumbnailAtIndex(src, 0, [
+                  kCGImageSourceCreateThumbnailFromImageAlways: true,
+                  kCGImageSourceThumbnailMaxPixelSize: 48,
+                  kCGImageSourceCreateThumbnailWithTransform: true,
+              ] as CFDictionary) else { return nil }
+        let w = thumb.width, h = thumb.height
+        var px = [UInt8](repeating: 0, count: w * h)
+        guard let ctx = CGContext(data: &px, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w,
+                                  space: CGColorSpaceCreateDeviceGray(), bitmapInfo: CGImageAlphaInfo.none.rawValue)
+        else { return nil }
+        ctx.draw(thumb, in: CGRect(x: 0, y: 0, width: w, height: h))
+
+        let n = Double(px.count)
+        let mean = px.reduce(0.0) { $0 + Double($1) } / n / 255
+        let brightIdx = px.indices.filter { px[$0] > 225 }
+        let bright = Double(brightIdx.count) / n
+        let dark = Double(px.filter { $0 < 40 }.count) / n
+        guard !brightIdx.isEmpty else { return nil }
+
+        // How many separate bright patches, and how much of the frame they span.
+        var seen = Set<Int>(), blobs = 0
+        for start in brightIdx where !seen.contains(start) {
+            blobs += 1
+            var stack = [start]
+            seen.insert(start)
+            while let i = stack.popLast() {
+                let x = i % w, y = i / w
+                for (dx, dy) in [(1, 0), (-1, 0), (0, 1), (0, -1)] {
+                    let nx = x + dx, ny = y + dy
+                    guard nx >= 0, nx < w, ny >= 0, ny < h else { continue }
+                    let j = ny * w + nx
+                    if px[j] > 225, !seen.contains(j) { seen.insert(j); stack.append(j) }
+                }
+            }
+        }
+        let xs = brightIdx.map { $0 % w }, ys = brightIdx.map { $0 / w }
+        let span = Double((xs.max()! - xs.min()! + 1) * (ys.max()! - ys.min()! + 1)) / n
+
+        if mean < 0.3, bright >= 0.003, bright < 0.15, blobs <= 2, span < 0.2 { return "practical" }
+        if mean < 0.4, bright >= 0.02, bright < 0.35, blobs >= 4 { return "dappled light" }
+        if bright >= 0.12, dark > 0.25 { return "backlit" }
+        return nil
+    }
 }

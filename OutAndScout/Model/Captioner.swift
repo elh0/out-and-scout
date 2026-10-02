@@ -39,18 +39,29 @@ enum Captioner {
         if let people = seen.people {
             subjects = [subjects.first.map { "\(people) by the \($0)" } ?? people] + subjects.dropFirst()
         }
+        // A lamp glowing in a dark frame is a practical; Vision rarely names it.
+        if seen.lightCue == "practical", !subjects.contains(where: { $0.contains("lamp") }) {
+            subjects.insert("practical lamp", at: min(1, subjects.count))
+        }
         if subjects.isEmpty { subjects = [seen.sign.map { "sign: \($0)" } ?? "location"] }
         let a = subjects[0]
         // A readable sign makes a good second subject ("sign: Bakery").
         let b = subjects.count > 1 ? subjects[1] : seen.sign.flatMap { s in a.contains(s) ? nil : "sign: \(s)" }
 
-        let lightBit: String
+        let timeBit: String
         switch light {
-        case .afterDark, .beforeSunrise: lightBit = ", night"
-        case .blueHour: lightBit = ", blue hour"
-        case .goldenHour: lightBit = sunInFrame ? ", into the sun" : ", golden hour"
-        default: lightBit = sunInFrame ? ", into the sun" : ""
+        case .afterDark, .beforeSunrise: timeBit = ", night"
+        case .blueHour: timeBit = ", blue hour"
+        case .goldenHour: timeBit = sunInFrame ? ", into the sun" : ", golden hour"
+        default: timeBit = sunInFrame ? ", into the sun" : ""
         }
+        // What the light is doing in the frame beats the time of day when we can see it.
+        let cueBit: String? = switch seen.lightCue ?? "" {
+        case "dappled light": ", dappled light"
+        case "backlit": ", backlit"
+        default: nil
+        }
+        let lightBit = cueBit ?? timeBit
         // "int. wide · lamp, night", like a slugline.
         let slug = seen.setting.map { "\($0). " } ?? ""
 
@@ -72,9 +83,19 @@ enum Captioner {
             "machine", "consumer_electronics", "container", "conveyance", "furniture", "textile",
             "people", "adult", "wood_processed", "wood_natural", "art", "decoration",
             "office_supplies", "housewares", "tool", "cord", "light", "sky",
+            // Wrong or noisy on real recce stills (benchmark, 2 Oct 2026).
+            "screenshot", "document", "portal", "elevator", "raw_glass",
         ]
+        // Screens come back as three or four synonyms and crowd out the real subjects.
+        let screens: Set<String> = ["computer", "computer_monitor", "monitor", "laptop", "computer_screen", "display"]
+        let hasLaptop = identifiers.contains("laptop")
         var out: [String] = []
         for id in identifiers where !skip.contains(id) {
+            if screens.contains(id) {
+                let one = hasLaptop ? "laptop" : "screen"
+                if !out.contains(one) { out.append(one) }
+                continue
+            }
             let words = id
                 .replacingOccurrences(of: "_other", with: "")
                 .replacingOccurrences(of: "_", with: " ")
