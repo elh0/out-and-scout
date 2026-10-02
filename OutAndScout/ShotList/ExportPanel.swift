@@ -116,7 +116,13 @@ struct ExportPanel: View {
         )
         .foregroundStyle(Palette.ink)
         // The Shot List was showing every scene, so start there.
-        .onAppear { allScenes = scene == nil }
+        .onAppear {
+            allScenes = scene == nil
+            #if DEBUG
+            // Screenshot testing: -exportAllScenes YES shows the scene order list.
+            if UserDefaults.standard.bool(forKey: "exportAllScenes") { allScenes = true }
+            #endif
+        }
         .quickLookPreview($previewURL)
         .sheet(item: $shareItem) { item in
             ActivityView(items: [item.url])

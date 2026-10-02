@@ -154,11 +154,14 @@ struct RootView: View {
             motion.start()
             store.askForLocationIfNeverAsked()
             #if DEBUG
-            // Screenshot testing: launch with -openPanel kit|projects|shotlist.
+            // Screenshot testing: launch with -openPanel kit|projects|shotlist|export.
             switch UserDefaults.standard.string(forKey: "openPanel") {
             case "kit": store.panel = .kit
             case "projects": store.panel = .projects
             case "shotlist": store.showingShotList = true
+            case "export":
+                store.showingShotList = true
+                store.showingExport = true
             default: break
             }
             // Screenshot testing: -orientation portrait turns the screen upright.

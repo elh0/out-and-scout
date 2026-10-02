@@ -74,6 +74,10 @@ struct ShotListView: View {
         .onAppear {
             sceneFilter = store.currentSceneID
             selectedID = store.currentScene.shots.last?.id
+            #if DEBUG
+            // Screenshot testing: -openShot YES opens the latest shot's sheet when upright.
+            if UserDefaults.standard.bool(forKey: "openShot") { sheetID = selectedID }
+            #endif
         }
     }
 
