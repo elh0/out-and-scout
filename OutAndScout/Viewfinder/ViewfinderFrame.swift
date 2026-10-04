@@ -480,6 +480,9 @@ struct VisionResult {
     var lightCue: String?
     /// A face fills much of the frame, whatever the lens says.
     var closeUp = false
+    /// Shot size from how big the subject is in frame ("close-up", "medium", "full shot"),
+    /// when there's a person or a clear subject to measure. Beats the focal-length guess.
+    var framing: String?
 }
 
 enum VisionLabels {
@@ -510,6 +513,17 @@ enum VisionLabels {
             let count = max(bodies.count, faceBoxes.count)
             // A face filling much of the frame is a close-up of someone.
             let closeUp = faceBoxes.contains { $0.boundingBox.area > 0.06 }
+            // How big the subject is in frame, the way a DP names shot sizes.
+            let biggestFace = faceBoxes.map(\.boundingBox.area).max() ?? 0
+            let tallestBody = bodies.map(\.boundingBox.height).max() ?? 0
+            let salient = saliency.results?.first?.salientObjects?.map(\.boundingBox.area).max() ?? 0
+            let framing: String? =
+                biggestFace > 0.12 ? "close-up"
+                : biggestFace > 0.04 ? "medium close-up"
+                : tallestBody > 0.85 ? "medium"
+                : tallestBody > 0.45 ? "full shot"
+                : (bodies.isEmpty && faceBoxes.isEmpty && salient > 0.45) ? "close"
+                : nil
             let people: String? = switch count {
             case 0: nil
             case 1: "person"
@@ -565,6 +579,10 @@ enum VisionLabels {
                 .filter { $0.value >= 0.25 }
                 .sorted { abs($0.value - $1.value) > 0.001 ? $0.value > $1.value : $0.key.count > $1.key.count }
                 .map(\.key)
+            // Outdoors a bright patch is sky or sun, not a lamp (a robin against the sky
+            // read as a practical); keep dappled and backlit there.
+            var cue = LightCues.read(data, labels: scores)
+            if cue == "practical", outside > 0.3, inside < outside { cue = nil }
             var subjects = Captioner.readable(ranked)
             // Never come back empty: the best label Vision had, however unsure.
             if subjects.isEmpty {
@@ -575,7 +593,8 @@ enum VisionLabels {
             // Vision often says "people" or "adult" for crowds; the count above says it better.
             if people != nil { subjects.removeAll { ["person", "people", "adult", "child", "crowd"].contains($0) } }
             return VisionResult(subjects: Array(subjects.prefix(4)), setting: setting, people: people, sign: sign,
-                                lightCue: LightCues.read(data, labels: scores), closeUp: closeUp)
+                                lightCue: cue,
+                                closeUp: closeUp, framing: framing)
         }.value
     }
 }

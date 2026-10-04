@@ -34,8 +34,11 @@ enum Captioner {
         sunInFrame: Bool
     ) -> [CaptionSuggestion] {
         var (size, alt) = shotSize(lensMM: lensMM, sensorWidthMM: sensorWidthMM)
-        // A face filling the frame is a close-up whatever the lens.
-        if seen.closeUp, seen.people != nil { size = "close-up"; alt = "detail" }
+        // How big the subject sits in frame beats the focal-length guess.
+        if let framing = seen.framing {
+            size = framing
+            if framing.contains("close") { alt = "detail" }
+        }
         // People lead when they're in frame: "Mid · two people by the bench".
         var subjects = seen.subjects
         if let people = seen.people {
