@@ -33,15 +33,21 @@ enum Captioner {
         light: LightPhase,
         sunInFrame: Bool
     ) -> [CaptionSuggestion] {
-        let (size, alt) = shotSize(lensMM: lensMM, sensorWidthMM: sensorWidthMM)
+        var (size, alt) = shotSize(lensMM: lensMM, sensorWidthMM: sensorWidthMM)
+        // A face filling the frame is a close-up whatever the lens.
+        if seen.closeUp, seen.people != nil { size = "close-up"; alt = "detail" }
         // People lead when they're in frame: "Mid · two people by the bench".
         var subjects = seen.subjects
         if let people = seen.people {
-            subjects = [subjects.first.map { "\(people) by the \($0)" } ?? people] + subjects.dropFirst()
+            let lead = seen.closeUp ? people : subjects.first.map { "\(people) by the \($0)" } ?? people
+            subjects = [lead] + (seen.closeUp ? subjects : Array(subjects.dropFirst()))
         }
         // A lamp glowing in a dark frame is a practical; Vision rarely names it.
         // It leads the caption, since it's usually why the frame was taken.
-        if seen.lightCue == "practical", seen.people == nil {
+        // Only when nothing alive is the subject: a bird against a bright sky isn't a lamp.
+        let alive = ["bird", "animal", "dog", "cat", "mammal", "horse", "insect", "fish", "pet"]
+        let somethingAlive = seen.subjects.prefix(2).contains { s in alive.contains { s.contains($0) } }
+        if seen.lightCue == "practical", seen.people == nil, !somethingAlive {
             subjects.removeAll { $0.contains("lamp") }
             subjects.insert("practical lamp", at: 0)
         }

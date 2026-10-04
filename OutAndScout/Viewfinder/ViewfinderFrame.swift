@@ -478,6 +478,8 @@ struct VisionResult {
     var sign: String?
     /// A lighting cue from the still's brightness: "practical", "dappled light", "backlit".
     var lightCue: String?
+    /// A face fills much of the frame, whatever the lens says.
+    var closeUp = false
 }
 
 enum VisionLabels {
@@ -494,15 +496,21 @@ enum VisionLabels {
             // classifier alone ("two people", "dog", "sign: Bakery").
             let humans = VNDetectHumanRectanglesRequest()
             humans.upperBodyOnly = false
+            // Close-ups crop the body away, so faces count people too.
+            let faces = VNDetectFaceRectanglesRequest()
             let animals = VNRecognizeAnimalsRequest()
             let words = VNRecognizeTextRequest()
             words.recognitionLevel = .fast
             words.usesLanguageCorrection = true
-            try? handler.perform([whole, saliency, humans, animals, words])
+            try? handler.perform([whole, saliency, humans, faces, animals, words])
 
             // Count people big enough to matter (not specks in the distance).
             let bodies = (humans.results ?? []).filter { $0.confidence > 0.5 && $0.boundingBox.area > 0.01 }
-            let people: String? = switch bodies.count {
+            let faceBoxes = (faces.results ?? []).filter { $0.confidence > 0.6 && $0.boundingBox.area > 0.002 }
+            let count = max(bodies.count, faceBoxes.count)
+            // A face filling much of the frame is a close-up of someone.
+            let closeUp = faceBoxes.contains { $0.boundingBox.area > 0.06 }
+            let people: String? = switch count {
             case 0: nil
             case 1: "person"
             case 2: "two people"
@@ -567,7 +575,7 @@ enum VisionLabels {
             // Vision often says "people" or "adult" for crowds; the count above says it better.
             if people != nil { subjects.removeAll { ["person", "people", "adult", "child", "crowd"].contains($0) } }
             return VisionResult(subjects: Array(subjects.prefix(4)), setting: setting, people: people, sign: sign,
-                                lightCue: LightCues.read(data, labels: scores))
+                                lightCue: LightCues.read(data, labels: scores), closeUp: closeUp)
         }.value
     }
 }
