@@ -35,9 +35,10 @@ enum Captioner {
     ) -> [CaptionSuggestion] {
         var (size, alt) = shotSize(lensMM: lensMM, sensorWidthMM: sensorWidthMM)
         // How big the subject sits in frame beats the focal-length guess.
-        // A big salient area on a wide lens is scenery (sky, trees, stairs), not a close shot.
-        let wideLens = lensMM * 28 / max(sensorWidthMM, 1) < 36
-        if let framing = seen.framing, !(framing == "close" && wideLens) {
+        // A big salient area below a close lens is scenery (sky, trees, stairs, a yard wall
+        // with a robin on it), not a close shot. Only trust it from a 51mm-equivalent up.
+        let shortLens = lensMM * 28 / max(sensorWidthMM, 1) < 51
+        if let framing = seen.framing, !(framing == "close" && shortLens) {
             size = framing
             if framing.contains("close") { alt = "detail" }
         } else {
