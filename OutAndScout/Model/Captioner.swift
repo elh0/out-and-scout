@@ -67,7 +67,8 @@ enum Captioner {
         let somethingAlive = seen.subjects.prefix(2).contains { s in alive.contains { s.contains($0) } }
         if lightCue == "practical", seen.people == nil, !somethingAlive {
             subjects.removeAll { $0.contains("lamp") }
-            subjects.insert("practical lamp", at: 0)
+            // A hand in an insert still leads: "Wide · hand and practical lamp".
+            subjects.insert("practical lamp", at: subjects.first == "hand" ? 1 : 0)
         }
         if subjects.isEmpty { subjects = [seen.sign.map { "sign: \($0)" } ?? "location"] }
         let a = subjects[0]

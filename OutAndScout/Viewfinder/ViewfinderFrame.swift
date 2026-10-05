@@ -512,11 +512,15 @@ enum VisionLabels {
             humans.upperBodyOnly = false
             // Close-ups crop the body away, so faces count people too.
             let faces = VNDetectFaceRectanglesRequest()
+            // The classifier has no "hand" label, but the hand-pose detector finds one (even a
+            // hand's shadow on a wall), which suits inserts.
+            let hands = VNDetectHumanHandPoseRequest()
+            hands.maximumHandCount = 2
             let animals = VNRecognizeAnimalsRequest()
             let words = VNRecognizeTextRequest()
             words.recognitionLevel = .fast
             words.usesLanguageCorrection = true
-            try? handler.perform([whole, saliency, humans, faces, animals, words])
+            try? handler.perform([whole, saliency, humans, faces, hands, animals, words])
 
             // Count people big enough to matter (not specks in the distance).
             let bodies = (humans.results ?? []).filter { $0.confidence > 0.5 && $0.boundingBox.area > 0.01 }
@@ -604,6 +608,11 @@ enum VisionLabels {
                 subjects = Array(Captioner.readable(weak).prefix(1))
             }
             if let animal, !subjects.contains(animal) { subjects.insert(animal, at: 0) }
+            // A hand with no face or body in frame is an insert: lead with it.
+            if count == 0, (hands.results ?? []).contains(where: { $0.confidence > 0.8 }) {
+                subjects.removeAll { $0 == "hand" }
+                subjects.insert("hand", at: 0)
+            }
             // The animal detector only knows cats and dogs, and the classifier names birds by
             // species, often wrongly (a robin came back "sparrow"), so just say "bird".
             if (scores["bird"] ?? 0) >= 0.1 {
