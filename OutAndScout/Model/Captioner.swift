@@ -53,12 +53,13 @@ enum Captioner {
             let lead = seen.closeUp ? people : subjects.first.map { "\(people) by the \($0)" } ?? people
             subjects = [lead] + (seen.closeUp ? subjects : Array(subjects.dropFirst()))
         }
-        // In daylight, outside, with nothing indoor in shot, a bright pool in a dark frame is sun
-        // through leaves on the ground, not a lamp (shadows on paving read as a practical at
-        // midday). It needs a sign of outside: a globe lamp on a desk has none.
+        // In daylight with nothing indoor in shot, bright pools in a dark frame are sun through
+        // leaves on the ground, not a lamp (shadows on paving read as a practical at midday).
+        // It needs a sign of outside or several scattered pools: a globe lamp on a desk is
+        // one bright patch with neither.
         var lightCue = seen.lightCue
         if lightCue == "practical", [LightPhase.morning, .midday, .afternoon].contains(light),
-           seen.setting != "INT", seen.looksOutdoor, !seen.looksIndoor {
+           seen.setting != "INT", !seen.looksIndoor, seen.looksOutdoor || seen.brightPatches >= 4 {
             lightCue = "dappled light"
         }
         // A lamp glowing in a dark frame is a practical; Vision rarely names it.
