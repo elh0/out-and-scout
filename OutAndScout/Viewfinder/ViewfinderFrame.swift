@@ -589,9 +589,12 @@ enum VisionLabels {
                 .sorted { abs($0.value - $1.value) > 0.001 ? $0.value > $1.value : $0.key.count > $1.key.count }
                 .map(\.key)
             // Outdoors a bright patch is sky or sun, not a lamp (a robin against the sky
-            // read as a practical); keep dappled and backlit there.
+            // read as a practical); keep dappled and backlit there. Long-lens stills of birds
+            // and plants often don't score "outdoor" at all, so nature labels count too.
+            let nature = ["bird", "plant", "tree", "foliage", "flower", "grass", "sky", "animal"]
+            let looksNatural = setting != "INT" && nature.contains { (scores[$0] ?? 0) >= 0.1 }
             var cue = LightCues.read(data, labels: scores)
-            if cue == "practical", outside > 0.3, inside < outside { cue = nil }
+            if cue == "practical", (outside > 0.3 && inside < outside) || looksNatural { cue = nil }
             var subjects = Captioner.readable(ranked)
             // Never come back empty: the best label Vision had, however unsure.
             if subjects.isEmpty {
@@ -599,6 +602,12 @@ enum VisionLabels {
                 subjects = Array(Captioner.readable(weak).prefix(1))
             }
             if let animal, !subjects.contains(animal) { subjects.insert(animal, at: 0) }
+            // The animal detector only knows cats and dogs, and the classifier names birds by
+            // species, often wrongly (a robin came back "sparrow"), so just say "bird".
+            if (scores["bird"] ?? 0) >= 0.1 {
+                subjects.removeAll { $0 == "bird" || $0 == "sparrow" }
+                subjects.insert("bird", at: 0)
+            }
             // Vision often says "people" or "adult" for crowds; the count above says it better.
             if people != nil { subjects.removeAll { ["person", "people", "adult", "child", "crowd"].contains($0) } }
             return VisionResult(subjects: Array(subjects.prefix(4)), setting: setting, people: people, sign: sign,
