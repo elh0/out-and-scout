@@ -41,9 +41,25 @@ struct ViewfinderFrame: View {
             // phone zooms so the lines show exactly what the cine lens would. Everything outside
             // is dimmed, like the v3c prototype. "full" is the whole sensor mode.
             let frame = frameRect(size)
+            // A lens wider than the phone: the frame lines stay at their true size and the
+            // picture shrinks inside them, leaving a grey margin the iPhone can't see.
+            let shrink = camera.status == .running ? camera.shrink : 1
+            let anchor = UnitPoint(x: frame.midX / max(size.width, 1), y: frame.midY / max(size.height, 1))
+            let img = imageRect(size)
 
             ZStack(alignment: .topLeading) {
+                if shrink > 1 {
+                    Palette.night
+                    Color(hex: 0x262624)
+                        .frame(width: frame.width, height: frame.height)
+                        .offset(x: frame.minX, y: frame.minY)
+                }
                 cameraLayer
+                    // Only the picture shrinks, not Fit's dark bars around it.
+                    .mask(alignment: .topLeading) {
+                        Rectangle().frame(width: img.width, height: img.height).offset(x: img.minX, y: img.minY)
+                    }
+                    .scaleEffect(1 / shrink, anchor: anchor)
 
                 AspectMask(frame: frame, lines: !(fullBleed && store.aspect.isFull), shade: fullBleed ? 0.42 : nil,
                            ticks: fullBleed)
@@ -61,7 +77,7 @@ struct ViewfinderFrame: View {
                         // When the time is scrubbed, a ring marks where the sun is right now.
                         nowSun: store.plannedMinutes == nil ? nil : SunCalculator.position(
                             at: Date(), latitude: location.coordinate.latitude, longitude: location.coordinate.longitude),
-                        projector: Projector(heading: heading, elevation: motion.cameraElevation, hfov: camera.previewHFOV, size: size)
+                        projector: Projector(heading: heading, elevation: motion.cameraElevation, hfov: 2 * atan(tan(camera.previewHFOV * .pi / 360) * shrink) * 360 / .pi, size: size)
                     )
                 }
 
@@ -88,7 +104,7 @@ struct ViewfinderFrame: View {
 
                 // Honest about the phone's limit: say how wide it can really go here.
                 if camera.isTooWide, camera.status == .running {
-                    Text("Wider than the iPhone can see · widest here ≈ \(widestFocal(size: size, frame: frame))mm")
+                    Text("Grey edge: outside what the iPhone sees · it reaches ≈ \(widestFocal(size: size, frame: frame))mm")
                         .font(.osDataSmall)
                         .foregroundStyle(Palette.paper)
                         .padding(.horizontal, 6)
@@ -118,7 +134,7 @@ struct ViewfinderFrame: View {
             }
             .contentShape(Rectangle())
             .onTapGesture(coordinateSpace: .local) { p in
-                camera.focus(atLayerPoint: p)
+                camera.focus(atLayerPoint: layerPoint(p, size: size, frame: frame))
                 showFocus(at: p)
             }
             // Pinch like the Camera app: smooth while your fingers move (out for longer, in for
@@ -144,7 +160,7 @@ struct ViewfinderFrame: View {
             .onLongPressGesture(minimumDuration: 0.6) {
                 // SwiftUI's long press doesn't report a location; lock where the last tap was, or the centre.
                 let p = focusPoint ?? CGPoint(x: size.width / 2, y: size.height / 2)
-                camera.lock(atLayerPoint: p)
+                camera.lock(atLayerPoint: layerPoint(p, size: size, frame: frame))
                 showFocus(at: p)
             }
             .onAppear { syncLens(size: size, frame: frame) }
@@ -226,6 +242,12 @@ struct ViewfinderFrame: View {
         }
         let box = fits ? imageRect(size).insetBy(dx: 6, dy: 6) : inset(size)
         return FrameMath.fit(aspect: lineAspect, in: box.size).offsetBy(dx: box.minX, dy: box.minY)
+    }
+
+    /// A tap on screen to the same spot on the preview layer, undoing the wide-lens shrink.
+    private func layerPoint(_ p: CGPoint, size: CGSize, frame: CGRect) -> CGPoint {
+        let s = camera.status == .running ? camera.shrink : 1
+        return CGPoint(x: frame.midX + (p.x - frame.midX) * s, y: frame.midY + (p.y - frame.midY) * s)
     }
 
     /// Where the camera picture sits: the whole view, or (Fit) the sensor's 4:3 centred in it.

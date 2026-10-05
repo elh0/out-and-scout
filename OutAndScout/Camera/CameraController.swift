@@ -21,6 +21,9 @@ final class CameraController: NSObject {
     private(set) var cropIsSoft = false
     /// True when the cine lens sees wider than the phone can, even fully zoomed out.
     private(set) var isTooWide = false
+    /// How much bigger the cine frame is than what the phone sees when the lens is too wide
+    /// (1 otherwise). The viewfinder shrinks the picture by this, inside the true frame lines.
+    private(set) var shrink: Double = 1
     private(set) var aeAfLocked = false
     private(set) var exposureBias: Float = 0
     /// Horizontal field of view of the live preview, degrees.
@@ -184,6 +187,7 @@ final class CameraController: NSObject {
 
         previewHFOV = 2 * atan(tan(rad(baseHFOV) / 2) / Double(z)) * 180 / .pi
         isTooWide = CGFloat(wanted) < minZoom - 0.01
+        shrink = isTooWide ? Double(minZoom) / wanted : 1
         updateReadout(zoom: z, tooWide: isTooWide)
     }
 
