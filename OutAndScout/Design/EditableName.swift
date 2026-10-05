@@ -16,13 +16,23 @@ struct EditableName: View {
     var title = "Rename"
     /// Take the full width offered, so the whole row is the tap target, not just the words.
     var fillsWidth = false
+    /// A small pencil after the words, like iOS, so it reads as editable.
+    var pencil = false
     let onRename: (String) -> Void
 
     var body: some View {
-        Text(text.isEmpty ? emptyLabel : text)
-            .font(font)
-            .foregroundStyle(text.isEmpty ? color.opacity(0.5) : color)
-            .lineLimit(lineLimit)
+        HStack(alignment: .firstTextBaseline, spacing: 5) {
+            Text(text.isEmpty ? emptyLabel : text)
+                .font(font)
+                .foregroundStyle(text.isEmpty ? color.opacity(0.5) : color)
+                .lineLimit(lineLimit)
+            if pencil {
+                Image(systemName: "pencil")
+                    .font(.system(size: 10))
+                    .foregroundStyle(Sheet.muted)
+                    .accessibilityHidden(true)
+            }
+        }
             .frame(maxWidth: fillsWidth ? .infinity : nil, alignment: .leading)
             .contentShape(Rectangle())
             .onTapGesture {

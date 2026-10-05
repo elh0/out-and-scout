@@ -118,10 +118,10 @@ struct ExportPanel: View {
 
                 // Tap the file name to rename the export.
                 if format != .photos { HStack(spacing: 0) {
-                    EditableName(text: customName ?? defaultName, font: .osData, color: Sheet.muted, title: "File Name") {
+                    EditableName(text: customName ?? defaultName, font: .osData, color: Sheet.muted, title: "File Name", pencil: true) {
                         customName = Exporter.cleanName($0)
                     }
-                    Text(".\(ext)").font(.osData).foregroundStyle(Sheet.muted)
+                    Text(".\(ext)").font(.osData).foregroundStyle(Sheet.muted).padding(.leading, -5)
                 }
                 .frame(maxWidth: .infinity) }
 
@@ -284,7 +284,7 @@ struct OrderList: View {
             Text(r.number)
                 .font(.osNumSmall).foregroundStyle(Sheet.muted)
                 .frame(width: 22, alignment: .leading)
-            EditableName(text: r.name, font: .osRow, emptyLabel: "Untitled", title: renameTitle, fillsWidth: true) { rename(r.id, $0) }
+            EditableName(text: r.name, font: .osRow, emptyLabel: "Untitled", title: renameTitle, fillsWidth: true, pencil: true) { rename(r.id, $0) }
             Text(r.detail).font(.osNumSmall).foregroundStyle(Sheet.muted).lineLimit(1)
             Image(systemName: "line.3.horizontal")
                 .font(.system(size: 13))
