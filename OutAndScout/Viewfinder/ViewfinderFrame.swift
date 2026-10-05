@@ -487,6 +487,8 @@ struct VisionResult {
     var sign: String?
     /// A lighting cue from the still's brightness: "practical", "dappled light", "backlit".
     var lightCue: String?
+    /// Furniture, a screen or a lamp is in shot, whatever the setting says.
+    var looksIndoor = false
     /// A face fills much of the frame, whatever the lens says.
     var closeUp = false
     /// Shot size from how big the subject is in frame ("close-up", "medium", "full shot"),
@@ -611,7 +613,7 @@ enum VisionLabels {
             // Vision often says "people" or "adult" for crowds; the count above says it better.
             if people != nil { subjects.removeAll { ["person", "people", "adult", "child", "crowd"].contains($0) } }
             return VisionResult(subjects: Array(subjects.prefix(4)), setting: setting, people: people, sign: sign,
-                                lightCue: cue,
+                                lightCue: cue, looksIndoor: looksIndoor,
                                 closeUp: closeUp, framing: framing)
         }.value
     }

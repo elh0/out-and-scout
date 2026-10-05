@@ -53,12 +53,19 @@ enum Captioner {
             let lead = seen.closeUp ? people : subjects.first.map { "\(people) by the \($0)" } ?? people
             subjects = [lead] + (seen.closeUp ? subjects : Array(subjects.dropFirst()))
         }
+        // In daylight with nothing indoor in shot, a bright pool in a dark frame is sun through
+        // leaves on the ground, not a lamp (shadows on paving read as a practical at midday).
+        var lightCue = seen.lightCue
+        if lightCue == "practical", [.morning, .midday, .afternoon].contains(light),
+           seen.setting != "INT", !seen.looksIndoor {
+            lightCue = "dappled light"
+        }
         // A lamp glowing in a dark frame is a practical; Vision rarely names it.
         // It leads the caption, since it's usually why the frame was taken.
         // Only when nothing alive is the subject: a bird against a bright sky isn't a lamp.
         let alive = ["bird", "animal", "dog", "cat", "mammal", "horse", "insect", "fish", "pet"]
         let somethingAlive = seen.subjects.prefix(2).contains { s in alive.contains { s.contains($0) } }
-        if seen.lightCue == "practical", seen.people == nil, !somethingAlive {
+        if lightCue == "practical", seen.people == nil, !somethingAlive {
             subjects.removeAll { $0.contains("lamp") }
             subjects.insert("practical lamp", at: 0)
         }
@@ -75,7 +82,7 @@ enum Captioner {
         default: timeBit = sunInFrame ? ", into the sun" : ""
         }
         // What the light is doing in the frame beats the time of day when we can see it.
-        let cueBit: String? = switch seen.lightCue ?? "" {
+        let cueBit: String? = switch lightCue ?? "" {
         case "dappled light": ", dappled light"
         case "backlit": ", backlit"
         default: nil
