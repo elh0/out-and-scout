@@ -16,6 +16,9 @@ struct ViewfinderFrame: View {
     @Binding var frameFraction: Double
     /// Upright phone: the v3c portrait frame (342 wide on a 390 screen).
     var portrait = false
+    /// E2: the image fills the whole screen under floating controls. Lines only show for a
+    /// picked ratio, and the label hides when the frame is big enough to reach the controls.
+    var fullBleed = false
 
     @State private var focusPoint: CGPoint?
     @State private var focusShownAt = Date.distantPast
@@ -35,7 +38,7 @@ struct ViewfinderFrame: View {
             ZStack(alignment: .topLeading) {
                 cameraLayer
 
-                AspectMask(frame: frame)
+                AspectMask(frame: frame, lines: !(fullBleed && store.aspect.isFull), shade: fullBleed ? 0.42 : nil)
 
                 if store.overlays.grid {
                     ThirdsGrid().frame(width: frame.width, height: frame.height).offset(x: frame.minX, y: frame.minY)
@@ -56,11 +59,13 @@ struct ViewfinderFrame: View {
 
                 // Ratio and lens in the frame's bottom-left corner, like the v3c prototype.
                 // Time and bearing live in the top bar now.
-                Text("\(store.aspect.display) · \(Format.mm(store.lensMM))mm")
-                    .font(.osDataSmall)
-                    .foregroundStyle(Palette.paper.opacity(0.7))
-                    .fixedSize()
-                    .offset(x: frame.minX + Space.xs, y: frame.maxY - 20)
+                if !fullBleed || (frame.width < size.width - 260 && frame.height < size.height - 100) {
+                    Text("\(store.aspect.display) · \(Format.mm(store.lensMM))mm")
+                        .font(.osDataSmall)
+                        .foregroundStyle(Palette.paper.opacity(0.7))
+                        .fixedSize()
+                        .offset(x: frame.minX + Space.xs, y: frame.maxY - 20)
+                }
 
                 // Portrait board: the sun's height in the frame's top-right corner.
                 if portrait, sun.elevation > 0 {
@@ -197,7 +202,8 @@ struct ViewfinderFrame: View {
     /// A small margin so even the widest ratio reads as a frame rather than full bleed.
     /// Portrait follows the board: 24 each side, 5 top and bottom.
     private func inset(_ size: CGSize) -> CGRect {
-        CGRect(origin: .zero, size: size).insetBy(dx: portrait ? 24 : 10, dy: portrait ? 5 : 8)
+        if fullBleed { return CGRect(origin: .zero, size: size) }
+        return CGRect(origin: .zero, size: size).insetBy(dx: portrait ? 24 : 10, dy: portrait ? 5 : 8)
     }
 
     /// How much of the sensor's width the lines take: 1 for ratios wider than the sensor
@@ -261,13 +267,20 @@ enum FrameMath {
 /// Darkens everything outside the frame lines (ink at 72%) and draws a thin frame line.
 struct AspectMask: View {
     let frame: CGRect
+    /// Draw the frame lines (E2 leaves them off until a ratio is picked).
+    var lines = true
+    /// How dark outside the frame goes; nil is the usual HUD shade.
+    var shade: Double? = nil
 
     var body: some View {
         Canvas { ctx, size in
             var outside = Path(CGRect(origin: .zero, size: size))
             outside.addRect(frame)
-            ctx.fill(outside, with: .color(Palette.hud), style: FillStyle(eoFill: true))
-            ctx.stroke(Path(frame.insetBy(dx: 0.5, dy: 0.5)), with: .color(Palette.paper.opacity(0.85)), lineWidth: 1)
+            let fill = shade.map { Color.black.opacity($0) } ?? Palette.hud
+            ctx.fill(outside, with: .color(fill), style: FillStyle(eoFill: true))
+            if lines {
+                ctx.stroke(Path(frame.insetBy(dx: 0.5, dy: 0.5)), with: .color(Palette.paper.opacity(lines && shade != nil ? 0.7 : 0.85)), lineWidth: 1)
+            }
         }
         .allowsHitTesting(false)
     }

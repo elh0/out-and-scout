@@ -146,42 +146,49 @@ struct ViewfinderView: View {
         .ignoresSafeArea(.keyboard)
     }
 
-    /// v3c layout: the top bar across the whole width; under it the toggles, the
-    /// viewfinder with the bottom bar beneath it, and the lens + shutter column.
+    /// E2 layout: the viewfinder fills the whole screen and every control floats over it,
+    /// with soft shade at the top, bottom and right edges so the type stays readable.
+    /// Taps that miss a control fall through to the viewfinder (focus, pinch, AE/AF lock).
     private func landscapeLayout(sun: SunPosition, planned: Date) -> some View {
-        VStack(spacing: 0) {
-            TopBar(
-                heading: motion.heading ?? location.heading,
-                headingAccuracy: location.headingAccuracy,
-                sunAzimuth: sun.azimuth,
-                planned: planned
-            )
-            .frame(height: 44)
-            .padding(.horizontal, Space.m)
+        ZStack {
+            ViewfinderFrame(sun: sun, sunDay: sunDay, planned: planned, frameFraction: $frameFraction, fullBleed: true)
+                .ignoresSafeArea()
 
-            HStack(spacing: Space.s) {
-                LeftRail()
-                    .frame(width: 48)
-                    .padding(.leading, Space.s)
+            EdgeShades()
+                .ignoresSafeArea()
 
-                VStack(spacing: 0) {
-                    // Fills the space between the rails; the sensor frame and ratio lines sit inside.
-                    ViewfinderFrame(sun: sun, sunDay: sunDay, planned: planned, frameFraction: $frameFraction)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .clipped()
+            VStack(spacing: 0) {
+                TopBar(
+                    heading: motion.heading ?? location.heading,
+                    headingAccuracy: location.headingAccuracy,
+                    sunAzimuth: sun.azimuth,
+                    planned: planned
+                )
+                .frame(height: 44)
+                .padding(.horizontal, Space.m)
 
-                    BottomBar(sunDay: sunDay, planned: planned, sun: sun)
-                        .frame(height: 56)
+                HStack(spacing: Space.s) {
+                    LeftRail()
+                        .frame(width: 48)
+                        .padding(.leading, Space.s)
+
+                    VStack(spacing: 0) {
+                        Spacer(minLength: 0)
+                        BottomBar(sunDay: sunDay, planned: planned, sun: sun)
+                            .frame(height: 56)
+                    }
+
+                    RightRail(capturing: capturing) {
+                        Task { await pin() }
+                    }
+                    .frame(width: 104)
+                    .padding(.trailing, Space.m)
                 }
-
-                RightRail(capturing: capturing) {
-                    Task { await pin() }
-                }
-                .frame(width: 104)
-                .padding(.trailing, Space.m)
             }
+            .padding(.vertical, Space.xs)
+            // Lifts type off a bright scene, like the prototype's text shadow.
+            .shadow(color: .black.opacity(0.55), radius: 1.5, y: 1)
         }
-        .padding(.vertical, Space.xs)
         // The keyboard slides over the viewfinder rather than shoving it off the top.
         .ignoresSafeArea(.keyboard)
     }
@@ -367,17 +374,20 @@ private struct SavedChip: View {
                 Text("\(shot.number) · \(shot.caption.isEmpty ? "Captioning…" : shot.caption)")
                     .lineLimit(1)
                 Text("Edit")
-                    .foregroundStyle(Palette.paper)
+                    .foregroundStyle(Palette.ink)
                     .padding(.horizontal, 10)
                     .frame(height: 26)
-                    .background(Palette.ink, in: Capsule())
+                    .background(Palette.paper, in: Capsule())
             }
             .font(.osData)
-            .foregroundStyle(Palette.ink)
+            .foregroundStyle(Palette.paper)
             .padding(.leading, 14)
             .padding(.trailing, 6)
             .frame(height: 36)
-            .background(Palette.paper, in: Capsule())
+            // Translucent over the live image, so the scene shows through behind the caption.
+            .background(Palette.ink.opacity(0.72), in: Capsule())
+            .background(.ultraThinMaterial, in: Capsule())
+            .overlay(Capsule().strokeBorder(Palette.paper.opacity(0.14), lineWidth: 1))
             .frame(minHeight: 44)
             .contentShape(Rectangle())
         }
@@ -421,5 +431,24 @@ private struct SceneChangeChip: View {
         .padding(.trailing, 4)
         .frame(height: 40)
         .background(Palette.paper, in: Capsule())
+    }
+}
+
+/// Soft black shade along the top, bottom and right edges of the full-screen viewfinder, so
+/// the floating controls read over a bright scene. Never takes a touch.
+private struct EdgeShades: View {
+    var body: some View {
+        ZStack {
+            LinearGradient(colors: [.black.opacity(0.5), .clear], startPoint: .top, endPoint: .bottom)
+                .frame(height: 96)
+                .frame(maxHeight: .infinity, alignment: .top)
+            LinearGradient(colors: [.black.opacity(0.55), .clear], startPoint: .bottom, endPoint: .top)
+                .frame(height: 110)
+                .frame(maxHeight: .infinity, alignment: .bottom)
+            LinearGradient(colors: [.black.opacity(0.35), .clear], startPoint: .trailing, endPoint: .leading)
+                .frame(width: 200)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+        }
+        .allowsHitTesting(false)
     }
 }
