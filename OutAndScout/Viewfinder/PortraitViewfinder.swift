@@ -40,7 +40,7 @@ struct PortraitTopRow: View {
             Button { store.plannedMinutes = nil } label: {
                 // Just the time: white for now, orange when scrubbed.
                 Text(Format.time(store.plannedMinutes == nil ? Date() : planned))
-                .font(.osData)
+                .font(.osNum)
                 .foregroundStyle(store.plannedMinutes == nil ? Palette.paper : Palette.sun)
                 .padding(.horizontal, 12)
                 .frame(height: 30)
@@ -173,7 +173,7 @@ struct PortraitTimeRow: View {
         VStack(spacing: 6) {
             HStack(alignment: .firstTextBaseline, spacing: Space.xs) {
                 Text(Format.time(planned)).font(Fonts.mono(13)).foregroundStyle(Palette.paper)
-                Text("Sun \(Int(sun.elevation.rounded()))°").font(.osDataSmall).foregroundStyle(PortraitInk.muted)
+                (Text("Sun ") + Text("\(Int(sun.elevation.rounded()))°").font(.osNumSmall)).font(.osDataSmall).foregroundStyle(PortraitInk.muted)
                 Spacer()
                 LightDot(golden: light == .goldenHour, size: 6)
                 Text(light.label).font(.osData).foregroundStyle(PortraitInk.soft).lineLimit(1)
@@ -207,7 +207,7 @@ struct PortraitBottomRow: View {
                 .disabled(capturing)
                 .accessibilityLabel("pin as shot \(store.nextShotNumber)")
                 .animation(.easeOut(duration: 0.12), value: capturing)
-                Text("Next \(store.nextShotNumber)").font(.osDataSmall).foregroundStyle(PortraitInk.muted)
+                (Text("Next ") + Text(store.nextShotNumber).font(.osNumSmall)).font(.osDataSmall).foregroundStyle(PortraitInk.muted)
             }
 
             PortraitLensDial()
@@ -233,7 +233,7 @@ struct PortraitLensDial: View {
         HStack(spacing: 4) {
             Button { store.stepLens(-1) } label: {
                 Text(prev.map(Format.mm) ?? " ")
-                    .font(.osDataSmall).foregroundStyle(PortraitInk.faint)
+                    .font(.osNumSmall).foregroundStyle(PortraitInk.faint)
                     .frame(width: 26, height: 44).contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -255,7 +255,7 @@ struct PortraitLensDial: View {
 
             Button { store.stepLens(1) } label: {
                 Text(next.map(Format.mm) ?? " ")
-                    .font(.osDataSmall).foregroundStyle(PortraitInk.faint)
+                    .font(.osNumSmall).foregroundStyle(PortraitInk.faint)
                     .frame(width: 26, height: 44).contentShape(Rectangle())
             }
             .buttonStyle(.plain)

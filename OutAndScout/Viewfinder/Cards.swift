@@ -80,7 +80,7 @@ struct CaptionCard: View {
 
                         VStack(alignment: .leading, spacing: Space.xs) {
                             Text("\(p.number) · \(Format.mm(p.lensMM))mm · \(Format.time(p.plannedTime)) · \(p.light.label)")
-                                .font(.osData)
+                                .font(.osNum)
                                 .foregroundStyle(Palette.graphite)
 
                             ForEach(Array(p.suggestions.enumerated()), id: \.offset) { i, s in

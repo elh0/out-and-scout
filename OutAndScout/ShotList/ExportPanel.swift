@@ -312,10 +312,10 @@ struct OrderList: View {
         let shape = RoundedRectangle(cornerRadius: 10, style: .continuous)
         return HStack(spacing: 10) {
             Text(r.number)
-                .font(.osDataSmall).foregroundStyle(Palette.graphite)
+                .font(.osNumSmall).foregroundStyle(Palette.graphite)
                 .frame(width: 22, alignment: .leading)
             EditableName(text: r.name, font: .osRow, emptyLabel: "Untitled", title: renameTitle, fillsWidth: true) { rename(r.id, $0) }
-            Text(r.detail).font(.osDataSmall).foregroundStyle(Palette.graphite).lineLimit(1)
+            Text(r.detail).font(.osNumSmall).foregroundStyle(Palette.graphite).lineLimit(1)
             Image(systemName: "line.3.horizontal")
                 .font(.system(size: 13))
                 .foregroundStyle(Palette.graphite)

@@ -270,7 +270,7 @@ struct RightRail: View {
             .disabled(capturing)
             .accessibilityLabel("pin as shot \(store.nextShotNumber)")
 
-            Text("Next \(store.nextShotNumber)")
+            (Text("Next ") + Text(store.nextShotNumber).font(.osNumSmall))
                 .font(.osDataSmall)
                 .foregroundStyle(Ink.muted)
         }
@@ -300,7 +300,7 @@ struct ShotStack: View {
                 .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(Palette.graphite, lineWidth: 1))
                 .offset(x: 4, y: 10)
                 Text("\(shots.count)")
-                    .font(.osDataSmall)
+                    .font(.osNumSmall)
                     .foregroundStyle(Palette.ink)
                     .padding(.horizontal, 4)
                     .frame(minWidth: 18, minHeight: 18)
@@ -331,7 +331,7 @@ struct LensWheel: View {
 
         return VStack(spacing: 0) {
             arrow("chevron.up", delta: 1, enabled: next != nil)
-            Text(next.map(Format.mm) ?? " ").font(.osDataSmall).foregroundStyle(Ink.faint)
+            Text(next.map(Format.mm) ?? " ").font(.osNumSmall).foregroundStyle(Ink.faint)
 
             Button { stepUpWrapping() } label: {
                 VStack(spacing: 0) {
@@ -341,6 +341,7 @@ struct LensWheel: View {
                     HStack(spacing: 4) {
                         Text("mm").foregroundStyle(Ink.muted)
                         Text(camera.lensLabel)
+                            .font(.osNumSmall)
                             .foregroundStyle(camera.cropIsSoft ? Ink.faint : Palette.paper.opacity(0.8))
                             .padding(.horizontal, 4)
                             .overlay(Capsule().strokeBorder(Palette.nightRule, lineWidth: 1))
@@ -355,7 +356,7 @@ struct LensWheel: View {
             .accessibilityLabel("lens \(Format.mm(store.lensMM)) millimetres, iphone \(camera.readout)")
             .accessibilityHint("tap for the next lens")
 
-            Text(prev.map(Format.mm) ?? " ").font(.osDataSmall).foregroundStyle(Ink.faint)
+            Text(prev.map(Format.mm) ?? " ").font(.osNumSmall).foregroundStyle(Ink.faint)
             arrow("chevron.down", delta: -1, enabled: prev != nil)
         }
         .contentShape(Rectangle())
@@ -424,7 +425,7 @@ struct BottomBar: View {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(alignment: .firstTextBaseline, spacing: Space.xs) {
                     Text(Format.time(planned)).font(Fonts.mono(13)).foregroundStyle(Palette.paper)
-                    Text("Sun \(Int(sun.elevation.rounded()))°").font(.osDataSmall).foregroundStyle(Ink.muted)
+                    (Text("Sun ") + Text("\(Int(sun.elevation.rounded()))°").font(.osNumSmall)).font(.osDataSmall).foregroundStyle(Ink.muted)
                 }
                 HStack(spacing: 6) {
                     LightDot(golden: light == .goldenHour, size: 6)
@@ -516,7 +517,7 @@ struct SunTimeline: View {
 
                 ForEach(Array(stride(from: range.lowerBound, through: range.upperBound, by: 3)), id: \.self) { h in
                     Text(String(format: "%02d", h))
-                        .font(.osTiny)
+                        .font(.osNumTiny)
                         .foregroundStyle(Ink.tick)
                         .fixedSize()
                         .position(x: min(max(x(Double(h) * 60), 6), w - 6), y: 28)

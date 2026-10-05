@@ -61,7 +61,7 @@ struct ViewfinderFrame: View {
                 // Time and bearing live in the top bar now.
                 if !fullBleed || (frame.width < size.width - 260 && frame.height < size.height - 100) {
                     Text("\(store.aspect.display) · \(Format.mm(store.lensMM))mm")
-                        .font(.osDataSmall)
+                        .font(.osNumSmall)
                         .foregroundStyle(Palette.paper.opacity(0.7))
                         .fixedSize()
                         .offset(x: frame.minX + Space.xs, y: frame.maxY - 20)
@@ -460,7 +460,7 @@ struct SunPathOverlay: View {
                 let dot = Path(ellipseIn: CGRect(x: p.x - r, y: p.y - r, width: r * 2, height: r * 2))
                 ctx.fill(dot, with: .color(Palette.sun))
                 let readout = ctx.resolve(Text("Az \(Int(sun.azimuth.rounded()))° · El \(Int(sun.elevation.rounded()))°")
-                    .font(.osDataSmall).foregroundColor(Palette.paper))
+                    .font(.osNumSmall).foregroundColor(Palette.paper))
                 // Keep the readout inside the frame: flip sides near the right edge and hold it
                 // clear of the top and bottom.
                 let w = readout.measure(in: size).width

@@ -184,7 +184,7 @@ struct ProjectsPanel: View {
             EditableName(text: scene.name, font: current ? .osRow : .osSupport, title: "Rename Scene") { store.renameScene(scene.id, to: $0) }
             Text(scene.note).font(.osData).foregroundStyle(Palette.graphite)
             Spacer()
-            Text("\(scene.shots.count)").font(.osData).foregroundStyle(Palette.graphite)
+            Text("\(scene.shots.count)").font(.osNum).foregroundStyle(Palette.graphite)
         }
         .padding(.leading, Space.m)
         .frame(minHeight: 44)

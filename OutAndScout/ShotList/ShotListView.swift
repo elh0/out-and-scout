@@ -270,7 +270,7 @@ struct ShotListView: View {
                         store.renameProject(project.id, to: $0)
                     }
                     Spacer()
-                    Text(Format.time(Date())).font(.osData).foregroundStyle(Palette.graphite)
+                    Text(Format.time(Date())).font(.osNum).foregroundStyle(Palette.graphite)
                 }
                 EditableName(text: s.name, font: Fonts.mono(20), title: "Rename Scene") { store.renameScene(s.id, to: $0) }
                 Text([s.note, Self.shots(s.shots.count)].filter { !$0.isEmpty }.joined(separator: " · "))
@@ -291,7 +291,7 @@ struct ShotListView: View {
                         } label: {
                             HStack(spacing: 4) {
                                 Text(sc.name)
-                                Text("\(sc.shots.count)").opacity(0.6)
+                                Text("\(sc.shots.count)").font(.osNum).opacity(0.6)
                             }
                             .font(.osData)
                             .foregroundStyle(on ? Palette.paper : Palette.ink)
@@ -415,7 +415,7 @@ struct ShotListView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                         .overlay(alignment: .bottomLeading) {
                             Text("\(shot.number) · \(Format.mm(shot.lensMM))mm · \(Format.time(shot.plannedTime))")
-                                .font(.osDataSmall)
+                                .font(.osNumSmall)
                                 .foregroundStyle(Palette.paper.opacity(0.8))
                                 .padding(.leading, 10)
                                 .padding(.bottom, 8)
@@ -520,7 +520,7 @@ struct ShotListView: View {
 
                     VStack(alignment: .leading, spacing: Space.xs) {
                         Text("\(shot.number) · \(shot.aspect.display) · \(Format.mm(shot.lensMM))mm · \(Format.time(shot.plannedTime))")
-                            .font(.osData)
+                            .font(.osNum)
                             .foregroundStyle(Palette.graphite)
                         // Tap the caption to rewrite it; the export uses whatever's here.
                         EditableName(text: shot.caption, font: .osTitle, lineLimit: 3, emptyLabel: "Untitled", title: "Edit Caption") {
@@ -627,7 +627,7 @@ struct ShotRow: View {
             ShotThumb(shot: shot)
                 .frame(width: 64, height: 64 / max(shot.aspect.value, 1))
             Text(shot.number)
-                .font(.osData)
+                .font(.osNum)
                 .foregroundStyle(Palette.graphite)
                 .frame(width: 28, alignment: .leading)
             VStack(alignment: .leading, spacing: 2) {
