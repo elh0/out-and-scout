@@ -68,55 +68,84 @@ struct ProjectsPanel: View {
             )
             Rule()
 
+            // E: the open project on top with all its scenes, then the others. Everything,
+            // the add and delete buttons too, scrolls together, so a long project never
+            // squeezes its scene list into a sliver.
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    ForEach(store.projects) { project in
-                        projectRow(project)
-                        if expanded == project.id {
-                            ForEach(project.scenes) { scene in
-                                sceneRow(project: project, scene: scene)
-                            }
-                            Button {
-                                store.select(project: project.id)
-                                store.panel = nil
-                                store.requestNewScene()
-                            } label: {
-                                Text("+ Scene")
-                                    .font(.osSupport)
-                                    .padding(.leading, Space.m)
-                                    .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
-                                    .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
+                    let current = store.currentProject
+                    VStack(alignment: .leading, spacing: 4) {
+                        EditableName(text: current.name, font: Fonts.sans(20, .regular), title: "Rename Project") {
+                            store.renameProject(current.id, to: $0)
                         }
+                        summary(current)
+                    }
+                    .padding(.vertical, Space.xs)
+                    .contextMenu {
+                        Button("Delete Project", systemImage: "trash", role: .destructive) { deleting = current }
+                    }
+
+                    Rule()
+                    ForEach(current.scenes) { scene in
+                        sceneRow(project: current, scene: scene, indent: false)
+                    }
+                    Button {
+                        store.panel = nil
+                        store.requestNewScene()
+                    } label: {
+                        Text("+ New scene")
+                            .font(.osRow)
+                            .underline(color: Sheet.muted)
+                            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+
+                    let others = store.projects.filter { $0.id != current.id }
+                    if !others.isEmpty {
+                        Caps(text: "Other projects")
+                            .foregroundStyle(Sheet.muted)
+                            .padding(.top, Space.l)
+                            .padding(.bottom, Space.xs)
                         Rule()
+                        ForEach(others) { project in
+                            projectRow(project)
+                            if expanded == project.id {
+                                ForEach(project.scenes) { scene in
+                                    sceneRow(project: project, scene: scene, indent: true)
+                                }
+                            }
+                        }
                     }
-                }
-            }
 
-            // Opens the floating name bar straight away; the project is made when you press Done.
-            Button("+ New Project") {
-                store.rename = RenameRequest(title: "New Project", text: "") { [store] in
-                    store.addProject(named: $0)
-                    store.panel = nil
-                }
-            }
-            .buttonStyle(PillButtonStyle(kind: .text))
-
-            // Small and grey on purpose, and it asks first: a clean slate, not a slip.
-            Button("Delete All Projects") { confirmDeleteAll = true }
-                .font(.osSupport)
-                .foregroundStyle(Sheet.muted)
-                .buttonStyle(.plain)
-                .frame(minHeight: 36)
-                .confirmationDialog("Delete every project?", isPresented: $confirmDeleteAll, titleVisibility: .visible) {
-                    Button("Delete All Projects and Shots", role: .destructive) {
-                        store.deleteAllProjects()
-                        expanded = store.currentProjectID
+                    // Opens the floating name bar straight away; the project is made when you press Done.
+                    Button("+ New project") {
+                        store.rename = RenameRequest(title: "New Project", text: "") { [store] in
+                            store.addProject(named: $0)
+                            store.panel = nil
+                        }
                     }
-                } message: {
-                    Text("All scenes, shots and stills go. You start again with an empty project. This can't be undone.")
+                    .buttonStyle(PillButtonStyle(kind: .text))
+                    .padding(.top, Space.xs)
+
+                    // Small and grey on purpose, and it asks first: a clean slate, not a slip.
+                    Button("Delete All Projects") { confirmDeleteAll = true }
+                        .font(.osSupport)
+                        .foregroundStyle(Sheet.muted)
+                        .buttonStyle(.plain)
+                        .frame(minHeight: 36)
+                        .confirmationDialog("Delete every project?", isPresented: $confirmDeleteAll, titleVisibility: .visible) {
+                            Button("Delete All Projects and Shots", role: .destructive) {
+                                store.deleteAllProjects()
+                                expanded = nil
+                            }
+                        } message: {
+                            Text("All scenes, shots and stills go. You start again with an empty project. This can't be undone.")
+                        }
                 }
+                .padding(.bottom, Space.l)
+            }
+            .scrollIndicators(.hidden)
         }
         .confirmationDialog(
             "Delete \"\(deleting?.name ?? "")\"?",
@@ -126,7 +155,7 @@ struct ProjectsPanel: View {
         ) { project in
             Button("Delete \(project.name)", role: .destructive) {
                 store.deleteProject(project.id)
-                expanded = store.currentProjectID
+                expanded = nil
                 deleting = nil
             }
         } message: { project in
@@ -147,22 +176,31 @@ struct ProjectsPanel: View {
         } message: { scene in
             Text("Its \(ShotListView.shots(scene.shots.count)) go too, stills included. This can't be undone.")
         }
-        .onAppear { expanded = store.currentProjectID }
     }
 
     // Tapping a name renames it in place; tapping the rest of the row expands or selects.
 
+    /// "Recce · 11 scenes · 65 shots", numbers in mono.
+    private func summary(_ project: Project) -> some View {
+        let shots = project.scenes.reduce(0) { $0 + $1.shots.count }
+        let kind = project.kind.isEmpty ? Text("") : Text("\(project.kind) · ")
+        return (kind
+                + Text("\(project.scenes.count)").font(.osNum) + Text(project.scenes.count == 1 ? " scene · " : " scenes · ")
+                + Text("\(shots)").font(.osNum) + Text(shots == 1 ? " shot" : " shots"))
+            .font(.osData)
+            .foregroundStyle(Sheet.muted)
+            .lineLimit(1)
+    }
+
+    // Another project: tap the name to rename it, the rest of the row to show its scenes.
     private func projectRow(_ project: Project) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: Space.xs) {
             EditableName(text: project.name, font: .osRow, title: "Rename Project") { store.renameProject(project.id, to: $0) }
-            if !project.kind.isEmpty {
-                Text(project.kind).font(.osSupport).foregroundStyle(Sheet.muted)
-            }
             Spacer()
-            Text(project.scenes.count == 1 ? "1 scene" : "\(project.scenes.count) scenes")
-                .font(.osData).foregroundStyle(Sheet.muted)
+            Text("\(project.scenes.count)").font(.osNum).foregroundStyle(Sheet.muted)
         }
-        .frame(minHeight: 48)
+        .frame(minHeight: 40)
+        .overlay(alignment: .bottom) { Rule() }
         .contentShape(Rectangle())
         .onTapGesture {
             withAnimation(.snappy(duration: 0.2)) { expanded = expanded == project.id ? nil : project.id }
@@ -173,16 +211,20 @@ struct ProjectsPanel: View {
         }
     }
 
-    private func sceneRow(project: Project, scene: ScoutScene) -> some View {
+    // E: a ruled row; the open scene bright, the rest grey, the shot count in mono.
+    private func sceneRow(project: Project, scene: ScoutScene, indent: Bool) -> some View {
         let current = scene.id == store.currentSceneID
         return HStack(alignment: .firstTextBaseline, spacing: Space.xs) {
-            EditableName(text: scene.name, font: current ? .osRow : .osSupport, title: "Rename Scene") { store.renameScene(scene.id, to: $0) }
-            Text(scene.note).font(.osData).foregroundStyle(Sheet.muted)
+            EditableName(text: scene.name, font: .osRow, color: current ? Sheet.text : Sheet.muted, title: "Rename Scene") { store.renameScene(scene.id, to: $0) }
+            if !scene.note.isEmpty {
+                Text(scene.note).font(.osData).foregroundStyle(Sheet.muted).lineLimit(1)
+            }
             Spacer()
             Text("\(scene.shots.count)").font(.osNum).foregroundStyle(Sheet.muted)
         }
-        .padding(.leading, Space.m)
-        .frame(minHeight: 44)
+        .padding(.leading, indent ? Space.m : 0)
+        .frame(minHeight: 40)
+        .overlay(alignment: .bottom) { Rule() }
         .contentShape(Rectangle())
         .onTapGesture {
             store.select(project: project.id, scene: scene.id)
@@ -240,7 +282,7 @@ struct KitPanel: View {
                         }
                     }
 
-                    SheetField(placeholder: "Search kit", text: $query)
+                    SheetField(placeholder: "Search kit", text: $query, square: true)
 
                     LazyVStack(alignment: .leading, spacing: 0) {
                         if tab == .camera {

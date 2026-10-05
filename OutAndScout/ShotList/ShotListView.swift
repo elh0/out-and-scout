@@ -196,7 +196,8 @@ struct ShotListView: View {
             }
 
             FadingHScroll {
-                HStack(spacing: Space.xxs) {
+                // E: plain words, so a clear gap between scenes does the job a pill's edge used to.
+                HStack(spacing: Space.l) {
                     let total = project.scenes.reduce(0) { $0 + $1.shots.count }
                     Chip(label: "All Scenes · \(total)", selected: sceneFilter == nil, underline: true) {
                         sceneFilter = nil

@@ -98,6 +98,8 @@ struct ExportPanel: View {
                 .padding(.bottom, 12)
             }
             .scrollIndicators(.hidden)
+            // Long scene lists stop at the footer instead of running under the button.
+            .clipped()
 
             // Always in reach: the export button, file name and preview stay put while the
             // options above scroll.
@@ -134,7 +136,10 @@ struct ExportPanel: View {
                 }
             }
             .padding(.horizontal, 20)
+            .padding(.top, 12)
             .padding(.bottom, 12)
+            .background(Sheet.bg)
+            .overlay(alignment: .top) { Rule() }
         }
         .frame(width: portrait ? nil : 380)
         // E: square edge, a hairline where it meets the screen behind.

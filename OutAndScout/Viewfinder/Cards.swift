@@ -39,16 +39,18 @@ struct SheetField: View {
     let placeholder: String
     @Binding var text: String
     var onSubmit: () -> Void = {}
+    /// E2 sheets: a square box with a dark hairline, not the rounded light field.
+    var square = false
 
     var body: some View {
-        TextField("", text: $text, prompt: Text(placeholder).foregroundStyle(Palette.graphite))
+        TextField("", text: $text, prompt: Text(placeholder).foregroundStyle(square ? Sheet.muted : Palette.graphite))
             .font(.osRow)
             .textInputAutocapitalization(.never)
             .submitLabel(.done)
             .onSubmit(onSubmit)
             .padding(.horizontal, Space.s)
             .frame(height: 44)
-            .overlay(RoundedRectangle(cornerRadius: Radius.card).strokeBorder(Palette.rule, lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: square ? 0 : Radius.card).strokeBorder(square ? Sheet.rule : Palette.rule, lineWidth: 1))
     }
 }
 
