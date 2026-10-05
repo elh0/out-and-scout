@@ -10,6 +10,9 @@ import UIKit
 /// screen for seconds after every portrait / landscape switch.
 struct CameraPreview: UIViewRepresentable {
     let camera: CameraController
+    /// Fill crops the picture to the screen's shape; off shows the whole sensor, like the
+    /// Camera app's photo mode.
+    var fill = true
 
     @MainActor private static var shared: PreviewView?
 
@@ -42,6 +45,10 @@ struct CameraPreview: UIViewRepresentable {
             view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
             view.isHidden = false
             container.addSubview(view)
+        }
+        let gravity: AVLayerVideoGravity = fill ? .resizeAspectFill : .resizeAspect
+        if container.serial == Self.newest, view.previewLayer.videoGravity != gravity {
+            view.previewLayer.videoGravity = gravity
         }
         if view.coordinator == nil, let device = camera.device {
             view.attach(device: device, camera: camera)

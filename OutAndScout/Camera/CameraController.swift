@@ -43,7 +43,7 @@ final class CameraController: NSObject {
     /// The camera's long-side field of view at 1×.
     @ObservationIgnored private var longSideFOV: Double = 70
     /// Long side over short side of the camera's frames (4:3 on iPhone).
-    @ObservationIgnored private var formatAspect: Double = 4.0 / 3.0
+    @ObservationIgnored private(set) var formatAspect: Double = 4.0 / 3.0
     /// Upright, the preview's width spans the camera's short side.
     @ObservationIgnored var portrait = false
     /// Field of view across the preview's width at 1×.

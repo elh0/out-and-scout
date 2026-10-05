@@ -23,6 +23,11 @@ struct ViewfinderFrame: View {
     /// fit inside it (that made wide lenses look tight); notices sit inside it.
     var clear = EdgeInsets()
 
+    /// E2: Fill stretches the picture edge to edge; Fit (the default) shows the whole
+    /// sensor like the Camera app, so 0.5x looks as wide as it does there.
+    @AppStorage("previewFill") private var previewFill = false
+    private var fits: Bool { fullBleed && !previewFill }
+
     @State private var focusPoint: CGPoint?
     @State private var focusShownAt = Date.distantPast
     /// The lens when the pinch began.
@@ -147,13 +152,14 @@ struct ViewfinderFrame: View {
                 syncLens(size: size, frame: frame)
             }
             .onChange(of: camera.status) { syncLens(size: size, frame: frame) }
+            .onChange(of: previewFill) { syncLens(size: size, frame: frameRect(size)) }
         }
     }
 
     @ViewBuilder private var cameraLayer: some View {
         switch camera.status {
         case .running:
-            CameraPreview(camera: camera)
+            CameraPreview(camera: camera, fill: !fits)
         case .unauthorized:
             placeholder("Camera access is off. Turn it on in Settings to frame shots.", settingsButton: true)
         case .unavailable:
@@ -209,12 +215,23 @@ struct ViewfinderFrame: View {
         // E2 Full: the whole screen width is the cine frame, so the widest lens reaches the
         // phone's 0.5x. The top and bottom of the frame run off screen, like the Camera app's
         // full-screen view.
+        // Fit Full: the cine frame as big as the picture allows, with no margin.
+        if fits, store.aspect.isFull {
+            let img = imageRect(size)
+            return FrameMath.fit(aspect: lineAspect, in: img.size).offsetBy(dx: img.minX, dy: img.minY)
+        }
         if fullBleed, store.aspect.isFull {
             let h = size.width / lineAspect
             return CGRect(x: 0, y: (size.height - h) / 2, width: size.width, height: h)
         }
-        let box = inset(size)
+        let box = fits ? imageRect(size).insetBy(dx: 6, dy: 6) : inset(size)
         return FrameMath.fit(aspect: lineAspect, in: box.size).offsetBy(dx: box.minX, dy: box.minY)
+    }
+
+    /// Where the camera picture sits: the whole view, or (Fit) the sensor's 4:3 centred in it.
+    private func imageRect(_ size: CGSize) -> CGRect {
+        guard fits else { return CGRect(origin: .zero, size: size) }
+        return FrameMath.fit(aspect: camera.formatAspect, in: size)
     }
 
     /// A small margin so even the widest ratio reads as a frame rather than full bleed.
@@ -245,7 +262,8 @@ struct ViewfinderFrame: View {
         let sensorHFOV = sensorWidthFOV
         // The lines see r of the sensor's width.
         let linesHFOV = 2 * atan(r * tan(sensorHFOV * .pi / 360)) * 180 / .pi
-        let fraction = Double(frame.width / size.width)
+        // Measured against the picture, which in Fit is narrower than the screen.
+        let fraction = Double(frame.width / imageRect(size).width)
         camera.match(targetHFOV: linesHFOV, frameFraction: fraction)
         // The still keeps the whole sensor frame, which is 1/r times as wide as the lines.
         frameFraction = min(fraction / r, 1)
@@ -254,7 +272,7 @@ struct ViewfinderFrame: View {
     /// The widest cine focal length the phone can show truthfully in these frame lines.
     private func widestFocal(size: CGSize, frame: CGRect) -> String {
         guard size.width > 0 else { return "—" }
-        let linesMax = camera.widestHFOV(frameFraction: Double(frame.width / size.width))
+        let linesMax = camera.widestHFOV(frameFraction: Double(frame.width / imageRect(size).width))
         let sensorHalf = tan(linesMax * .pi / 360) / linesToSensorWidth
         let width = store.kit.mode.widthMM * store.kit.lenses.squeeze / (onSide ? store.kit.frameAspect : 1)
         return Format.mm((width / (2 * sensorHalf)).rounded())
