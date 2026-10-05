@@ -14,6 +14,8 @@ struct EditableName: View {
     var emptyLabel = ""
     /// The bar's heading, e.g. "rename scene".
     var title = "Rename"
+    /// Take the full width offered, so the whole row is the tap target, not just the words.
+    var fillsWidth = false
     let onRename: (String) -> Void
 
     var body: some View {
@@ -21,6 +23,7 @@ struct EditableName: View {
             .font(font)
             .foregroundStyle(text.isEmpty ? color.opacity(0.5) : color)
             .lineLimit(lineLimit)
+            .frame(maxWidth: fillsWidth ? .infinity : nil, alignment: .leading)
             .contentShape(Rectangle())
             .onTapGesture {
                 store.rename = RenameRequest(title: title, text: text, commit: onRename)

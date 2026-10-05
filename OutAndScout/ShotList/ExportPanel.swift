@@ -59,6 +59,7 @@ struct ExportPanel: View {
                         OrderList(
                             heading: "Shots",
                             renameTitle: "Edit Caption",
+                            tapHint: "Tap to edit",
                             rows: thisScene.shots.map {
                                 .init(id: $0.id, number: $0.number, name: $0.caption, detail: "\(Format.mm($0.lensMM))mm")
                             },
@@ -279,6 +280,8 @@ struct OrderList: View {
 
     let heading: String
     let renameTitle: String
+    /// "Tap to rename" for scenes; captions say "Tap to edit".
+    var tapHint = "Tap to rename"
     let rows: [Row]
     let move: (IndexSet, Int) -> Void
     let rename: (UUID, String) -> Void
@@ -291,7 +294,7 @@ struct OrderList: View {
             HStack {
                 Text(heading)
                 Spacer()
-                Text("Tap to rename · drag to reorder")
+                Text("\(tapHint) · drag to reorder")
             }
             .font(.osDataSmall)
             .foregroundStyle(Palette.graphite)
@@ -311,8 +314,7 @@ struct OrderList: View {
             Text(r.number)
                 .font(.osDataSmall).foregroundStyle(Palette.graphite)
                 .frame(width: 22, alignment: .leading)
-            EditableName(text: r.name, font: .osRow, emptyLabel: "Untitled", title: renameTitle) { rename(r.id, $0) }
-                .frame(maxWidth: .infinity, alignment: .leading)
+            EditableName(text: r.name, font: .osRow, emptyLabel: "Untitled", title: renameTitle, fillsWidth: true) { rename(r.id, $0) }
             Text(r.detail).font(.osDataSmall).foregroundStyle(Palette.graphite).lineLimit(1)
             Image(systemName: "line.3.horizontal")
                 .font(.system(size: 13))
