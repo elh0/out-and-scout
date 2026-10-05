@@ -55,11 +55,11 @@ enum Captioner {
         }
         // In daylight with nothing indoor in shot, bright pools in a dark frame are sun through
         // leaves on the ground, not a lamp (shadows on paving read as a practical at midday).
-        // It needs a sign of outside or several scattered pools: a globe lamp on a desk is
-        // one bright patch with neither.
+        // It needs a sign of outside, several scattered pools, or no clipped core: a globe
+        // lamp on a desk is one bright patch that burns to white.
         var lightCue = seen.lightCue
         if lightCue == "practical", [LightPhase.morning, .midday, .afternoon].contains(light),
-           seen.setting != "INT", !seen.looksIndoor, seen.looksOutdoor || seen.brightPatches >= 4 {
+           seen.setting != "INT", !seen.looksIndoor, seen.looksOutdoor || seen.brightPatches >= 4 || !seen.hotCore {
             lightCue = "dappled light"
         }
         // A lamp glowing in a dark frame is a practical; Vision rarely names it.

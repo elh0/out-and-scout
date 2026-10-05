@@ -489,6 +489,8 @@ struct VisionResult {
     var lightCue: String?
     /// How many separate bright patches the light read found (sun through leaves makes many).
     var brightPatches = 0
+    /// Some of the frame clips to near white, like a lamp's bulb.
+    var hotCore = false
     /// Furniture, a screen or a lamp is in shot, whatever the setting says.
     var looksIndoor = false
     /// Something says outside: an EXT setting, plants, sky, brick, paving or a fence.
@@ -629,7 +631,7 @@ enum VisionLabels {
             // Vision often says "people" or "adult" for crowds; the count above says it better.
             if people != nil { subjects.removeAll { ["person", "people", "adult", "child", "crowd"].contains($0) } }
             return VisionResult(subjects: Array(subjects.prefix(4)), setting: setting, people: people, sign: sign,
-                                lightCue: cue, brightPatches: light.patches, looksIndoor: looksIndoor, looksOutdoor: looksOutdoor,
+                                lightCue: cue, brightPatches: light.patches, hotCore: light.hotCore, looksIndoor: looksIndoor, looksOutdoor: looksOutdoor,
                                 closeUp: closeUp, framing: framing)
         }.value
     }
@@ -644,19 +646,19 @@ private extension CGRect {
 /// Read from a 160-pixel copy of the still, brightness as the brightest of R, G and B so
 /// warm lamps count. Thresholds tuned on Elliot's recce stills (2 Oct 2026).
 enum LightCues {
-    static func read(_ data: Data, labels: [String: Float]) -> (cue: String?, patches: Int) {
+    static func read(_ data: Data, labels: [String: Float]) -> (cue: String?, patches: Int, hotCore: Bool) {
         guard let src = CGImageSourceCreateWithData(data as CFData, nil),
               let thumb = CGImageSourceCreateThumbnailAtIndex(src, 0, [
                   kCGImageSourceCreateThumbnailFromImageAlways: true,
                   kCGImageSourceThumbnailMaxPixelSize: 160,
                   kCGImageSourceCreateThumbnailWithTransform: true,
-              ] as CFDictionary) else { return (nil, 0) }
+              ] as CFDictionary) else { return (nil, 0, false) }
         let w = thumb.width, h = thumb.height
         var rgba = [UInt8](repeating: 0, count: w * h * 4)
         guard let ctx = CGContext(data: &rgba, width: w, height: h, bitsPerComponent: 8, bytesPerRow: w * 4,
                                   space: CGColorSpaceCreateDeviceRGB(),
                                   bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)
-        else { return (nil, 0) }
+        else { return (nil, 0, false) }
         ctx.draw(thumb, in: CGRect(x: 0, y: 0, width: w, height: h))
 
         let n = w * h
@@ -689,15 +691,17 @@ enum LightCues {
             let share = Double(size) / Double(n)
             if share >= 0.001 { blobs.append(share) }
         }
-        guard let largest = blobs.max() else { return (nil, 0) }
+        guard let largest = blobs.max() else { return (nil, 0, false) }
+        // A lamp's core clips to near white; sun pools on paving are mid-bright and soft.
+        let hot = lum.contains { $0 >= 250 }
 
         // A window has to be a confident label: laptop wallpaper and doors score ~0.3.
         let windowish = ["window", "door", "sky", "sun", "sunset_sunrise"].contains { (labels[$0] ?? 0) >= 0.45 }
         // Dappled first: sun patches on a cupboard door shouldn't read as a backlit door.
-        if blobs.count >= 4, mean < 0.3 { return ("dappled light", blobs.count) }
-        if windowish || largest >= 0.1 { return ("backlit", blobs.count) }
+        if blobs.count >= 4, mean < 0.3 { return ("dappled light", blobs.count, hot) }
+        if windowish || largest >= 0.1 { return ("backlit", blobs.count, hot) }
         let real = blobs.filter { $0 >= 0.005 }
-        if mean < 0.45, (1...2).contains(real.count), largest <= 0.10 { return ("practical", blobs.count) }
-        return (nil, blobs.count)
+        if mean < 0.45, (1...2).contains(real.count), largest <= 0.10 { return ("practical", blobs.count, hot) }
+        return (nil, blobs.count, hot)
     }
 }
