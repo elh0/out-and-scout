@@ -38,6 +38,11 @@ enum Captioner {
         if let framing = seen.framing {
             size = framing
             if framing.contains("close") { alt = "detail" }
+        } else {
+            // Nothing to measure (sky, trees, a far building): shot sizes don't fit, so just
+            // say how the lens sees it.
+            let f = lensMM * 28 / max(sensorWidthMM, 1)
+            size = f < 36 ? "wide" : f < 76 ? "mid" : "long lens"
         }
         // People lead when they're in frame: "Mid · two people by the bench".
         var subjects = seen.subjects

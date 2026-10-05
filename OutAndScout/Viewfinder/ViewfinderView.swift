@@ -299,17 +299,23 @@ struct ViewfinderView: View {
 
         let sensorWidth = store.kit.mode.widthMM * store.kit.lenses.squeeze
             / (ViewfinderFrame.sensorOnSide(aspect: store.aspect, portrait: portrait) ? store.kit.frameAspect : 1)
+        // The caption and the place name arrive separately: outdoors with a weak signal the
+        // street lookup can take ages, and the caption used to sit on "Captioning…" until it did.
         Task {
-            async let seen = VisionLabels.see(photo)
-            async let place = location.shotLocation()
+            let seen = await VisionLabels.see(photo)
             let suggestions = Captioner.suggestions(
                 lensMM: lens,
                 sensorWidthMM: sensorWidth,
-                seen: await seen,
+                seen: seen,
                 light: light,
                 sunInFrame: sunInFrame
             )
-            store.fillIn(shot.id, caption: suggestions.first?.text, location: await place)
+            // Never leave it blank: fall back to the light if Vision saw nothing usable.
+            store.fillIn(shot.id, caption: suggestions.first?.text ?? light.label, location: nil)
+        }
+        Task {
+            let place = await location.shotLocation()
+            store.fillIn(shot.id, caption: nil, location: place)
         }
     }
 

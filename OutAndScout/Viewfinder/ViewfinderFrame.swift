@@ -430,10 +430,15 @@ struct SunPathOverlay: View {
                 }
             }
 
+            let sunPoint = projector.point(azimuth: sun.azimuth, elevation: sun.elevation)
             if let now = nowSun, let p = projector.point(azimuth: now.azimuth, elevation: now.elevation), bounds.contains(p) {
                 let r: CGFloat = 7
                 ctx.stroke(Path(ellipseIn: CGRect(x: p.x - r, y: p.y - r, width: r * 2, height: r * 2)), with: .color(Palette.sun), lineWidth: 1.5)
-                ctx.draw(Text("Now").font(.osDataSmall).foregroundColor(Palette.paper), at: CGPoint(x: p.x, y: p.y - r - 3), anchor: .bottom)
+                // Only label it when it's clear of the planned sun and its readout.
+                let clear = sunPoint.map { hypot($0.x - p.x, $0.y - p.y) > 60 } ?? true
+                if clear, p.y > 24 {
+                    ctx.draw(Text("Now").font(.osDataSmall).foregroundColor(Palette.paper), at: CGPoint(x: p.x, y: p.y - r - 3), anchor: .bottom)
+                }
             }
 
             if let p = projector.point(azimuth: sun.azimuth, elevation: sun.elevation),
@@ -441,10 +446,14 @@ struct SunPathOverlay: View {
                 let r: CGFloat = 7
                 let dot = Path(ellipseIn: CGRect(x: p.x - r, y: p.y - r, width: r * 2, height: r * 2))
                 ctx.fill(dot, with: .color(Palette.sun))
-                let readout = Text("az \(Int(sun.azimuth.rounded()))° · el \(Int(sun.elevation.rounded()))°")
-                    .font(.osDataSmall).foregroundColor(Palette.paper)
-                let right = p.x < size.width - 110
-                ctx.draw(readout, at: CGPoint(x: right ? p.x + r + 5 : p.x - r - 5, y: p.y), anchor: right ? .leading : .trailing)
+                let readout = ctx.resolve(Text("Az \(Int(sun.azimuth.rounded()))° · El \(Int(sun.elevation.rounded()))°")
+                    .font(.osDataSmall).foregroundColor(Palette.paper))
+                // Keep the readout inside the frame: flip sides near the right edge and hold it
+                // clear of the top and bottom.
+                let w = readout.measure(in: size).width
+                let right = p.x + r + 5 + w < size.width - 6
+                let y = min(max(p.y, 12), size.height - 12)
+                ctx.draw(readout, at: CGPoint(x: right ? p.x + r + 5 : max(p.x - r - 5, w + 6), y: y), anchor: right ? .leading : .trailing)
             } else {
                 // Off-screen: arrow at the edge pointing the way to turn.
                 let left = Bearing.difference(sun.azimuth, projector.heading) < 0
