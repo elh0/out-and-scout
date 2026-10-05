@@ -20,7 +20,7 @@ struct ViewfinderFrame: View {
     /// picked ratio, and the label hides when the frame is big enough to reach the controls.
     var fullBleed = false
     /// Full bleed: the space the controls take at each edge. The frame no longer shrinks to
-    /// fit inside it (that made wide lenses look tight); kept for callers.
+    /// fit inside it (that made wide lenses look tight); notices sit inside it.
     var clear = EdgeInsets()
 
     @State private var focusPoint: CGPoint?
@@ -90,9 +90,12 @@ struct ViewfinderFrame: View {
                         .padding(.vertical, 2)
                         .background(Palette.hud, in: RoundedRectangle(cornerRadius: 4))
                         .fixedSize()
-                        .frame(width: frame.width)
+                        // E2: centred in the open space under the top controls, so it never
+                        // sits on the compass or the scene buttons.
+                        .frame(width: fullBleed ? max(size.width - clear.leading - clear.trailing, 1) : frame.width)
                         // Upright, the sun's height sits top-right, so this goes near the bottom.
-                        .offset(x: frame.minX, y: portrait ? frame.maxY - 44 : frame.minY + Space.xs)
+                        .offset(x: fullBleed ? clear.leading : frame.minX,
+                                y: fullBleed ? clear.top + Space.xs : portrait ? frame.maxY - 44 : frame.minY + Space.xs)
                 }
 
                 if let p = focusPoint {
