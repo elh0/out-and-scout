@@ -56,7 +56,7 @@ enum Captioner {
         // In daylight with nothing indoor in shot, a bright pool in a dark frame is sun through
         // leaves on the ground, not a lamp (shadows on paving read as a practical at midday).
         var lightCue = seen.lightCue
-        if lightCue == "practical", [.morning, .midday, .afternoon].contains(light),
+        if lightCue == "practical", [LightPhase.morning, .midday, .afternoon].contains(light),
            seen.setting != "INT", !seen.looksIndoor {
             lightCue = "dappled light"
         }
