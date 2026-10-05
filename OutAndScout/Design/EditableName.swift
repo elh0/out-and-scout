@@ -8,7 +8,7 @@ struct EditableName: View {
 
     let text: String
     let font: Font
-    var color: Color = Palette.ink
+    var color: Color = Sheet.text
     var lineLimit = 1
     /// Shown greyed when the text is empty, e.g. "untitled" for a caption.
     var emptyLabel = ""

@@ -17,18 +17,12 @@ struct SidePanel<Content: View>: View {
         .frame(width: portrait ? nil : width)
         .frame(maxHeight: .infinity, alignment: .top)
         .keyboardPadding()
-        .background(
-            UnevenRoundedRectangle(
-                topLeadingRadius: edge == .trailing ? Radius.sheet : 0,
-                bottomLeadingRadius: edge == .trailing ? Radius.sheet : 0,
-                bottomTrailingRadius: edge == .leading ? Radius.sheet : 0,
-                topTrailingRadius: edge == .leading ? Radius.sheet : 0,
-                style: .continuous
-            )
-            .fill(Palette.paper)
-            .ignoresSafeArea()
-        )
-        .foregroundStyle(Palette.ink)
+        // E: square edge, a hairline where the panel meets the viewfinder.
+        .background(Sheet.bg.ignoresSafeArea())
+        .overlay(alignment: edge == .trailing ? .leading : .trailing) {
+            Sheet.rule.frame(width: 1).ignoresSafeArea()
+        }
+        .foregroundStyle(Sheet.text)
     }
 }
 
@@ -38,15 +32,16 @@ struct PanelHeader: View {
     var action: (label: String, run: () -> Void)?
 
     var body: some View {
+        // E: a small caps title, a grey line under it, Done as an underlined word.
         HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(Font.osTitle)
-                Text(sub).font(.osData).foregroundStyle(Palette.graphite).lineLimit(1)
+            VStack(alignment: .leading, spacing: 4) {
+                Caps(text: title)
+                Text(sub).font(.osData).foregroundStyle(Sheet.muted).lineLimit(1)
             }
             Spacer()
             if let action {
                 Button(action.label, action: action.run)
-                    .buttonStyle(PillButtonStyle(kind: .secondary))
+                    .buttonStyle(PillButtonStyle(kind: .text))
             }
         }
     }
@@ -106,12 +101,12 @@ struct ProjectsPanel: View {
                     store.panel = nil
                 }
             }
-            .buttonStyle(PillButtonStyle(kind: .secondary))
+            .buttonStyle(PillButtonStyle(kind: .text))
 
             // Small and grey on purpose, and it asks first: a clean slate, not a slip.
             Button("Delete All Projects") { confirmDeleteAll = true }
                 .font(.osSupport)
-                .foregroundStyle(Palette.graphite)
+                .foregroundStyle(Sheet.muted)
                 .buttonStyle(.plain)
                 .frame(minHeight: 36)
                 .confirmationDialog("Delete every project?", isPresented: $confirmDeleteAll, titleVisibility: .visible) {
@@ -161,11 +156,11 @@ struct ProjectsPanel: View {
         HStack(alignment: .firstTextBaseline, spacing: Space.xs) {
             EditableName(text: project.name, font: .osRow, title: "Rename Project") { store.renameProject(project.id, to: $0) }
             if !project.kind.isEmpty {
-                Text(project.kind).font(.osSupport).foregroundStyle(Palette.graphite)
+                Text(project.kind).font(.osSupport).foregroundStyle(Sheet.muted)
             }
             Spacer()
             Text(project.scenes.count == 1 ? "1 scene" : "\(project.scenes.count) scenes")
-                .font(.osData).foregroundStyle(Palette.graphite)
+                .font(.osData).foregroundStyle(Sheet.muted)
         }
         .frame(minHeight: 48)
         .contentShape(Rectangle())
@@ -182,9 +177,9 @@ struct ProjectsPanel: View {
         let current = scene.id == store.currentSceneID
         return HStack(alignment: .firstTextBaseline, spacing: Space.xs) {
             EditableName(text: scene.name, font: current ? .osRow : .osSupport, title: "Rename Scene") { store.renameScene(scene.id, to: $0) }
-            Text(scene.note).font(.osData).foregroundStyle(Palette.graphite)
+            Text(scene.note).font(.osData).foregroundStyle(Sheet.muted)
             Spacer()
-            Text("\(scene.shots.count)").font(.osNum).foregroundStyle(Palette.graphite)
+            Text("\(scene.shots.count)").font(.osNum).foregroundStyle(Sheet.muted)
         }
         .padding(.leading, Space.m)
         .frame(minHeight: 44)
@@ -226,16 +221,16 @@ struct KitPanel: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Space.s) {
                     HStack(spacing: Space.xxs) {
-                        Chip(label: "Camera", selected: tab == .camera, onDark: false, mono: false) { tab = .camera }
-                        Chip(label: "Lenses", selected: tab == .lenses, onDark: false, mono: false) { tab = .lenses }
+                        Chip(label: "Camera", selected: tab == .camera, underline: true) { tab = .camera }
+                        Chip(label: "Lenses", selected: tab == .lenses, underline: true) { tab = .lenses }
                     }
 
                     if tab == .camera, store.kit.camera.modes.count > 1 {
-                        Text("Sensor mode").font(.osDataSmall).foregroundStyle(Palette.graphite)
+                        Text("Sensor mode").font(.osDataSmall).foregroundStyle(Sheet.muted)
                         FadingHScroll {
                             HStack(spacing: Space.xxs) {
                                 ForEach(store.kit.camera.modes) { mode in
-                                    Chip(label: mode.name, selected: mode == store.kit.mode, onDark: false) {
+                                    Chip(label: mode.name, selected: mode == store.kit.mode, underline: true) {
                                         var kit = store.kit
                                         kit.mode = mode
                                         store.setKit(kit)
@@ -269,7 +264,7 @@ struct KitPanel: View {
     private var empty: some View {
         Text("Nothing matches. Missing something? It can be requested.")
             .font(.osSupport)
-            .foregroundStyle(Palette.graphite)
+            .foregroundStyle(Sheet.muted)
             .padding(.vertical, Space.m)
     }
 
@@ -336,15 +331,15 @@ struct KitPanel: View {
     private func row(brand: String, name: String, sub: String, tag: String, selected: Bool) -> some View {
         HStack(alignment: .center, spacing: Space.s) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(brand).font(.osDataSmall).foregroundStyle(Palette.graphite)
+                Text(brand).font(.osDataSmall).foregroundStyle(Sheet.muted)
                 Text(name).font(.osRow)
-                Text(sub).font(.osData).foregroundStyle(Palette.graphite).lineLimit(1)
+                Text(sub).font(.osData).foregroundStyle(Sheet.muted).lineLimit(1)
             }
             Spacer()
-            Text(tag).font(.osDataSmall).foregroundStyle(Palette.graphite).lineLimit(1)
+            Text(tag).font(.osDataSmall).foregroundStyle(Sheet.muted).lineLimit(1)
             Circle()
-                .fill(selected ? Palette.ink : .clear)
-                .overlay(Circle().strokeBorder(Palette.rule, lineWidth: selected ? 0 : 1))
+                .fill(selected ? Sheet.text : .clear)
+                .overlay(Circle().strokeBorder(Sheet.rule, lineWidth: selected ? 0 : 1))
                 .frame(width: 10, height: 10)
         }
         .padding(.vertical, 6)

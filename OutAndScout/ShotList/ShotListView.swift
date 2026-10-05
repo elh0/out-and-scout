@@ -20,27 +20,27 @@ struct ShotListView: View {
 
     var body: some View {
         ZStack {
-            Palette.paper.ignoresSafeArea()
+            Sheet.bg.ignoresSafeArea()
 
             if portrait {
                 portraitList
-                    .foregroundStyle(Palette.ink)
+                    .foregroundStyle(Sheet.text)
                 portraitSheet
             } else {
                 HStack(spacing: 0) {
                     listPane
                         .frame(width: 300)
-                    Palette.rule.frame(width: 1).ignoresSafeArea()
+                    Sheet.rule.frame(width: 1).ignoresSafeArea()
                     detailPane
                         .frame(maxWidth: .infinity)
                 }
-                .foregroundStyle(Palette.ink)
+                .foregroundStyle(Sheet.text)
             }
 
             ZStack {
                 if store.showingExport {
                     // v3c: rgba(17,17,17,0.45) behind the panel; tap it to close.
-                    Palette.ink.opacity(0.45).ignoresSafeArea()
+                    Color.black.opacity(0.55).ignoresSafeArea()
                         .onTapGesture { store.showingExport = false }
                         .transition(.opacity)
                     ExportPanel(scene: sceneFilter.flatMap(scene(for:)))
@@ -85,8 +85,8 @@ struct ShotListView: View {
             }
             .padding(.top, 18)
             .padding(.horizontal, 20)
-            .background(Palette.paper)
-            .foregroundStyle(Palette.ink)
+            .background(Sheet.bg)
+            .foregroundStyle(Sheet.text)
             .presentationDetents([.medium, .large])
         }
         .confirmationDialog(
@@ -154,7 +154,7 @@ struct ShotListView: View {
                     // Clears every shot in view: this scene, or all scenes. Asks first.
                     Button("Delete All") { confirmDeleteAll = true }
                         .font(.osSupport)
-                        .foregroundStyle(Palette.graphite)
+                        .foregroundStyle(Sheet.muted)
                         .buttonStyle(.plain)
                         .frame(minHeight: 44)
                         .padding(.trailing, Space.s)
@@ -182,27 +182,27 @@ struct ShotListView: View {
 
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 0) {
-                    Text("Shot List · ").font(.osData).foregroundStyle(Palette.graphite)
-                    EditableName(text: project.name, font: .osData, color: Palette.graphite, title: "Rename Project") {
+                    Text("Shot List · ").font(.osData).foregroundStyle(Sheet.muted)
+                    EditableName(text: project.name, font: .osData, color: Sheet.muted, title: "Rename Project") {
                         store.renameProject(project.id, to: $0)
                     }
                 }
                 if let s = sceneFilter.flatMap(scene(for:)) {
-                    EditableName(text: s.name, font: .osTitle, title: "Rename Scene") { store.renameScene(s.id, to: $0) }
+                    EditableName(text: s.name, font: Fonts.sans(22, .regular), title: "Rename Scene") { store.renameScene(s.id, to: $0) }
                 } else {
-                    Text("All Scenes").font(.osTitle).lineLimit(1)
+                    Text("All scenes").font(Fonts.sans(22, .regular)).lineLimit(1)
                 }
-                Text(subtitle).font(.osSupport).foregroundStyle(Palette.graphite)
+                Text(subtitle).font(.osSupport).foregroundStyle(Sheet.muted)
             }
 
             FadingHScroll {
                 HStack(spacing: Space.xxs) {
                     let total = project.scenes.reduce(0) { $0 + $1.shots.count }
-                    Chip(label: "All Scenes · \(total)", selected: sceneFilter == nil, onDark: false, mono: false) {
+                    Chip(label: "All Scenes · \(total)", selected: sceneFilter == nil, underline: true) {
                         sceneFilter = nil
                     }
                     ForEach(project.scenes) { s in
-                        Chip(label: "\(s.name) · \(s.shots.count)", selected: sceneFilter == s.id, onDark: false, mono: false) {
+                        Chip(label: "\(s.name) · \(s.shots.count)", selected: sceneFilter == s.id, underline: true) {
                             sceneFilter = s.id
                             store.select(project: project.id, scene: s.id)
                         }
@@ -214,7 +214,7 @@ struct ShotListView: View {
                             }
                         }
                     }
-                    Chip(label: "+ Scene", onDark: false, mono: false) {
+                    Chip(label: "+ Scene", underline: true) {
                         store.showingShotList = false
                         store.requestNewScene()
                     }
@@ -225,7 +225,7 @@ struct ShotListView: View {
             if visible.isEmpty {
                 Text("No shots in this scene yet. Pin one from the viewfinder and it lands here.")
                     .font(.osSupport)
-                    .foregroundStyle(Palette.graphite)
+                    .foregroundStyle(Sheet.muted)
                     .padding(.top, Space.m)
                 Spacer()
             } else {
@@ -266,15 +266,15 @@ struct ShotListView: View {
         return VStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
-                    EditableName(text: project.name, font: .osData, color: Palette.graphite, title: "Rename Project") {
+                    EditableName(text: project.name, font: .osData, color: Sheet.muted, title: "Rename Project") {
                         store.renameProject(project.id, to: $0)
                     }
                     Spacer()
-                    Text(Format.time(Date())).font(.osNum).foregroundStyle(Palette.graphite)
+                    Text(Format.time(Date())).font(.osNum).foregroundStyle(Sheet.muted)
                 }
-                EditableName(text: s.name, font: Fonts.mono(20), title: "Rename Scene") { store.renameScene(s.id, to: $0) }
+                EditableName(text: s.name, font: Fonts.sans(22, .regular), title: "Rename Scene") { store.renameScene(s.id, to: $0) }
                 Text([s.note, Self.shots(s.shots.count)].filter { !$0.isEmpty }.joined(separator: " · "))
-                    .font(.osData).foregroundStyle(Palette.graphite).lineLimit(1)
+                    .font(.osData).foregroundStyle(Sheet.muted).lineLimit(1)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.horizontal, Space.l)
@@ -294,11 +294,11 @@ struct ShotListView: View {
                                 Text("\(sc.shots.count)").font(.osNum).opacity(0.6)
                             }
                             .font(.osData)
-                            .foregroundStyle(on ? Palette.paper : Palette.ink)
+                            .foregroundStyle(on ? Sheet.bg : Sheet.text)
                             .padding(.horizontal, 12)
                             .frame(height: 32)
-                            .background(on ? Palette.ink : .clear, in: Capsule())
-                            .overlay(Capsule().strokeBorder(on ? Palette.ink : Palette.rule, lineWidth: 1))
+                            .background(on ? Sheet.text : .clear, in: Capsule())
+                            .overlay(Capsule().strokeBorder(on ? Sheet.text : Sheet.rule, lineWidth: 1))
                             .contentShape(Capsule())
                         }
                         .buttonStyle(.plain)
@@ -335,7 +335,7 @@ struct ShotListView: View {
                     if s.shots.isEmpty {
                         Text("No shots in this scene yet.")
                             .font(.osRow)
-                            .foregroundStyle(Palette.graphite)
+                            .foregroundStyle(Sheet.muted)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.vertical, 24)
                             .padding(.horizontal, Space.l)
@@ -352,20 +352,20 @@ struct ShotListView: View {
                         Text("Viewfinder")
                     }
                     .font(.osTitle)
-                    .foregroundStyle(Palette.ink)
+                    .foregroundStyle(Sheet.text)
                     .frame(maxWidth: .infinity)
                     .frame(height: 48)
-                    .overlay(Capsule().strokeBorder(Palette.ink, lineWidth: 1))
+                    .overlay(Capsule().strokeBorder(Sheet.text, lineWidth: 1))
                     .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
                 Button { store.showingExport = true } label: {
                     Text("Export")
                         .font(.osTitle)
-                        .foregroundStyle(Palette.paper)
+                        .foregroundStyle(Sheet.bg)
                         .frame(maxWidth: .infinity)
                         .frame(height: 48)
-                        .background(Palette.ink, in: Capsule())
+                        .background(Sheet.text, in: Capsule())
                         .contentShape(Capsule())
                 }
                 .buttonStyle(.plain)
@@ -392,7 +392,7 @@ struct ShotListView: View {
     @ViewBuilder private var portraitSheet: some View {
         if let id = sheetID, let shot = store.shot(id) {
             ZStack(alignment: .bottom) {
-                Palette.ink.opacity(0.4).ignoresSafeArea()
+                Color.black.opacity(0.55).ignoresSafeArea()
                     .onTapGesture { sheetID = nil }
                     .transition(.opacity)
 
@@ -416,7 +416,7 @@ struct ShotListView: View {
                         .overlay(alignment: .bottomLeading) {
                             Text("\(shot.number) · \(Format.mm(shot.lensMM))mm · \(Format.time(shot.plannedTime))")
                                 .font(.osNumSmall)
-                                .foregroundStyle(Palette.paper.opacity(0.8))
+                                .foregroundStyle(Sheet.text.opacity(0.8))
                                 .padding(.leading, 10)
                                 .padding(.bottom, 8)
                         }
@@ -425,8 +425,8 @@ struct ShotListView: View {
                         .accessibilityHint("tap to see it full screen")
 
                     Text(shot.caption.isEmpty ? "Untitled" : shot.caption)
-                        .font(Fonts.mono(15))
-                        .foregroundStyle(shot.caption.isEmpty ? Palette.graphite : Palette.ink)
+                        .font(Fonts.sans(15, .regular))
+                        .foregroundStyle(shot.caption.isEmpty ? Sheet.muted : Sheet.text)
                         .lineLimit(3)
 
                     HStack(alignment: .top, spacing: Space.xs) {
@@ -444,10 +444,10 @@ struct ShotListView: View {
                         } label: {
                             Text("Edit Caption")
                                 .font(.osRow)
-                                .foregroundStyle(Palette.ink)
+                                .foregroundStyle(Sheet.text)
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 44)
-                                .overlay(Capsule().strokeBorder(Palette.rule, lineWidth: 1))
+                                .overlay(Capsule().strokeBorder(Sheet.rule, lineWidth: 1))
                                 .contentShape(Capsule())
                         }
                         .buttonStyle(.plain)
@@ -457,10 +457,10 @@ struct ShotListView: View {
                         } label: {
                             Text("Reframe")
                                 .font(.osRow)
-                                .foregroundStyle(Palette.paper)
+                                .foregroundStyle(Sheet.bg)
                                 .frame(maxWidth: .infinity)
                                 .frame(height: 44)
-                                .background(Palette.ink, in: Capsule())
+                                .background(Sheet.text, in: Capsule())
                                 .contentShape(Capsule())
                         }
                         .buttonStyle(.plain)
@@ -471,10 +471,10 @@ struct ShotListView: View {
                 .padding(.bottom, Space.xs)
                 .background(
                     UnevenRoundedRectangle(topLeadingRadius: 24, topTrailingRadius: 24, style: .continuous)
-                        .fill(Palette.paper)
+                        .fill(Sheet.bg)
                         .ignoresSafeArea()
                 )
-                .foregroundStyle(Palette.ink)
+                .foregroundStyle(Sheet.text)
                 .simultaneousGesture(
                     DragGesture(minimumDistance: 20).onEnded { v in
                         if v.translation.height > 80 { sheetID = nil }
@@ -490,14 +490,14 @@ struct ShotListView: View {
         Button { reordering = true } label: {
             Text("Hold a scene to delete it · tap here to rename or reorder")
                 .font(.osDataSmall)
-                .foregroundStyle(Palette.graphite)
+                .foregroundStyle(Sheet.muted)
         }
         .buttonStyle(.plain)
     }
 
     private func sheetCell(_ label: String, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(label).foregroundStyle(Palette.graphite)
+            Text(label).foregroundStyle(Sheet.muted)
             Text(value).lineLimit(1).minimumScaleFactor(0.8)
         }
         .font(.osData)
@@ -521,20 +521,20 @@ struct ShotListView: View {
                     VStack(alignment: .leading, spacing: Space.xs) {
                         Text("\(shot.number) · \(shot.aspect.display) · \(Format.mm(shot.lensMM))mm · \(Format.time(shot.plannedTime))")
                             .font(.osNum)
-                            .foregroundStyle(Palette.graphite)
+                            .foregroundStyle(Sheet.muted)
                         // Tap the caption to rewrite it; the export uses whatever's here.
                         EditableName(text: shot.caption, font: .osTitle, lineLimit: 3, emptyLabel: "Untitled", title: "Edit Caption") {
                             store.setCaption(shot.id, to: $0)
                         }
                         .id(shot.id)
                         HStack(spacing: 0) {
-                            EditableName(text: item.scene.name, font: .osSupport, color: Palette.graphite, title: "Rename Scene") {
+                            EditableName(text: item.scene.name, font: .osSupport, color: Sheet.muted, title: "Rename Scene") {
                                 store.renameScene(item.scene.id, to: $0)
                             }
-                            Text(" · \(shot.cameraName)").font(.osSupport).foregroundStyle(Palette.graphite)
+                            Text(" · \(shot.cameraName)").font(.osSupport).foregroundStyle(Sheet.muted)
                         }
                         if let loc = shot.location {
-                            Text(loc.display).font(.osData).foregroundStyle(Palette.graphite).lineLimit(2)
+                            Text(loc.display).font(.osData).foregroundStyle(Sheet.muted).lineLimit(2)
                         }
                     }
                 }
@@ -551,10 +551,10 @@ struct ShotListView: View {
                 // Frame lines can be changed after the shot; "full" shows the whole frame.
                 FadingHScroll {
                     HStack(spacing: Space.xxs) {
-                        Text("Frame lines").font(.osDataSmall).foregroundStyle(Palette.graphite)
+                        Text("Frame lines").font(.osDataSmall).foregroundStyle(Sheet.muted)
                             .padding(.trailing, Space.xxs)
                         ForEach([AspectRatio.full(shot.stillAspect ?? AspectRatio.viewfinderValue)] + store.aspectStrip) { a in
-                            Chip(label: a.display, selected: a.label == shot.aspect.label, onDark: false) {
+                            Chip(label: a.display, selected: a.label == shot.aspect.label, underline: true) {
                                 store.setShotAspect(shot.id, to: a)
                             }
                         }
@@ -564,12 +564,12 @@ struct ShotListView: View {
 
                 HStack(spacing: Space.xs) {
                     Button("Delete") { confirmDelete = true }
-                        .buttonStyle(PillButtonStyle(kind: .secondary))
+                        .buttonStyle(PillButtonStyle(kind: .text))
                     Button("Reframe") { reframe(shot) }
-                        .buttonStyle(PillButtonStyle(kind: .secondary))
+                        .buttonStyle(PillButtonStyle(kind: .text))
                     Spacer()
                     Button("Export List") { store.showingExport = true }
-                        .buttonStyle(PillButtonStyle(kind: .primary))
+                        .buttonStyle(PillButtonStyle(kind: .outline))
                         .frame(maxWidth: 200)
                 }
                 Spacer(minLength: 0)
@@ -586,7 +586,7 @@ struct ShotListView: View {
                 Spacer()
                 Text("Pin a shot from the viewfinder to see it here.")
                     .font(.osSupport)
-                    .foregroundStyle(Palette.graphite)
+                    .foregroundStyle(Sheet.muted)
                 Spacer()
             }
         }
@@ -596,7 +596,7 @@ struct ShotListView: View {
 
     private func readout(_ label: String, _ value: String, golden: Bool? = nil) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(label).font(.osDataSmall).foregroundStyle(Palette.graphite)
+            Text(label).font(.osDataSmall).foregroundStyle(Sheet.muted)
             HStack(spacing: Space.xxs) {
                 if let golden { LightDot(golden: golden) }
                 Text(value).font(.osData).lineLimit(1).minimumScaleFactor(0.75)
@@ -616,7 +616,8 @@ struct ShotListView: View {
     }
 }
 
-/// Thumb, number, title, mono meta, light dot.
+/// E1 row: number, caption, lens and time on one ruled line. The picked row is bright,
+/// the rest grey; a golden-hour time is the one orange thing.
 struct ShotRow: View {
     let shot: Shot
     var sceneName: String?
@@ -624,26 +625,26 @@ struct ShotRow: View {
 
     var body: some View {
         HStack(spacing: Space.s) {
-            ShotThumb(shot: shot)
-                .frame(width: 64, height: 64 / max(shot.aspect.value, 1))
             Text(shot.number)
                 .font(.osNum)
-                .foregroundStyle(Palette.graphite)
-                .frame(width: 28, alignment: .leading)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(shot.caption.isEmpty ? "Untitled" : shot.caption).font(.osRow).lineLimit(1)
-                Text(sceneName.map { "\($0) · \(shot.meta)" } ?? shot.meta)
-                    .font(.osData)
-                    .foregroundStyle(Palette.graphite)
-                    .lineLimit(1)
-            }
-            Spacer(minLength: 0)
-            LightDot(golden: shot.isGolden)
+                .foregroundStyle(Sheet.muted)
+                .frame(width: 34, alignment: .leading)
+            (Text(sceneName.map { "\($0) · " } ?? "").foregroundStyle(Sheet.muted)
+                + Text(shot.caption.isEmpty ? "Untitled" : shot.caption))
+                .font(.osRow)
+                .foregroundStyle(selected ? Sheet.text : Sheet.muted)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Text("\(Format.mm(shot.lensMM))mm")
+                .font(.osNum)
+                .foregroundStyle(Sheet.muted)
+                .frame(width: 46, alignment: .trailing)
+            Text(Format.time(shot.plannedTime))
+                .font(.osNum)
+                .foregroundStyle(shot.isGolden ? Palette.sun : Sheet.muted)
+                .frame(width: 40, alignment: .trailing)
         }
-        .padding(.vertical, Space.xs)
-        .padding(.horizontal, Space.xs)
-        .frame(minHeight: 56)
-        .background(selected ? Palette.ink.opacity(0.05) : .clear, in: RoundedRectangle(cornerRadius: Radius.readout))
+        .frame(height: 34)
         .overlay(alignment: .bottom) { Rule() }
         .contentShape(Rectangle())
     }
@@ -658,13 +659,13 @@ struct PortraitShotRow: View {
             ShotThumb(shot: shot)
                 .frame(width: 72, height: 40)
             VStack(alignment: .leading, spacing: 3) {
-                (Text(shot.number).foregroundStyle(Palette.graphite)
+                (Text(shot.number).font(.osNum).foregroundStyle(Sheet.muted)
                     + Text(" " + (shot.caption.isEmpty ? "Untitled" : shot.caption)))
-                    .font(Fonts.mono(13))
+                    .font(Fonts.sans(13, .regular))
                     .lineLimit(1)
                 Text(["\(Format.mm(shot.lensMM))mm", Format.time(shot.plannedTime), shot.light.label, shot.sunSide].compactMap { $0 }.joined(separator: " · "))
                     .font(.osData)
-                    .foregroundStyle(Palette.graphite)
+                    .foregroundStyle(Sheet.muted)
                     .lineLimit(1)
             }
             Spacer(minLength: 0)
@@ -701,7 +702,7 @@ struct ShotViewer: View {
                 Spacer()
                 Text("\(shot.number) · \(shot.caption.isEmpty ? "Untitled" : shot.caption) · \(Format.mm(shot.lensMM))mm · \(shot.aspect.display)")
                     .font(.osData)
-                    .foregroundStyle(Palette.paper)
+                    .foregroundStyle(Sheet.text)
                     .padding(.horizontal, Space.xs)
                     .padding(.vertical, Space.xxs + 1)
                     .background(Palette.hud, in: RoundedRectangle(cornerRadius: Radius.readout))
@@ -714,7 +715,7 @@ struct ShotViewer: View {
         .overlay(alignment: .topTrailing) {
             Image(systemName: "xmark")
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(Palette.paper)
+                .foregroundStyle(Sheet.text)
                 .frame(width: 36, height: 36)
                 .background(Palette.hud, in: Circle())
                 .padding(Space.s)
@@ -736,7 +737,7 @@ struct ShotViewer: View {
             } label: {
                 Label("Save to Photos", systemImage: "square.and.arrow.down")
                     .font(.osData)
-                    .foregroundStyle(Palette.paper)
+                    .foregroundStyle(Sheet.text)
                     .padding(.horizontal, 12)
                     .frame(height: 36)
                     .background(Palette.hud, in: Capsule())

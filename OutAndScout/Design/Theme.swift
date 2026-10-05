@@ -31,6 +31,25 @@ enum Palette {
     static let hud = Color(hex: 0x111111, opacity: 0.72)
 }
 
+/// E2 sheets (Shot List, Export, Projects, Kit): dark, ruled lines instead of boxes,
+/// underlined words instead of pills, one outlined button.
+enum Sheet {
+    static let bg = Color(hex: 0x0E0E0D)
+    static let text = Color(hex: 0xECEBE6)
+    static let muted = Color(hex: 0x8C8A83)
+    static let rule = Color(hex: 0x2A2926)
+}
+
+/// A small caps label, like "EXPORT" or "OTHER PROJECTS".
+struct Caps: View {
+    let text: String
+    var body: some View {
+        Text(text.uppercased())
+            .font(.osDataSmall)
+            .tracking(1.2)
+    }
+}
+
 enum Space {
     static let xxs: CGFloat = 4
     static let xs: CGFloat = 8
@@ -83,15 +102,43 @@ extension Font {
 
 /// Pill button. Primary is 56 tall and filled, secondary 44 and outlined.
 struct PillButtonStyle: ButtonStyle {
-    enum Kind { case primary, secondary }
+    /// outline: the one bordered button on an E2 sheet. text: an underlined word.
+    enum Kind { case primary, secondary, outline, text }
     var kind: Kind = .primary
     /// Light sheets use ink on paper; the viewfinder uses paper on ink.
     var onDark = false
 
-    func makeBody(configuration: Configuration) -> some View {
+    @ViewBuilder func makeBody(configuration: Configuration) -> some View {
+        switch kind {
+        case .outline:
+            configuration.label
+                .font(.osTitle)
+                .lineLimit(1)
+                .foregroundStyle(Sheet.text)
+                .frame(maxWidth: .infinity)
+                .frame(height: 40)
+                .overlay(Rectangle().strokeBorder(Sheet.text, lineWidth: 1))
+                .opacity(configuration.isPressed ? 0.6 : 1)
+                .contentShape(Rectangle())
+        case .text:
+            configuration.label
+                .font(.osRow)
+                .lineLimit(1)
+                .fixedSize()
+                .foregroundStyle(Sheet.text)
+                .underline(color: Sheet.muted)
+                .frame(minHeight: 44)
+                .opacity(configuration.isPressed ? 0.6 : 1)
+                .contentShape(Rectangle())
+        default:
+            pill(configuration)
+        }
+    }
+
+    private func pill(_ configuration: Configuration) -> some View {
         let fg = onDark ? Palette.ink : Palette.paper
         let bg = onDark ? Palette.paper : Palette.ink
-        configuration.label
+        return configuration.label
             .font(.osAction)
             .lineLimit(1)
             .fixedSize(horizontal: kind == .secondary, vertical: false)
@@ -112,9 +159,29 @@ struct Chip: View {
     var selected = false
     var onDark = true
     var mono = true
+    /// E2 sheets: a plain word, underlined when picked, grey when not. No capsule.
+    var underline = false
     let action: () -> Void
 
     var body: some View {
+        if underline {
+            Button(action: action) {
+                Text(label)
+                    .font(.osRow)
+                    .foregroundStyle(selected ? Sheet.text : Sheet.muted)
+                    .underline(selected, color: Sheet.text)
+                    .fixedSize()
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityAddTraits(selected ? .isSelected : [])
+        } else {
+            capsule
+        }
+    }
+
+    private var capsule: some View {
         Button(action: action) {
             Text(label)
                 .font(mono ? .osData : .osSupport)
@@ -163,7 +230,7 @@ struct LightDot: View {
 
 /// Thin horizontal rule in the light sheets.
 struct Rule: View {
-    var color = Palette.rule
+    var color = Sheet.rule
     var body: some View { color.frame(height: 1) }
 }
 

@@ -41,14 +41,15 @@ struct ExportPanel: View {
                     // Done is always here, so the panel can be closed however little room is left
                     // around it (upright it fills the screen).
                     PanelHeader(
-                        title: "Export Shot List",
+                        title: "Export",
                         sub: "\(project.name) · \(target.map { "\($0.name) · " } ?? "All scenes · ")\(ShotListView.shots(shots))",
                         action: ("Done", { store.showingExport = false })
                     )
 
-                    HStack(spacing: 6) {
-                        scopeCard("This Scene", "\(thisScene.name) · \(ShotListView.shots(thisScene.shots.count))", selected: !allScenes) { allScenes = false }
-                        scopeCard("All Scenes", "\(project.name) · \(ShotListView.shots(total))", selected: allScenes) { allScenes = true }
+                    // E: two words, the picked one underlined.
+                    HStack(spacing: Space.l) {
+                        Chip(label: "This scene", selected: !allScenes, underline: true) { allScenes = false }
+                        Chip(label: "All scenes", selected: allScenes, underline: true) { allScenes = true }
                     }
 
                     if allScenes && project.scenes.count > 1 {
@@ -68,17 +69,23 @@ struct ExportPanel: View {
                         )
                     }
 
-                    HStack(spacing: 6) {
-                        formatRow(.pdf, "PDF", nil)
-                        formatRow(.csv, "CSV", nil)
-                        formatRow(.photos, "Photos", nil)
+                    // E: ruled rows, a dot for the picked format.
+                    VStack(spacing: 0) {
+                        Rule()
+                        formatRow(.pdf, "PDF", "A page per scene, photos and sun times")
+                        formatRow(.csv, "CSV", "For the AD and the schedule")
+                        formatRow(.photos, "Photos", "Stills to your camera roll")
                         // The live link needs outandscout.com/s/<project> to exist first.
-                        formatRow(.link, "Link", nil)
+                        formatRow(.link, "Live link", "Soon")
                             .opacity(0.45)
                             .disabled(true)
                     }
 
-                    HStack(spacing: 6) {
+                    Text("\(target?.name ?? "\(project.name), all scenes") · \(ShotListView.shots(shots))")
+                        .font(.osData)
+                        .foregroundStyle(Sheet.muted)
+
+                    HStack(spacing: Space.l) {
                         includeChip("Frames", on: options.frames) { options.frames.toggle() }
                             .disabled(format == .csv || format == .photos)
                         includeChip("Sun Times", on: options.sunTimes) { options.sunTimes.toggle() }
@@ -96,28 +103,23 @@ struct ExportPanel: View {
             // options above scroll.
             VStack(spacing: 8) {
                 if let error {
-                    Text(error).font(.osData).foregroundStyle(Palette.graphite)
+                    Text(error).font(.osData).foregroundStyle(Sheet.muted)
                 }
 
-                Button { export(project: project, scene: target) } label: {
-                    Text(busy ? "Preparing…" : format == .photos
-                         ? "Save \(shots == 1 ? "1 Still" : "\(shots) Stills") to Photos"
-                         : "\(target == nil ? "Export All Scenes" : "Export Scene") · \(ext.uppercased())")
-                        .font(.osTitle)
-                        .foregroundStyle(Palette.paper)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 48)
-                        .background(Palette.ink, in: Capsule())
-                        .contentShape(Capsule())
+                // E: the one outlined button.
+                Button(busy ? "Preparing…" : format == .photos
+                       ? "Save \(shots == 1 ? "1 still" : "\(shots) stills") to Photos"
+                       : "\(target == nil ? "Export all scenes" : "Export scene") · \(ext.uppercased())") {
+                    export(project: project, scene: target)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PillButtonStyle(kind: .outline))
 
                 // Tap the file name to rename the export.
                 if format != .photos { HStack(spacing: 0) {
-                    EditableName(text: customName ?? defaultName, font: .osData, color: Palette.graphite, title: "File Name") {
+                    EditableName(text: customName ?? defaultName, font: .osData, color: Sheet.muted, title: "File Name") {
                         customName = Exporter.cleanName($0)
                     }
-                    Text(".\(ext)").font(.osData).foregroundStyle(Palette.graphite)
+                    Text(".\(ext)").font(.osData).foregroundStyle(Sheet.muted)
                 }
                 .frame(maxWidth: .infinity) }
 
@@ -127,7 +129,7 @@ struct ExportPanel: View {
                         .buttonStyle(.plain)
                         .font(.osData)
                         .underline()
-                        .foregroundStyle(Palette.ink)
+                        .foregroundStyle(Sheet.text)
                         .frame(maxWidth: .infinity, minHeight: 28)
                 }
             }
@@ -135,12 +137,10 @@ struct ExportPanel: View {
             .padding(.bottom, 12)
         }
         .frame(width: portrait ? nil : 380)
-        .background(
-            UnevenRoundedRectangle(topLeadingRadius: 20, bottomLeadingRadius: 20, style: .continuous)
-                .fill(Palette.paper)
-                .ignoresSafeArea()
-        )
-        .foregroundStyle(Palette.ink)
+        // E: square edge, a hairline where it meets the screen behind.
+        .background(Sheet.bg.ignoresSafeArea())
+        .overlay(alignment: .leading) { Sheet.rule.frame(width: 1).ignoresSafeArea() }
+        .foregroundStyle(Sheet.text)
         // The Shot List was showing every scene, so start there.
         .onAppear {
             allScenes = scene == nil
@@ -157,50 +157,29 @@ struct ExportPanel: View {
     }
 
     /// v3c scope card: 50 high, radius 12; picked = 2px ink on white, else a 1px rule.
-    private func scopeCard(_ label: String, _ sub: String, selected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(label).font(.osRow)
-                Text(sub).font(.osDataSmall).foregroundStyle(Palette.graphite).lineLimit(1)
-            }
-            .padding(.horizontal, 12)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(height: 50)
-            .modifier(Picked(selected: selected, radius: 12))
-        }
-        .buttonStyle(.plain)
-    }
-
-    /// v3c format card: 42 high, radius 12. No "for the crew" hints, as Elliot asked.
+    /// E format row: a dot (filled when picked), the name, a grey note, a rule under it.
     private func formatRow(_ choice: Choice, _ label: String, _ sub: String?) -> some View {
         Button { format = choice } label: {
-            HStack(spacing: 6) {
-                Text(label).font(.osRow)
-                if let sub { Text(sub).font(.osDataSmall).foregroundStyle(Palette.graphite) }
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                Circle()
+                    .fill(format == choice ? Sheet.text : .clear)
+                    .overlay(Circle().strokeBorder(Sheet.text, lineWidth: 1))
+                    .frame(width: 7, height: 7)
+                Text(label).font(.osRow).frame(width: 70, alignment: .leading)
+                if let sub { Text(sub).font(.osData).foregroundStyle(Sheet.muted).lineLimit(1) }
+                Spacer(minLength: 0)
             }
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal, 14)
-            .frame(height: 42)
-            .modifier(Picked(selected: format == choice, radius: 12))
+            .frame(height: 40)
+            .overlay(alignment: .bottom) { Rule() }
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(format == choice ? .isSelected : [])
     }
 
-    /// v3c include chip: 32 high, ink when on, rule outline when off.
+    /// E include toggle: the word, underlined when it's in the export.
     private func includeChip(_ label: String, on: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(label)
-                .font(.osData)
-                .foregroundStyle(on ? Palette.paper : Palette.ink)
-                .padding(.horizontal, 12)
-                .frame(height: 32)
-                .background(on ? Palette.ink : .clear, in: Capsule())
-                .overlay(Capsule().strokeBorder(on ? Palette.ink : Palette.rule, lineWidth: 1))
-                .frame(minHeight: 44)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(on ? .isSelected : [])
+        Chip(label: label, selected: on, underline: true, action: action)
     }
 
     private func preview(project: Project, scene: ScoutScene?) {
@@ -253,22 +232,8 @@ struct ExportPanel: View {
     }
 }
 
-/// 2px ink border on white when picked, otherwise a 1px rule border on the paper.
-private struct Picked: ViewModifier {
-    let selected: Bool
-    let radius: CGFloat
 
-    func body(content: Content) -> some View {
-        let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
-        content
-            .background(selected ? Color.white : .clear, in: shape)
-            .overlay(shape.strokeBorder(selected ? Palette.ink : Palette.rule, lineWidth: selected ? 2 : 1))
-            .contentShape(shape)
-            .accessibilityAddTraits(selected ? .isSelected : [])
-    }
-}
-
-/// A drag-to-reorder list: rows 40 high with 4 between them; drag the grip on the right
+/// A drag-to-reorder list: ruled rows 40 high, E style; drag the grip on the right
 /// and the row moves as you pass each neighbour, like the v3c board. Tap a name to rename it.
 struct OrderList: View {
     struct Row: Identifiable {
@@ -287,7 +252,7 @@ struct OrderList: View {
     let rename: (UUID, String) -> Void
 
     @State private var dragging: UUID?
-    private let pitch: CGFloat = 44
+    private let pitch: CGFloat = 40
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -297,9 +262,10 @@ struct OrderList: View {
                 Text("\(tapHint) · drag to reorder")
             }
             .font(.osDataSmall)
-            .foregroundStyle(Palette.graphite)
+            .foregroundStyle(Sheet.muted)
 
-            VStack(spacing: 4) {
+            VStack(spacing: 0) {
+                Rule()
                 ForEach(rows) { r in row(r) }
             }
             .coordinateSpace(name: "orderList")
@@ -309,16 +275,15 @@ struct OrderList: View {
 
     private func row(_ r: Row) -> some View {
         let picked = dragging == r.id
-        let shape = RoundedRectangle(cornerRadius: 10, style: .continuous)
         return HStack(spacing: 10) {
             Text(r.number)
-                .font(.osNumSmall).foregroundStyle(Palette.graphite)
+                .font(.osNumSmall).foregroundStyle(Sheet.muted)
                 .frame(width: 22, alignment: .leading)
             EditableName(text: r.name, font: .osRow, emptyLabel: "Untitled", title: renameTitle, fillsWidth: true) { rename(r.id, $0) }
-            Text(r.detail).font(.osNumSmall).foregroundStyle(Palette.graphite).lineLimit(1)
+            Text(r.detail).font(.osNumSmall).foregroundStyle(Sheet.muted).lineLimit(1)
             Image(systemName: "line.3.horizontal")
                 .font(.system(size: 13))
-                .foregroundStyle(Palette.graphite)
+                .foregroundStyle(Sheet.muted)
                 .frame(width: 36, height: 36)
                 .contentShape(Rectangle())
                 .gesture(
@@ -335,11 +300,10 @@ struct OrderList: View {
                 )
                 .accessibilityLabel("drag to reorder \(r.name)")
         }
-        .padding(.leading, 10)
         .padding(.trailing, 4)
         .frame(height: 40)
-        .background(picked ? Color.white : .clear, in: shape)
-        .overlay(shape.strokeBorder(picked ? Palette.ink : Palette.rule, lineWidth: picked ? 2 : 1))
+        .background(picked ? Sheet.text.opacity(0.08) : .clear)
+        .overlay(alignment: .bottom) { Rule() }
     }
 }
 
