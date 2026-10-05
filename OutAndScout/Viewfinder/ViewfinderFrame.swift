@@ -572,6 +572,24 @@ enum VisionLabels {
                 }
             }
 
+            // A small bird isn't what the frame is about, so the whole-frame classifier misses
+            // it (a robin on a sink ledge at 40mm came back "brick"). Look again in each salient
+            // region and in five overlapping half-size crops, for birds only, and only trust
+            // a confident score so branches don't turn into birds.
+            var smallBird = false
+            if (scores["bird"] ?? 0) < 0.1 {
+                var crops = (saliency.results?.first?.salientObjects ?? []).map(\.boundingBox).filter { $0.area > 0.002 }
+                for x in [0.0, 0.5] { for y in [0.0, 0.5] { crops.append(CGRect(x: x, y: y, width: 0.5, height: 0.5)) } }
+                crops.append(CGRect(x: 0.25, y: 0.25, width: 0.5, height: 0.5))
+                let looks = crops.map { r -> VNClassifyImageRequest in
+                    let q = VNClassifyImageRequest()
+                    q.regionOfInterest = r
+                    return q
+                }
+                try? handler.perform(looks)
+                smallBird = looks.contains { ($0.results ?? []).contains { $0.identifier == "bird" && $0.confidence >= 0.3 } }
+            }
+
             // Vision has "interior_room" and "outdoor" but no "indoor". A bright laptop screen
             // can score "outdoor", so furniture and screens rule EXT out.
             let inside = scores["interior_room"] ?? 0
@@ -592,7 +610,7 @@ enum VisionLabels {
             // read as a practical); keep dappled and backlit there. Long-lens stills of birds
             // and plants often don't score "outdoor" at all, so nature labels count too.
             let nature = ["bird", "plant", "tree", "foliage", "flower", "grass", "sky", "animal"]
-            let looksNatural = setting != "INT" && nature.contains { (scores[$0] ?? 0) >= 0.1 }
+            let looksNatural = setting != "INT" && (smallBird || nature.contains { (scores[$0] ?? 0) >= 0.1 })
             var cue = LightCues.read(data, labels: scores)
             if cue == "practical", (outside > 0.3 && inside < outside) || looksNatural { cue = nil }
             var subjects = Captioner.readable(ranked)
@@ -604,7 +622,7 @@ enum VisionLabels {
             if let animal, !subjects.contains(animal) { subjects.insert(animal, at: 0) }
             // The animal detector only knows cats and dogs, and the classifier names birds by
             // species, often wrongly (a robin came back "sparrow"), so just say "bird".
-            if (scores["bird"] ?? 0) >= 0.1 {
+            if smallBird || (scores["bird"] ?? 0) >= 0.1 {
                 subjects.removeAll { $0 == "bird" || $0 == "sparrow" }
                 subjects.insert("bird", at: 0)
             }
@@ -612,7 +630,9 @@ enum VisionLabels {
             if people != nil { subjects.removeAll { ["person", "people", "adult", "child", "crowd"].contains($0) } }
             return VisionResult(subjects: Array(subjects.prefix(4)), setting: setting, people: people, sign: sign,
                                 lightCue: cue,
-                                closeUp: closeUp, framing: framing)
+                                // The wall behind a small bird fills the saliency map; that's
+                                // not a close shot, so let the lens name the size.
+                                closeUp: closeUp, framing: smallBird ? nil : framing)
         }.value
     }
 }
