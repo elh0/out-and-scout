@@ -489,6 +489,8 @@ struct VisionResult {
     var lightCue: String?
     /// Furniture, a screen or a lamp is in shot, whatever the setting says.
     var looksIndoor = false
+    /// Something says outside: an EXT setting, plants, sky, brick, paving or a fence.
+    var looksOutdoor = false
     /// A face fills much of the frame, whatever the lens says.
     var closeUp = false
     /// Shot size from how big the subject is in frame ("close-up", "medium", "full shot"),
@@ -599,6 +601,8 @@ enum VisionLabels {
             // and plants often don't score "outdoor" at all, so nature labels count too.
             let nature = ["bird", "plant", "tree", "foliage", "flower", "grass", "sky", "animal"]
             let looksNatural = setting != "INT" && nature.contains { (scores[$0] ?? 0) >= 0.1 }
+            let outdoorCues = nature + ["brick", "sidewalk", "pavement", "road", "street", "fence", "garden"]
+            let looksOutdoor = setting == "EXT" || outdoorCues.contains { (scores[$0] ?? 0) >= 0.1 }
             var cue = LightCues.read(data, labels: scores)
             if cue == "practical", (outside > 0.3 && inside < outside) || looksNatural { cue = nil }
             var subjects = Captioner.readable(ranked)
@@ -622,7 +626,7 @@ enum VisionLabels {
             // Vision often says "people" or "adult" for crowds; the count above says it better.
             if people != nil { subjects.removeAll { ["person", "people", "adult", "child", "crowd"].contains($0) } }
             return VisionResult(subjects: Array(subjects.prefix(4)), setting: setting, people: people, sign: sign,
-                                lightCue: cue, looksIndoor: looksIndoor,
+                                lightCue: cue, looksIndoor: looksIndoor, looksOutdoor: looksOutdoor,
                                 closeUp: closeUp, framing: framing)
         }.value
     }
