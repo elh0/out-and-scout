@@ -4,14 +4,16 @@ import SwiftUI
 // thin outlined pills, paper-on-night.
 
 private enum Ink {
-    /// Dim labels on the dark viewfinder (#8A8A83).
-    static let muted = Palette.nightMuted
-    /// Next/previous focal lengths (#45453F).
-    static let faint = Color(hex: 0x45453F)
-    /// Compass letters and hour ticks (#66665F).
-    static let tick = Palette.graphite
-    /// Light label under the time (#B5B5AE).
-    static let soft = Color(hex: 0xB5B5AE)
+    // E2: these sit straight on the live image, so the greys are paper at reduced opacity
+    // (lifted from the old solid greys) and read over bright and dark scenes alike.
+    /// Off and unselected labels.
+    static let muted = Palette.paper.opacity(0.62)
+    /// Next/previous focal lengths.
+    static let faint = Palette.paper.opacity(0.38)
+    /// Compass letters and hour ticks.
+    static let tick = Palette.paper.opacity(0.62)
+    /// Light label under the time.
+    static let soft = Palette.paper.opacity(0.8)
 }
 
 /// Outlined pill on the dark viewfinder, 30 tall (hit area padded to 44).
@@ -144,7 +146,7 @@ struct CompassTape: View {
                         var tick = Path()
                         tick.move(to: CGPoint(x: px, y: base))
                         tick.addLine(to: CGPoint(x: px, y: base - h))
-                        ctx.stroke(tick, with: .color(Palette.paper.opacity(major ? 0.7 : 0.3)), lineWidth: 1)
+                        ctx.stroke(tick, with: .color(Palette.paper.opacity(major ? 0.9 : 0.62)), lineWidth: 1)
                         if major {
                             let names = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"]
                             let name = names[((d / 45) % 8 + 8) % 8]
