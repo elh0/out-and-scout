@@ -19,6 +19,8 @@ struct ExportPanel: View {
     @State private var customName: String?
     /// The PDF being previewed in Quick Look.
     @State private var previewURL: URL?
+    /// A PDF is being made; building one with stills can take a moment on older phones.
+    @State private var busy = false
 
     enum Choice: String, CaseIterable { case pdf, csv, photos, link }
 
@@ -51,6 +53,18 @@ struct ExportPanel: View {
 
                     if allScenes && project.scenes.count > 1 {
                         SceneOrder(scenes: project.scenes) { store.moveScenes(from: $0, to: $1) }
+                    }
+                    // This scene's shots: rename and reorder them right here before sending.
+                    if !allScenes, !thisScene.shots.isEmpty {
+                        OrderList(
+                            heading: "Shots",
+                            renameTitle: "Edit Caption",
+                            rows: thisScene.shots.map {
+                                .init(id: $0.id, number: $0.number, name: $0.caption, detail: "\(Format.mm($0.lensMM))mm")
+                            },
+                            move: { store.moveShots(in: thisScene.id, from: $0, to: $1) },
+                            rename: { store.setCaption($0, to: $1) }
+                        )
                     }
 
                     HStack(spacing: 6) {
@@ -85,7 +99,7 @@ struct ExportPanel: View {
                 }
 
                 Button { export(project: project, scene: target) } label: {
-                    Text(format == .photos
+                    Text(busy ? "Preparing…" : format == .photos
                          ? "Save \(shots == 1 ? "1 Still" : "\(shots) Stills") to Photos"
                          : "\(target == nil ? "Export All Scenes" : "Export Scene") · \(ext.uppercased())")
                         .font(.osTitle)
@@ -189,8 +203,18 @@ struct ExportPanel: View {
     }
 
     private func preview(project: Project, scene: ScoutScene?) {
-        previewURL = try? Exporter.export(project: project, scene: scene, format: .pdf, options: options, name: customName)
-        if previewURL == nil { error = "Couldn't make the preview. Try again." }
+        guard !busy else { return }
+        busy = true
+        let options = options, name = customName
+        // Off the main thread, so the panel stays responsive while the stills are drawn.
+        Task {
+            let url = await Task.detached(priority: .userInitiated) {
+                try? Exporter.export(project: project, scene: scene, format: .pdf, options: options, name: name)
+            }.value
+            busy = false
+            previewURL = url
+            if url == nil { error = "Couldn't make the preview. Try again." }
+        }
     }
 
     private func export(project: Project, scene: ScoutScene?) {
@@ -209,12 +233,21 @@ struct ExportPanel: View {
             }
             return
         }
-        do {
-            let url = try Exporter.export(project: project, scene: scene, format: format == .csv ? .csv : .pdf, options: options, name: customName)
-            shareItem = ShareItem(url: url)
-            error = nil
-        } catch {
-            self.error = "Couldn't make the file. Try again."
+        guard !busy else { return }
+        busy = true
+        let options = options, name = customName
+        let fileFormat: Exporter.FileFormat = format == .csv ? .csv : .pdf
+        Task {
+            let url = await Task.detached(priority: .userInitiated) {
+                try? Exporter.export(project: project, scene: scene, format: fileFormat, options: options, name: name)
+            }.value
+            busy = false
+            if let url {
+                shareItem = ShareItem(url: url)
+                error = nil
+            } else {
+                error = "Couldn't make the file. Try again."
+            }
         }
     }
 }
@@ -234,11 +267,21 @@ private struct Picked: ViewModifier {
     }
 }
 
-/// "scene order · drag to reorder": rows 40 high with 4 between them; drag the grip
-/// on the right and the row moves as you pass each neighbour, like the v3c board.
-struct SceneOrder: View {
-    let scenes: [ScoutScene]
+/// A drag-to-reorder list: rows 40 high with 4 between them; drag the grip on the right
+/// and the row moves as you pass each neighbour, like the v3c board. Tap a name to rename it.
+struct OrderList: View {
+    struct Row: Identifiable {
+        var id: UUID
+        var number: String
+        var name: String
+        var detail: String
+    }
+
+    let heading: String
+    let renameTitle: String
+    let rows: [Row]
     let move: (IndexSet, Int) -> Void
+    let rename: (UUID, String) -> Void
 
     @State private var dragging: UUID?
     private let pitch: CGFloat = 44
@@ -246,57 +289,74 @@ struct SceneOrder: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("Scene order")
+                Text(heading)
                 Spacer()
-                Text("Drag to reorder")
+                Text("Tap to rename · drag to reorder")
             }
             .font(.osDataSmall)
             .foregroundStyle(Palette.graphite)
 
             VStack(spacing: 4) {
-                ForEach(Array(scenes.enumerated()), id: \.element.id) { i, s in
-                    row(i, s)
-                }
+                ForEach(rows) { r in row(r) }
             }
-            .coordinateSpace(name: "sceneOrder")
-            .animation(.snappy(duration: 0.18), value: scenes.map(\.id))
+            .coordinateSpace(name: "orderList")
+            .animation(.snappy(duration: 0.18), value: rows.map(\.id))
         }
     }
 
-    private func row(_ i: Int, _ s: ScoutScene) -> some View {
-        let picked = dragging == s.id
+    private func row(_ r: Row) -> some View {
+        let picked = dragging == r.id
         let shape = RoundedRectangle(cornerRadius: 10, style: .continuous)
         return HStack(spacing: 10) {
-            Text(String(format: "%02d", i + 1))
+            Text(r.number)
                 .font(.osDataSmall).foregroundStyle(Palette.graphite)
-                .frame(width: 16, alignment: .leading)
-            Text(s.name).font(.osRow).lineLimit(1)
+                .frame(width: 22, alignment: .leading)
+            EditableName(text: r.name, font: .osRow, emptyLabel: "Untitled", title: renameTitle) { rename(r.id, $0) }
                 .frame(maxWidth: .infinity, alignment: .leading)
-            Text(ShotListView.shots(s.shots.count)).font(.osDataSmall).foregroundStyle(Palette.graphite)
+            Text(r.detail).font(.osDataSmall).foregroundStyle(Palette.graphite).lineLimit(1)
             Image(systemName: "line.3.horizontal")
                 .font(.system(size: 13))
                 .foregroundStyle(Palette.graphite)
                 .frame(width: 36, height: 36)
                 .contentShape(Rectangle())
                 .gesture(
-                    DragGesture(minimumDistance: 0, coordinateSpace: .named("sceneOrder"))
+                    DragGesture(minimumDistance: 0, coordinateSpace: .named("orderList"))
                         .onChanged { g in
-                            if dragging == nil { dragging = s.id }
-                            guard let from = scenes.firstIndex(where: { $0.id == s.id }) else { return }
-                            let to = max(0, min(scenes.count - 1, Int(floor(g.location.y / pitch))))
+                            if dragging == nil { dragging = r.id }
+                            guard let from = rows.firstIndex(where: { $0.id == r.id }) else { return }
+                            let to = max(0, min(rows.count - 1, Int(floor(g.location.y / pitch))))
                             if to != from {
                                 move(IndexSet(integer: from), to > from ? to + 1 : to)
                             }
                         }
                         .onEnded { _ in dragging = nil }
                 )
-                .accessibilityLabel("drag to reorder \(s.name)")
+                .accessibilityLabel("drag to reorder \(r.name)")
         }
         .padding(.leading, 10)
         .padding(.trailing, 4)
         .frame(height: 40)
         .background(picked ? Color.white : .clear, in: shape)
         .overlay(shape.strokeBorder(picked ? Palette.ink : Palette.rule, lineWidth: picked ? 2 : 1))
+    }
+}
+
+/// Scenes in export order, as an OrderList.
+struct SceneOrder: View {
+    @Environment(ScoutStore.self) private var store
+    let scenes: [ScoutScene]
+    let move: (IndexSet, Int) -> Void
+
+    var body: some View {
+        OrderList(
+            heading: "Scene order",
+            renameTitle: "Rename Scene",
+            rows: scenes.enumerated().map { i, s in
+                .init(id: s.id, number: String(format: "%02d", i + 1), name: s.name, detail: ShotListView.shots(s.shots.count))
+            },
+            move: move,
+            rename: { store.renameScene($0, to: $1) }
+        )
     }
 }
 

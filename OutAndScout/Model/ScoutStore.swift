@@ -371,6 +371,13 @@ final class ScoutStore {
         save()
     }
 
+    /// Reorders the shots in one scene (the Export panel's drag handles). Numbers stay with
+    /// their shots; the PDF and CSV follow the new order.
+    func moveShots(in sceneID: UUID, from source: IndexSet, to destination: Int) {
+        updateScene(sceneID) { $0.shots.move(fromOffsets: source, toOffset: destination) }
+        save()
+    }
+
     func shot(_ id: UUID) -> Shot? {
         for project in projects {
             for scene in project.scenes {
