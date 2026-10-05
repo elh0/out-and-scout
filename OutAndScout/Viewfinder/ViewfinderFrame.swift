@@ -19,7 +19,8 @@ struct ViewfinderFrame: View {
     /// E2: the image fills the whole screen under floating controls. Lines only show for a
     /// picked ratio, and the label hides when the frame is big enough to reach the controls.
     var fullBleed = false
-    /// Full bleed: the space the controls take at each edge, kept free of frame lines.
+    /// Full bleed: the space the controls take at each edge. The frame no longer shrinks to
+    /// fit inside it (that made wide lenses look tight); kept for callers.
     var clear = EdgeInsets()
 
     @State private var focusPoint: CGPoint?
@@ -34,13 +35,13 @@ struct ViewfinderFrame: View {
             // made as big as they'll go (with a small margin so they read as a frame), and the
             // phone zooms so the lines show exactly what the cine lens would. Everything outside
             // is dimmed, like the v3c prototype. "full" is the whole sensor mode.
-            let frame = FrameMath.fit(aspect: lineAspect, in: inset(size).size)
-                .offsetBy(dx: inset(size).minX, dy: inset(size).minY)
+            let frame = frameRect(size)
 
             ZStack(alignment: .topLeading) {
                 cameraLayer
 
-                AspectMask(frame: frame, lines: !(fullBleed && store.aspect.isFull), shade: fullBleed ? 0.42 : nil)
+                AspectMask(frame: frame, lines: !(fullBleed && store.aspect.isFull), shade: fullBleed ? 0.42 : nil,
+                           ticks: fullBleed)
 
                 if store.overlays.grid {
                     ThirdsGrid().frame(width: frame.width, height: frame.height).offset(x: frame.minX, y: frame.minY)
@@ -199,15 +200,26 @@ struct ViewfinderFrame: View {
         store.aspect.isFull ? sensorAspect : store.aspect.value
     }
 
-    /// A small margin so even the widest ratio reads as a frame rather than full bleed.
-    /// Portrait follows the board: 24 each side, 5 top and bottom.
-    private func inset(_ size: CGSize) -> CGRect {
-        if fullBleed {
-            return CGRect(x: clear.leading, y: clear.top,
-                          width: max(size.width - clear.leading - clear.trailing, 1),
-                          height: max(size.height - clear.top - clear.bottom, 1))
+    /// Where the cine frame sits. Its width decides how wide a lens the phone can show, so
+    /// it's kept as big as it will go.
+    private func frameRect(_ size: CGSize) -> CGRect {
+        // E2 Full: the whole screen width is the cine frame, so the widest lens reaches the
+        // phone's 0.5x. The top and bottom of the frame run off screen, like the Camera app's
+        // full-screen view.
+        if fullBleed, store.aspect.isFull {
+            let h = size.width / lineAspect
+            return CGRect(x: 0, y: (size.height - h) / 2, width: size.width, height: h)
         }
-        return CGRect(origin: .zero, size: size).insetBy(dx: portrait ? 24 : 10, dy: portrait ? 5 : 8)
+        let box = inset(size)
+        return FrameMath.fit(aspect: lineAspect, in: box.size).offsetBy(dx: box.minX, dy: box.minY)
+    }
+
+    /// A small margin so even the widest ratio reads as a frame rather than full bleed.
+    /// Portrait follows the board: 24 each side, 5 top and bottom. E2 keeps the same margin
+    /// (fitting the lines between the controls made every lens look too tight) and marks
+    /// the frame with corner ticks, so no line runs through the controls.
+    private func inset(_ size: CGSize) -> CGRect {
+        CGRect(origin: .zero, size: size).insetBy(dx: portrait ? 24 : 10, dy: portrait ? 5 : 8)
     }
 
     /// How much of the sensor's width the lines take: 1 for ratios wider than the sensor
@@ -275,6 +287,8 @@ struct AspectMask: View {
     var lines = true
     /// How dark outside the frame goes; nil is the usual HUD shade.
     var shade: Double? = nil
+    /// E2: corner ticks instead of a full outline, so the frame never cuts through a control.
+    var ticks = false
 
     var body: some View {
         Canvas { ctx, size in
@@ -283,7 +297,21 @@ struct AspectMask: View {
             let fill = shade.map { Color.black.opacity($0) } ?? Palette.hud
             ctx.fill(outside, with: .color(fill), style: FillStyle(eoFill: true))
             if lines {
-                ctx.stroke(Path(frame.insetBy(dx: 0.5, dy: 0.5)), with: .color(Palette.paper.opacity(lines && shade != nil ? 0.7 : 0.85)), lineWidth: 1)
+                let r = frame.insetBy(dx: 0.5, dy: 0.5)
+                let color = GraphicsContext.Shading.color(Palette.paper.opacity(shade != nil ? 0.7 : 0.85))
+                if ticks {
+                    let t: CGFloat = 14
+                    var p = Path()
+                    for (x, y, dx, dy) in [(r.minX, r.minY, t, t), (r.maxX, r.minY, -t, t),
+                                           (r.minX, r.maxY, t, -t), (r.maxX, r.maxY, -t, -t)] {
+                        p.move(to: CGPoint(x: x + dx, y: y))
+                        p.addLine(to: CGPoint(x: x, y: y))
+                        p.addLine(to: CGPoint(x: x, y: y + dy))
+                    }
+                    ctx.stroke(p, with: color, lineWidth: 1)
+                } else {
+                    ctx.stroke(Path(r), with: color, lineWidth: 1)
+                }
             }
         }
         .allowsHitTesting(false)

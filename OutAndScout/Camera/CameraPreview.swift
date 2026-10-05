@@ -76,8 +76,10 @@ struct CameraPreview: UIViewRepresentable {
                 DispatchQueue.main.async {
                     guard let connection = self?.previewLayer.connection else { return }
                     if connection.isVideoRotationAngleSupported(angle) { connection.videoRotationAngle = angle }
+                    // Off: stabilising crops the preview's edges, which made it tighter than the
+                    // Camera app and the frame lines a touch wider than what they show.
                     if connection.isVideoStabilizationSupported {
-                        connection.preferredVideoStabilizationMode = .previewOptimized
+                        connection.preferredVideoStabilizationMode = .off
                     }
                 }
             }
