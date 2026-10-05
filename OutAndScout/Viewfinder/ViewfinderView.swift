@@ -151,8 +151,20 @@ struct ViewfinderView: View {
     /// Taps that miss a control fall through to the viewfinder (focus, pinch, AE/AF lock).
     private func landscapeLayout(sun: SunPosition, planned: Date) -> some View {
         ZStack {
-            ViewfinderFrame(sun: sun, sunDay: sunDay, planned: planned, frameFraction: $frameFraction, fullBleed: true)
-                .ignoresSafeArea()
+            // The image runs edge to edge, but the ratio lines sit in the clear space between
+            // the controls, so a frame line never runs through a button or readout.
+            GeometryReader { geo in
+                let safe = geo.safeAreaInsets
+                let clear = EdgeInsets(
+                    top: safe.top + Space.xs + 44 + Space.xxs,
+                    leading: safe.leading + Space.s + 48 + Space.s + Space.xxs,
+                    bottom: safe.bottom + Space.xs + 56 + Space.xxs,
+                    trailing: safe.trailing + Space.m + 104 + Space.s + Space.xxs
+                )
+                ViewfinderFrame(sun: sun, sunDay: sunDay, planned: planned, frameFraction: $frameFraction,
+                                fullBleed: true, clear: clear)
+                    .ignoresSafeArea()
+            }
 
             EdgeShades()
                 .ignoresSafeArea()

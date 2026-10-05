@@ -19,6 +19,8 @@ struct ViewfinderFrame: View {
     /// E2: the image fills the whole screen under floating controls. Lines only show for a
     /// picked ratio, and the label hides when the frame is big enough to reach the controls.
     var fullBleed = false
+    /// Full bleed: the space the controls take at each edge, kept free of frame lines.
+    var clear = EdgeInsets()
 
     @State private var focusPoint: CGPoint?
     @State private var focusShownAt = Date.distantPast
@@ -59,13 +61,11 @@ struct ViewfinderFrame: View {
 
                 // Ratio and lens in the frame's bottom-left corner, like the v3c prototype.
                 // Time and bearing live in the top bar now.
-                if !fullBleed || (frame.width < size.width - 260 && frame.height < size.height - 100) {
-                    Text("\(store.aspect.display) · \(Format.mm(store.lensMM))mm")
-                        .font(.osNumSmall)
-                        .foregroundStyle(Palette.paper.opacity(0.7))
-                        .fixedSize()
-                        .offset(x: frame.minX + Space.xs, y: frame.maxY - 20)
-                }
+                Text("\(store.aspect.display) · \(Format.mm(store.lensMM))mm")
+                    .font(.osNumSmall)
+                    .foregroundStyle(Palette.paper.opacity(0.7))
+                    .fixedSize()
+                    .offset(x: frame.minX + Space.xs, y: frame.maxY - 20)
 
                 // Portrait board: the sun's height in the frame's top-right corner.
                 if portrait, sun.elevation > 0 {
@@ -202,7 +202,11 @@ struct ViewfinderFrame: View {
     /// A small margin so even the widest ratio reads as a frame rather than full bleed.
     /// Portrait follows the board: 24 each side, 5 top and bottom.
     private func inset(_ size: CGSize) -> CGRect {
-        if fullBleed { return CGRect(origin: .zero, size: size) }
+        if fullBleed {
+            return CGRect(x: clear.leading, y: clear.top,
+                          width: max(size.width - clear.leading - clear.trailing, 1),
+                          height: max(size.height - clear.top - clear.bottom, 1))
+        }
         return CGRect(origin: .zero, size: size).insetBy(dx: portrait ? 24 : 10, dy: portrait ? 5 : 8)
     }
 
