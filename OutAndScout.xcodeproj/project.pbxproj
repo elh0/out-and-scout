@@ -188,7 +188,7 @@
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "out & scout";
+				INFOPLIST_KEY_CFBundleDisplayName = "Out & Scout";
 				INFOPLIST_KEY_NSCameraUsageDescription = "The viewfinder uses the camera to frame shots.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save your stills to Photos, cropped to their frame lines.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Names each scene after the street you're on, tags shots with where they were taken, and works out the sun for that spot.";
@@ -223,7 +223,7 @@
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "out & scout";
+				INFOPLIST_KEY_CFBundleDisplayName = "Out & Scout";
 				INFOPLIST_KEY_NSCameraUsageDescription = "The viewfinder uses the camera to frame shots.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save your stills to Photos, cropped to their frame lines.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Names each scene after the street you're on, tags shots with where they were taken, and works out the sun for that spot.";
