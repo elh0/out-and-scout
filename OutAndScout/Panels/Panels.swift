@@ -146,6 +146,8 @@ struct ProjectsPanel: View {
                 .padding(.bottom, Space.l)
             }
             .scrollIndicators(.hidden)
+            // Always open at the top, with the project name in view.
+            .defaultScrollAnchor(.top)
         }
         .confirmationDialog(
             "Delete \"\(deleting?.name ?? "")\"?",
