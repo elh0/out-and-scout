@@ -125,6 +125,9 @@ struct RootView: View {
             let portrait = geo.size.height > geo.size.width
             content(portrait: portrait).environment(\.isPortrait, portrait)
         }
+        // Geist Mono is the app's default, so any text without its own font (a field, a
+        // label, a menu row) never falls back to SF Pro.
+        .font(.osRow)
         .overlay {
             ZStack {
                 if starting {
@@ -135,6 +138,7 @@ struct RootView: View {
                     LaunchMark().transition(.opacity)
                 }
             }
+            .font(.osRow)
         }
         .onAppear {
             #if DEBUG

@@ -92,7 +92,6 @@ struct StartScreen: View {
                 Caps(text: kicker).foregroundStyle(Sheet.muted)
                 Text(title)
                     .font(Fonts.mono(24))
-                    .tracking(-0.4)
                     .lineLimit(1)
                 Text(sub)
                     .font(.osRow)

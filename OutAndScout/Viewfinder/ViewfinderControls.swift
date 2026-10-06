@@ -65,9 +65,11 @@ struct TopBar: View {
 
                 Button { store.panel = .projects } label: {
                     HStack(alignment: .firstTextBaseline, spacing: Space.xs) {
-                        Text(store.currentProject.name).foregroundStyle(Ink.muted)
+                        // Shortened in code rather than with a max-width frame: the frame
+                        // always took its full 90 pt, leaving a gap before the slash.
+                        Text(Self.short(store.currentProject.name)).foregroundStyle(Ink.muted)
                             .lineLimit(1)
-                            .frame(maxWidth: 90, alignment: .leading)
+                            .fixedSize()
                         Text("/").foregroundStyle(Ink.muted)
                         Text(store.currentScene.name).foregroundStyle(Palette.paper)
                             .lineLimit(1)
@@ -107,6 +109,11 @@ struct TopBar: View {
             }
 
         }
+    }
+
+    /// A long project name, cut to fit beside the scene.
+    static func short(_ name: String, max: Int = 14) -> String {
+        name.count > max ? String(name.prefix(max - 1)) + "…" : name
     }
 }
 
