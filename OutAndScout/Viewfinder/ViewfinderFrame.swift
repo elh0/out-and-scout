@@ -45,7 +45,7 @@ struct ViewfinderFrame: View {
 
             ZStack(alignment: .topLeading) {
                 if shrink > 1 {
-                    Palette.night
+                    Sheet.bg
                     Color(hex: 0x262624)
                         .frame(width: frame.width, height: frame.height)
                         .offset(x: frame.minX, y: frame.minY)
