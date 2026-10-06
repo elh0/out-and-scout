@@ -71,7 +71,7 @@ struct ExportPanel: View {
                     // E: ruled rows, a dot for the picked format.
                     VStack(spacing: 0) {
                         Rule()
-                        formatRow(.pdf, "PDF", "A page per scene, photos and sun times")
+                        formatRow(.pdf, "PDF", "Shot cards, a list, or just the frames")
                         formatRow(.csv, "CSV", "For the AD and the schedule")
                         formatRow(.photos, "Photos", "Stills to your camera roll")
                         // The live link needs outandscout.com/s/<project> to exist first.
@@ -84,11 +84,25 @@ struct ExportPanel: View {
                         .font(.osData)
                         .foregroundStyle(Sheet.muted)
 
-                    HStack(spacing: Space.l) {
-                        includeChip("Frames", on: options.frames) { options.frames.toggle() }
-                            .disabled(format == .csv || format == .photos)
-                        includeChip("Sun Times", on: options.sunTimes) { options.sunTimes.toggle() }
-                            .disabled(format == .photos)
+                    // The PDF's three kinds (Elliot, 6 Oct 2026): Detailed shot cards with the
+                    // light read, the Summary list, or Photos only.
+                    if format == .pdf {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: Space.l) {
+                                ForEach(Exporter.Tier.allCases, id: \.self) { t in
+                                    Chip(label: t.label, selected: options.tier == t, underline: true) { options.tier = t }
+                                }
+                            }
+                            Text(tierNote(options.tier)).font(.osData).foregroundStyle(Sheet.muted)
+                        }
+                    }
+
+                    if format == .csv || (format == .pdf && options.tier == .summary) {
+                        HStack(spacing: Space.l) {
+                            includeChip("Frames", on: options.frames) { options.frames.toggle() }
+                                .disabled(format == .csv)
+                            includeChip("Sun Times", on: options.sunTimes) { options.sunTimes.toggle() }
+                        }
                     }
 
                 }
@@ -163,6 +177,14 @@ struct ExportPanel: View {
         }
     }
 
+    private func tierNote(_ t: Exporter.Tier) -> String {
+        switch t {
+        case .detailed: return "Two shot cards a page: how the light falls, when to be there, the full camera spec"
+        case .summary: return "A cover with sun times, then a ruled row per shot"
+        case .photos: return "The frames two across, shot and scene under each"
+        }
+    }
+
     /// v3c scope card: 50 high, radius 12; picked = 2px ink on white, else a 1px rule.
     /// E format row: a dot (filled when picked), the name, a grey note, a rule under it.
     private func formatRow(_ choice: Choice, _ label: String, _ sub: String?) -> some View {
@@ -192,7 +214,9 @@ struct ExportPanel: View {
     private func preview(project: Project, scene: ScoutScene?) {
         guard !busy else { return }
         busy = true
-        let options = options, name = customName
+        var picked = self.options
+        picked.kit = store.kit
+        let options = picked, name = customName
         // Off the main thread, so the panel stays responsive while the stills are drawn.
         Task {
             let url = await Task.detached(priority: .userInitiated) {
@@ -222,7 +246,9 @@ struct ExportPanel: View {
         }
         guard !busy else { return }
         busy = true
-        let options = options, name = customName
+        var picked = self.options
+        picked.kit = store.kit
+        let options = picked, name = customName
         let fileFormat: Exporter.FileFormat = format == .csv ? .csv : .pdf
         Task {
             let url = await Task.detached(priority: .userInitiated) {
