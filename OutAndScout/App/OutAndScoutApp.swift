@@ -148,8 +148,8 @@ struct RootView: View {
             #endif
         }
         .task {
-            // About 2.4 s so the sun settles; at most 3.2 s, camera or not.
-            try? await Task.sleep(for: .milliseconds(2400))
+            // About 2.6 s so the sun settles; at most 3.4 s, camera or not.
+            try? await Task.sleep(for: .milliseconds(2600))
             for _ in 0..<8 where camera.status == .idle {
                 try? await Task.sleep(for: .milliseconds(100))
             }

@@ -59,8 +59,10 @@ struct ViewfinderFrame: View {
 
                 // Corner ticks always mark the frame, Full included, and outside it goes dark
                 // enough that there's no doubt what's in shot.
+                // HUD D (Elliot, 6 Oct 2026): only the shot shows. Outside the frame is solid
+                // ink, so nothing bleeds in around the edges.
                 AspectMask(frame: frame, shade: fullBleed ? 0.55 : nil,
-                           ticks: fullBleed)
+                           ticks: fullBleed, solid: fullBleed ? nil : Sheet.bg)
 
                 if store.overlays.grid {
                     ThirdsGrid().frame(width: frame.width, height: frame.height).offset(x: frame.minX, y: frame.minY)
@@ -248,8 +250,11 @@ struct ViewfinderFrame: View {
     /// Portrait follows the board: 24 each side, 5 top and bottom. E2 keeps the same margin
     /// (fitting the lines between the controls made every lens look too tight) and marks
     /// the frame with corner ticks, so no line runs through the controls.
+    /// HUD D (landscape and upright) has its own window, so the frame fills it exactly:
+    /// no margin of picture around the shot.
     private func inset(_ size: CGSize) -> CGRect {
-        CGRect(origin: .zero, size: size).insetBy(dx: portrait ? 24 : 10, dy: portrait ? 5 : 8)
+        guard fullBleed else { return CGRect(origin: .zero, size: size) }
+        return CGRect(origin: .zero, size: size).insetBy(dx: portrait ? 24 : 10, dy: portrait ? 5 : 8)
     }
 
     /// How much of the sensor's width the lines take: 1 for ratios wider than the sensor
@@ -320,16 +325,18 @@ struct AspectMask: View {
     var shade: Double? = nil
     /// E2: corner ticks instead of a full outline, so the frame never cuts through a control.
     var ticks = false
+    /// HUD D: outside the frame is this colour, fully opaque, with a quiet outline.
+    var solid: Color? = nil
 
     var body: some View {
         Canvas { ctx, size in
             var outside = Path(CGRect(origin: .zero, size: size))
             outside.addRect(frame)
-            let fill = shade.map { Color.black.opacity($0) } ?? Palette.hud
+            let fill = solid ?? shade.map { Color.black.opacity($0) } ?? Palette.hud
             ctx.fill(outside, with: .color(fill), style: FillStyle(eoFill: true))
             if lines {
                 let r = frame.insetBy(dx: 0.5, dy: 0.5)
-                let color = GraphicsContext.Shading.color(Palette.paper.opacity(shade != nil ? 0.7 : 0.85))
+                let color = GraphicsContext.Shading.color(Palette.paper.opacity(solid != nil ? 0.35 : shade != nil ? 0.7 : 0.85))
                 if ticks {
                     let t: CGFloat = 14
                     var p = Path()

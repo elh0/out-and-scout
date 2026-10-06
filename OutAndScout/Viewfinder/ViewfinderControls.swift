@@ -186,38 +186,55 @@ struct LeftRail: View {
         VStack(alignment: .leading, spacing: 0) {
             Caps(text: "Scenes").foregroundStyle(Ink.muted)
                 .padding(.bottom, Space.xs)
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 0) {
-                    ForEach(store.currentProject.scenes) { scene in
-                        let current = scene.id == store.currentSceneID
-                        Button { store.select(project: store.currentProjectID, scene: scene.id) } label: {
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text(scene.name)
-                                    .font(.osDataSmall)
-                                    .foregroundStyle(current ? Palette.paper : Ink.muted)
-                                    .lineLimit(1)
-                                Text("\(scene.shots.count)")
-                                    .font(.osNumTiny)
-                                    .foregroundStyle(Ink.muted)
+            // One quiet line per scene (name, then its count on the right), the open one
+            // bright and underlined. Long lists scroll and fade at the edges, and open on the
+            // current scene.
+            ScrollViewReader { proxy in
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 0) {
+                        ForEach(store.currentProject.scenes) { scene in
+                            let current = scene.id == store.currentSceneID
+                            Button { store.select(project: store.currentProjectID, scene: scene.id) } label: {
+                                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                                    Text(scene.name)
+                                        .font(.osDataSmall)
+                                        .foregroundStyle(current ? Palette.paper : Ink.muted)
+                                        .underline(current, color: Palette.paper)
+                                        .lineLimit(1)
+                                        .truncationMode(.tail)
+                                    Spacer(minLength: 2)
+                                    Text("\(scene.shots.count)")
+                                        .font(.osNumTiny)
+                                        .foregroundStyle(Ink.muted)
+                                }
+                                .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
+                                .contentShape(Rectangle())
                             }
-                            .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
-                            .contentShape(Rectangle())
+                            .buttonStyle(.plain)
+                            .accessibilityAddTraits(current ? [.isSelected] : [])
+                            // A project always keeps at least one scene.
+                            .swipeToDelete(enabled: store.currentProject.scenes.count > 1) { deletingScene = scene }
+                            .id(scene.id)
+                        }
+                        Button { store.requestNewScene() } label: {
+                            Text("+ Scene")
+                                .font(.osDataSmall)
+                                .foregroundStyle(Palette.paper)
+                                .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
+                                .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
-                        .accessibilityAddTraits(current ? [.isSelected] : [])
-                        // A project always keeps at least one scene.
-                        .swipeToDelete(enabled: store.currentProject.scenes.count > 1) { deletingScene = scene }
+                        .accessibilityLabel("new scene here")
                     }
-                    Button { store.requestNewScene() } label: {
-                        Text("+ Scene")
-                            .font(.osDataSmall)
-                            .foregroundStyle(Palette.paper)
-                            .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("new scene here")
+                    .padding(.vertical, 6)
                 }
+                .mask {
+                    LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .black, location: 0.06),
+                                           .init(color: .black, location: 0.94), .init(color: .clear, location: 1)],
+                                   startPoint: .top, endPoint: .bottom)
+                }
+                .onAppear { proxy.scrollTo(store.currentSceneID, anchor: .center) }
+                .onChange(of: store.currentSceneID) { proxy.scrollTo(store.currentSceneID, anchor: .center) }
             }
 
             Spacer(minLength: Space.xs)

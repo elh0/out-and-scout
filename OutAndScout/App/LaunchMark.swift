@@ -57,27 +57,29 @@ struct Wordmark: View, Animatable {
 /// the sun rises into its place. Covers the camera's start-up.
 struct LaunchMark: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var shown = false
-    @State private var rise: CGFloat = 0
+    /// When the first frame showed; the animation is worked out from the clock, so it
+    /// plays even if the camera starting up drops a few frames.
+    @State private var start: Date?
 
     var body: some View {
         ZStack {
             Palette.night.ignoresSafeArea()
-            Wordmark(size: 30, rise: rise)
-                .opacity(shown ? 1 : 0)
+            TimelineView(.animation(paused: start == nil)) { context in
+                let t = start.map { context.date.timeIntervalSince($0) } ?? 0
+                // Fades in over .35 s; from .2 s the letters part and the sun rises over
+                // 1.8 s, easing out (the identity page's timing).
+                let fade = min(1, max(0, t / 0.35))
+                let p = min(1, max(0, (t - 0.2) / 1.8))
+                let rise = reduceMotion ? 1 : 1 - pow(1 - p, 3)
+                Wordmark(size: 30, rise: CGFloat(rise))
+                    .opacity(start == nil ? 0 : (reduceMotion ? 1 : fade))
+            }
         }
         // A .task, not onAppear: onAppear can fire while iOS's own launch screen still
-        // covers the app, which hid the rise. A short wait lets the first frame show.
+        // covers the app. A short wait lets the first frame show before the clock starts.
         .task {
-            if reduceMotion {
-                rise = 1
-                withAnimation(.easeOut(duration: 0.35)) { shown = true }
-                return
-            }
             try? await Task.sleep(for: .milliseconds(150))
-            withAnimation(.easeOut(duration: 0.35)) { shown = true }
-            // The identity page's timing: the letters part and the sun rises over 1.8 s.
-            withAnimation(.timingCurve(0.3, 0.6, 0.2, 1, duration: 1.8).delay(0.2)) { rise = 1 }
+            start = Date()
         }
     }
 }
