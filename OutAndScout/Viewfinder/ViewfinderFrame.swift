@@ -336,7 +336,7 @@ struct AspectMask: View {
             ctx.fill(outside, with: .color(fill), style: FillStyle(eoFill: true))
             if lines {
                 let r = frame.insetBy(dx: 0.5, dy: 0.5)
-                let color = GraphicsContext.Shading.color(Palette.paper.opacity(solid != nil ? 0.35 : shade != nil ? 0.7 : 0.85))
+                let color = GraphicsContext.Shading.color(Palette.paper.opacity(solid != nil ? 0.6 : shade != nil ? 0.7 : 0.85))
                 if ticks {
                     let t: CGFloat = 14
                     var p = Path()

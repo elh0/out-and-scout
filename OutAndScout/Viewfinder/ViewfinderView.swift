@@ -125,12 +125,11 @@ struct ViewfinderView: View {
             .padding(.horizontal, Space.m)
             .frame(height: 36)
 
-            // HUD D upright: the picture in one fixed window with a hairline edge, the
-            // controls on ink around it, never over it.
+            // HUD D upright: the picture in one window with no edge of its own (only the
+            // ratio's frame line shows), the controls on ink around it, never over it.
             ViewfinderFrame(sun: sun, sunDay: sunDay, planned: planned, frameFraction: $frameFraction, portrait: true)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .clipped()
-                .overlay(Rectangle().strokeBorder(Sheet.rule, lineWidth: 1))
                 .padding(.horizontal, Space.m)
                 .padding(.top, 4)
 
@@ -184,8 +183,7 @@ struct ViewfinderView: View {
                     ViewfinderFrame(sun: sun, sunDay: sunDay, planned: planned, frameFraction: $frameFraction)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .clipped()
-                        // The window's edge: a hairline, square.
-                        .overlay(Rectangle().strokeBorder(Sheet.rule, lineWidth: 1))
+                        // No edge on the window itself: only the ratio's frame line shows.
 
                     BottomBar(sunDay: sunDay, planned: planned, sun: sun)
                         .frame(height: 52)
