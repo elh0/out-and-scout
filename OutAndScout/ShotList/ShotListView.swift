@@ -556,96 +556,46 @@ struct ShotListView: View {
     @ViewBuilder private var detailPane: some View {
         if let item = selected {
             let shot = item.shot
-            VStack(alignment: .leading, spacing: Space.l) {
-                HStack(alignment: .top, spacing: Space.xl) {
-                    VStack(alignment: .leading, spacing: Space.xs) {
-                        ShotThumb(shot: shot)
-                            .aspectRatio(shot.aspect.value, contentMode: .fit)
-                            .frame(maxWidth: 260, maxHeight: 128)
-                            // A tap anywhere on the picture opens it full screen; the corner icon says so.
-                            .overlay(alignment: .bottomTrailing) {
-                                Button { enlarged = shot } label: {
-                                    Image(systemName: "arrow.up.left.and.arrow.down.right")
-                                        .font(.system(size: 10))
-                                        .foregroundStyle(Sheet.text)
-                                        .frame(width: 24, height: 24)
-                                        .background(Color.black.opacity(0.45))
-                                        .padding(4)
-                                        .frame(width: 44, height: 44, alignment: .bottomTrailing)
-                                        .contentShape(Rectangle())
-                                }
-                                .buttonStyle(.plain)
-                                .accessibilityLabel("view full screen")
+            // The picture and its words get the room (Elliot, 6 Oct 2026): frame lines sit with
+            // the picture, delete is an icon beside it, export is a small link up top.
+            GeometryReader { geo in
+                let wide = geo.size.width >= 560
+                ScrollView {
+                    VStack(alignment: .leading, spacing: Space.l) {
+                        HStack(alignment: .firstTextBaseline) {
+                            Text("\(shot.number) · \(shot.aspect.display) · \(Format.mm(shot.lensMM))mm · \(Format.time(shot.plannedTime))")
+                                .font(.osNum)
+                                .foregroundStyle(Sheet.muted)
+                                .lineLimit(1)
+                            Spacer(minLength: Space.s)
+                            Button { store.showingExport = true } label: {
+                                Text("Export")
+                                    .font(.osDataSmall)
+                                    .foregroundStyle(Sheet.text)
+                                    .padding(.horizontal, 10)
+                                    .frame(height: 26)
+                                    .overlay(Capsule().strokeBorder(Sheet.rule, lineWidth: 1))
+                                    .frame(minHeight: 44)
+                                    .contentShape(Rectangle())
                             }
-                            .onTapGesture { enlarged = shot }
-                            .accessibilityAddTraits(.isButton)
-                            .accessibilityHint("tap to see it full screen")
-                        // Holding a row in the list deletes too; this is the visible way.
-                        Button("Delete") { confirmDelete = true }
-                            .font(.osDataSmall)
-                            .foregroundStyle(Sheet.muted)
                             .buttonStyle(.plain)
-                            .frame(minHeight: 32)
-                            .contentShape(Rectangle())
-                            .accessibilityLabel("delete shot \(shot.number)")
-                    }
-
-                    VStack(alignment: .leading, spacing: Space.s) {
-                        Text("\(shot.number) · \(shot.aspect.display) · \(Format.mm(shot.lensMM))mm · \(Format.time(shot.plannedTime))")
-                            .font(.osNum)
-                            .foregroundStyle(Sheet.muted)
-                        // Tap the caption to rewrite it; the export uses whatever's here.
-                        EditableName(text: shot.caption, font: .osTitle, lineLimit: 3, emptyLabel: "Untitled", title: "Edit Caption", pencil: true) {
-                            store.setCaption(shot.id, to: $0)
+                            .accessibilityLabel("export list")
                         }
-                        .id(shot.id)
-                        HStack(spacing: 0) {
-                            EditableName(text: item.scene.name, font: .osSupport, color: Sheet.muted, title: "Rename Scene", pencil: true) {
-                                store.renameScene(item.scene.id, to: $0)
+
+                        if wide {
+                            HStack(alignment: .top, spacing: Space.xxl) {
+                                picture(shot, width: min(300, geo.size.width * 0.45))
+                                details(item)
                             }
-                            Text(" · \(shot.cameraName)").font(.osSupport).foregroundStyle(Sheet.muted)
-                        }
-                        if let loc = shot.location {
-                            Text(loc.display).font(.osData).foregroundStyle(Sheet.muted).lineLimit(2)
-                        }
-                        // Printed on the Detailed PDF's card.
-                        EditableName(text: shot.notes ?? "", font: .osData, color: Sheet.text, lineLimit: 2,
-                                     emptyLabel: "Notes: access, power, practicals, sound", title: "Notes", pencil: true) {
-                            store.setNotes(shot.id, to: $0)
-                        }
-                        .id("notes" + shot.id.uuidString)
-                    }
-                }
-
-                Rule().padding(.vertical, Space.xs)
-
-                // Frame lines can be changed after the shot; "full" shows the whole frame.
-                FadingHScroll {
-                    HStack(spacing: Space.xxs) {
-                        HStack(spacing: 4) {
-                            Text("Frame lines")
-                            Image(systemName: "pencil").font(.system(size: 9)).accessibilityHidden(true)
-                        }
-                        .font(.osDataSmall).foregroundStyle(Sheet.muted)
-                        .padding(.trailing, Space.xxs)
-                        ForEach([AspectRatio.full(shot.stillAspect ?? AspectRatio.viewfinderValue)] + store.aspectStrip) { a in
-                            Chip(label: a.display, selected: a.label == shot.aspect.label, underline: true) {
-                                store.setShotAspect(shot.id, to: a)
-                            }
+                        } else {
+                            picture(shot, width: geo.size.width - Space.l * 2)
+                            details(item)
                         }
                     }
+                    .padding(Space.l)
                 }
-                .fixedSize(horizontal: false, vertical: true)
-
-                Spacer(minLength: Space.m)
-                HStack {
-                    Spacer()
-                    Button("Export List") { store.showingExport = true }
-                        .buttonStyle(PillButtonStyle(kind: .outline))
-                        .frame(maxWidth: 200)
-                }
+                .scrollIndicators(.hidden)
             }
-            .padding(Space.l)
             .confirmationDialog("Delete \(shot.number)?", isPresented: $confirmDelete, titleVisibility: .visible) {
                 Button("Delete \(shot.number)", role: .destructive) {
                     store.deleteShot(shot.id)
@@ -661,6 +611,99 @@ struct ShotListView: View {
                 Spacer()
             }
         }
+    }
+
+    /// The still with a trash icon at its side, and the frame lines right under it.
+    private func picture(_ shot: Shot, width: CGFloat) -> some View {
+        let side: CGFloat = 36
+        return VStack(alignment: .leading, spacing: Space.s) {
+            HStack(alignment: .top, spacing: Space.xs) {
+                ShotThumb(shot: shot)
+                    .aspectRatio(shot.aspect.value, contentMode: .fit)
+                    .frame(maxWidth: max(120, width - side - Space.xs), maxHeight: 180, alignment: .topLeading)
+                    // A tap anywhere on the picture opens it full screen; the corner icon says so.
+                    .overlay(alignment: .bottomTrailing) {
+                        Button { enlarged = shot } label: {
+                            Image(systemName: "arrow.up.left.and.arrow.down.right")
+                                .font(.system(size: 10))
+                                .foregroundStyle(Sheet.text)
+                                .frame(width: 24, height: 24)
+                                .background(Color.black.opacity(0.45))
+                                .padding(4)
+                                .frame(width: 44, height: 44, alignment: .bottomTrailing)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("view full screen")
+                    }
+                    .onTapGesture { enlarged = shot }
+                    .accessibilityAddTraits(.isButton)
+                    .accessibilityHint("tap to see it full screen")
+                // Holding a row in the list deletes too; this is the visible way.
+                Button { confirmDelete = true } label: {
+                    Image(systemName: "trash")
+                        .font(.system(size: 13))
+                        .foregroundStyle(Sheet.muted)
+                        .frame(width: side, height: side)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("delete shot \(shot.number)")
+            }
+
+            // Frame lines can be changed after the shot; "full" shows the whole frame.
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 4) {
+                    Text("Frame lines")
+                    Image(systemName: "pencil").font(.system(size: 9)).accessibilityHidden(true)
+                }
+                .font(.osDataSmall).foregroundStyle(Sheet.muted)
+                FadingHScroll {
+                    HStack(spacing: Space.xxs) {
+                        ForEach([AspectRatio.full(shot.stillAspect ?? AspectRatio.viewfinderValue)] + store.aspectStrip) { a in
+                            Chip(label: a.display, selected: a.label == shot.aspect.label, underline: true) {
+                                store.setShotAspect(shot.id, to: a)
+                            }
+                        }
+                    }
+                }
+                .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(width: width, alignment: .leading)
+    }
+
+    /// Caption, scene, place and notes, each with room around it.
+    private func details(_ item: Item) -> some View {
+        let shot = item.shot
+        return VStack(alignment: .leading, spacing: Space.l) {
+            // Tap the caption to rewrite it; the export uses whatever's here.
+            EditableName(text: shot.caption, font: .osTitle, lineLimit: 3, emptyLabel: "Untitled", title: "Edit Caption", pencil: true) {
+                store.setCaption(shot.id, to: $0)
+            }
+            .id(shot.id)
+            VStack(alignment: .leading, spacing: Space.xxs) {
+                HStack(spacing: 0) {
+                    EditableName(text: item.scene.name, font: .osSupport, color: Sheet.muted, title: "Rename Scene", pencil: true) {
+                        store.renameScene(item.scene.id, to: $0)
+                    }
+                    Text(" · \(shot.cameraName)").font(.osSupport).foregroundStyle(Sheet.muted)
+                }
+                if let loc = shot.location {
+                    Text(loc.display).font(.osData).foregroundStyle(Sheet.muted).lineLimit(2)
+                }
+            }
+            // Printed on the Detailed PDF's card.
+            VStack(alignment: .leading, spacing: Space.xxs) {
+                Text("Notes").font(.osDataSmall).foregroundStyle(Sheet.muted)
+                EditableName(text: shot.notes ?? "", font: .osData, color: Sheet.text, lineLimit: 6,
+                             emptyLabel: "Access, power, practicals, sound", title: "Notes", pencil: true) {
+                    store.setNotes(shot.id, to: $0)
+                }
+                .id("notes" + shot.id.uuidString)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     static func shots(_ n: Int) -> String { n == 1 ? "1 shot" : "\(n) shots" }
