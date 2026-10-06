@@ -20,9 +20,39 @@ struct EditableName: View {
     var pencil = false
     /// Bigger for the large titles.
     var pencilSize: CGFloat = 10
+    /// Edit right where it is, at its own size, instead of in the floating bar. For big
+    /// titles near the top, where the keyboard can't cover them.
+    var inPlace = false
     let onRename: (String) -> Void
 
+    @State private var editing = false
+    @State private var draft = ""
+    @FocusState private var focused: Bool
+
     var body: some View {
+        if editing {
+            TextField("", text: $draft)
+                .font(font)
+                .foregroundStyle(color)
+                .focused($focused)
+                .submitLabel(.done)
+                .onSubmit(finish)
+                .onChange(of: focused) { _, now in if !now { finish() } }
+                .onAppear { focused = true }
+                .overlay(alignment: .bottom) { Sheet.muted.frame(height: 1).offset(y: 2) }
+        } else {
+            label
+        }
+    }
+
+    private func finish() {
+        guard editing else { return }
+        editing = false
+        let name = draft.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !name.isEmpty, name != text { onRename(name) }
+    }
+
+    private var label: some View {
         HStack(alignment: .firstTextBaseline, spacing: 5) {
             Text(text.isEmpty ? emptyLabel : text)
                 .font(font)
@@ -38,7 +68,12 @@ struct EditableName: View {
             .frame(maxWidth: fillsWidth ? .infinity : nil, alignment: .leading)
             .contentShape(Rectangle())
             .onTapGesture {
-                store.rename = RenameRequest(title: title, text: text, commit: onRename)
+                if inPlace {
+                    draft = text
+                    editing = true
+                } else {
+                    store.rename = RenameRequest(title: title, text: text, commit: onRename)
+                }
             }
             .accessibilityAddTraits(.isButton)
             .accessibilityHint("tap to rename")

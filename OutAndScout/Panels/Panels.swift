@@ -75,7 +75,7 @@ struct ProjectsPanel: View {
                 VStack(alignment: .leading, spacing: 0) {
                     let current = store.currentProject
                     VStack(alignment: .leading, spacing: 4) {
-                        EditableName(text: current.name, font: Fonts.sans(20, .regular), title: "Rename Project", pencil: true, pencilSize: 13) {
+                        EditableName(text: current.name, font: Fonts.sans(20, .regular), title: "Rename Project", pencil: true, pencilSize: 13, inPlace: true) {
                             store.renameProject(current.id, to: $0)
                         }
                         summary(current)
