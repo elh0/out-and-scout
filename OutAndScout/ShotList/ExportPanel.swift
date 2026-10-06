@@ -11,6 +11,8 @@ struct ExportPanel: View {
     let scene: ScoutScene?
 
     @State private var allScenes = false
+    /// The rename / reorder list, folded away until asked for.
+    @State private var showingOrder = false
     @State private var format = Choice.pdf
     @State private var options = Exporter.Options()
     @State private var shareItem: ShareItem?
@@ -46,8 +48,14 @@ struct ExportPanel: View {
                         action: ("Done", { store.showingExport = false })
                     )
 
-                    // What to send comes first, one ruled row per kind, so the three PDFs are
-                    // plain to see (Elliot, 6 Oct 2026). Then which scenes, then the order.
+                    // Which scenes first, as two big halves, since it's half of every export
+                    // (Elliot, 6 Oct 2026: it was hidden down the scroll). Then what to send.
+                    HStack(spacing: 0) {
+                        scopeHalf("This scene", "\(thisScene.name) · \(ShotListView.shots(thisScene.shots.count))", on: !allScenes) { allScenes = false }
+                        scopeHalf("All scenes", "\(project.scenes.count) · \(ShotListView.shots(total))", on: allScenes) { allScenes = true }
+                    }
+                    .overlay(Rectangle().strokeBorder(Sheet.text, lineWidth: 1))
+
                     VStack(alignment: .leading, spacing: 0) {
                         Caps(text: "What to send").foregroundStyle(Sheet.muted)
                             .padding(.bottom, 6)
@@ -74,18 +82,28 @@ struct ExportPanel: View {
                         }
                     }
 
-                    // E: two words, the picked one underlined.
-                    HStack(spacing: Space.l) {
-                        Chip(label: "This scene", selected: !allScenes, underline: true) { allScenes = false }
-                        Chip(label: "All scenes", selected: allScenes, underline: true) { allScenes = true }
+                    // Order and names, folded away: most exports don't need it.
+                    let orderable = allScenes ? project.scenes.count > 1 : !thisScene.shots.isEmpty
+                    if orderable {
+                        Button { withAnimation(.snappy(duration: 0.2)) { showingOrder.toggle() } } label: {
+                            HStack {
+                                Text(allScenes ? "Scene order" : "Shot order and captions")
+                                Spacer()
+                                Image(systemName: showingOrder ? "chevron.up" : "chevron.down").font(.system(size: 10))
+                            }
+                            .font(.osRow)
+                            .foregroundStyle(Sheet.muted)
+                            .frame(minHeight: 36)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
                     }
-                    .padding(.top, 4)
 
-                    if allScenes && project.scenes.count > 1 {
+                    if showingOrder && allScenes && project.scenes.count > 1 {
                         SceneOrder(scenes: project.scenes) { store.moveScenes(from: $0, to: $1) }
                     }
                     // This scene's shots: rename and reorder them right here before sending.
-                    if !allScenes, !thisScene.shots.isEmpty {
+                    if showingOrder, !allScenes, !thisScene.shots.isEmpty {
                         OrderList(
                             heading: "Shots",
                             renameTitle: "Edit Caption",
@@ -188,12 +206,30 @@ struct ExportPanel: View {
                 }
                 Spacer(minLength: 0)
             }
-            .padding(.vertical, 10)
+            .padding(.vertical, 8)
             .overlay(alignment: .bottom) { Rule() }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    /// Half of the scope switch: the name big, what's in it small; filled when picked.
+    private func scopeHalf(_ title: String, _ sub: String, on: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title).font(.osTitle)
+                Text(sub).font(.osDataSmall).opacity(0.7).lineLimit(1)
+            }
+            .foregroundStyle(on ? Sheet.bg : Sheet.text)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .background(on ? Sheet.text : .clear)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(on ? .isSelected : [])
     }
 
     private func tierNote(_ t: Exporter.Tier) -> String {
