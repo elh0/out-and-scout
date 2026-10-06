@@ -159,3 +159,31 @@ struct FloatingNameBar: View {
         store.rename = nil
     }
 }
+
+/// Sheets cover the app's own rename bar, so a sheet with names to edit shows it again
+/// on top of itself (Elliot, 6 Oct 2026: renaming in Order and Names showed nothing).
+struct RenameBarOverlay: ViewModifier {
+    @Environment(ScoutStore.self) private var store
+
+    func body(content: Content) -> some View {
+        ZStack(alignment: .top) {
+            content
+            if let request = store.rename {
+                Color.black.opacity(0.3)
+                    .ignoresSafeArea()
+                    .onTapGesture { store.rename = nil }
+                    .transition(.opacity)
+                FloatingNameBar(request: request)
+                    .id(request.id)
+                    .transition(.move(edge: .top).combined(with: .opacity))
+            }
+        }
+        .animation(.snappy(duration: 0.2), value: store.rename?.id)
+        .onAppear { store.renameSheets += 1 }
+        .onDisappear { store.renameSheets = max(0, store.renameSheets - 1) }
+    }
+}
+
+extension View {
+    func renameBar() -> some View { modifier(RenameBarOverlay()) }
+}

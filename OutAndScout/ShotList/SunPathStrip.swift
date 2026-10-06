@@ -146,31 +146,64 @@ struct SunPathStrip: View {
 
     static let blue = Color(hex: 0x5A73BF)
 
-    /// "Dawn 06:42 · Sunrise 07:14 · Golden till 07:58" and "Golden from 18:02 · Sunset 18:46 ·
-    /// Dusk 19:19": the light's names and times, morning on the left, evening on the right.
+    /// The light's names and times, each under its own part of the arc (Elliot, 6 Oct 2026):
+    /// morning ones start where their band starts, evening ones end where theirs ends,
+    /// one per line so they never run into each other.
     private func times(_ day: SunDay) -> some View {
         let rise = day.sunrise!, set = day.sunset!
         let amBlue = day.blueWindows.first { $0.upperBound <= rise.addingTimeInterval(3600) }
         let pmBlue = day.blueWindows.last { $0.lowerBound >= set.addingTimeInterval(-3600) }
         let amGold = day.goldenWindows.first { $0.lowerBound <= rise.addingTimeInterval(3600) }
         let pmGold = day.goldenWindows.last { $0.upperBound >= set.addingTimeInterval(-3600) }
+        let from = (amBlue?.lowerBound ?? rise.addingTimeInterval(-40 * 60)).addingTimeInterval(-15 * 60)
+        let to = (pmBlue?.upperBound ?? set.addingTimeInterval(40 * 60)).addingTimeInterval(15 * 60)
+
+        struct Label: Identifiable {
+            let id: Int
+            let text: Text
+            let at: Date
+            let morning: Bool
+        }
         func item(_ name: String, _ t: Date?, _ color: Color = Sheet.muted) -> Text? {
             guard let t else { return nil }
             return Text(name + " ").foregroundColor(color) + Text(Format.time(t)).foregroundColor(Sheet.text)
         }
-        func join(_ parts: [Text?]) -> Text {
-            let items = parts.compactMap { $0 }
-            guard let first = items.first else { return Text("") }
-            return items.dropFirst().reduce(first) { $0 + Text("  ") + $1 }
+        let morning: [(Text?, Date?)] = [
+            (item("Blue hour", amBlue?.lowerBound, Self.blue), amBlue?.lowerBound),
+            (item("Sunrise", rise), rise),
+            (item("Golden hour till", amGold?.upperBound, Palette.sun), amGold?.lowerBound),
+        ]
+        let evening: [(Text?, Date?)] = [
+            (item("Golden hour", pmGold?.lowerBound, Palette.sun), pmGold?.upperBound),
+            (item("Sunset", set), set),
+            (item("Blue hour till", pmBlue?.upperBound, Self.blue), pmBlue?.upperBound),
+        ]
+        var labels: [Label] = []
+        for (i, m) in morning.enumerated() { if let t = m.0, let at = m.1 { labels.append(Label(id: i, text: t, at: at, morning: true)) } }
+        for (i, e) in evening.enumerated() { if let t = e.0, let at = e.1 { labels.append(Label(id: 10 + i, text: t, at: at, morning: false)) } }
+        let line: CGFloat = 13
+
+        return GeometryReader { geo in
+            let w = geo.size.width
+            let span = to.timeIntervalSince(from)
+            let x = { (t: Date) in CGFloat(min(max(t.timeIntervalSince(from), 0), span) / span) * w }
+            ZStack(alignment: .topLeading) {
+                // Pins the stack to the strip's full width, so the guides measure from its left edge.
+                Color.clear.frame(width: w, height: line * 3)
+                ForEach(labels) { l in
+                    let row = CGFloat(l.id % 10)
+                    l.text
+                        .fixedSize()
+                        .alignmentGuide(.leading) { d in
+                            l.morning ? -min(x(l.at), w - d.width) : -max(0, min(x(l.at), w) - d.width)
+                        }
+                        .alignmentGuide(.top) { _ in -row * line }
+                }
+            }
         }
-        return HStack {
-            join([item("Blue hour", amBlue?.lowerBound, Self.blue), item("Sunrise", rise), item("Golden hour till", amGold?.upperBound, Palette.sun)])
-            Spacer(minLength: Space.s)
-            join([item("Golden hour", pmGold?.lowerBound, Palette.sun), item("Sunset", set), item("Blue hour till", pmBlue?.upperBound, Self.blue)])
-        }
+        .frame(height: line * 3)
         .font(.osNumTiny)
         .lineLimit(1)
-        .minimumScaleFactor(0.7)
     }
 }
 

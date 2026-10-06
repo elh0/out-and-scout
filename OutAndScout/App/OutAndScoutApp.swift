@@ -167,7 +167,7 @@ struct RootView: View {
                     .zIndex(1)
             }
 
-            if let request = store.rename {
+            if let request = store.rename, store.renameSheets == 0 {
                 Color.black.opacity(0.3)
                     .ignoresSafeArea()
                     .onTapGesture { store.rename = nil }

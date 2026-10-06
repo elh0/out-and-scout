@@ -66,6 +66,14 @@ struct ShotListView: View {
                 PanelHeader(title: "Order and Names", sub: "Tap a name to rename, drag to reorder. Exports follow this.", action: ("Done", { reordering = false }))
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Project").font(.osDataSmall).foregroundStyle(Sheet.muted)
+                            EditableName(text: project.name, font: .osRow, emptyLabel: "Untitled", title: "Rename Project", fillsWidth: true, pencil: true) {
+                                store.renameProject(project.id, to: $0)
+                            }
+                            .frame(height: 40)
+                            .overlay(alignment: .bottom) { Rule() }
+                        }
                         if project.scenes.count > 1 {
                             SceneOrder(scenes: project.scenes) { store.moveScenes(from: $0, to: $1) }
                         }
@@ -90,6 +98,7 @@ struct ShotListView: View {
             .foregroundStyle(Sheet.text)
             .presentationDetents([.medium, .large])
             .font(.osRow)
+            .renameBar()
         }
         .sheet(isPresented: $showingWeather) {
             let sc = sceneFilter.flatMap(scene(for:)) ?? store.currentScene
@@ -436,7 +445,7 @@ struct ShotListView: View {
         }
     }
 
-    /// The shot as a bottom sheet: still, caption, lens / time / light, edit and reframe.
+    /// The shot as a bottom sheet: still, caption, notes, lens / time / light, and edit.
     @ViewBuilder private var portraitSheet: some View {
         if let id = sheetID, let shot = store.shot(id) {
             ZStack(alignment: .bottom) {
@@ -489,35 +498,20 @@ struct ShotListView: View {
                         if let read = shot.lightRead ?? shot.sunSide { sheetCell("Sun", read) }
                     }
 
-                    HStack(spacing: Space.xs) {
-                        Button {
-                            store.rename = RenameRequest(title: "Edit Caption", text: shot.caption) { [store] in
-                                store.setCaption(id, to: $0)
-                            }
-                        } label: {
-                            Text("Edit Caption")
-                                .font(.osRow)
-                                .foregroundStyle(Sheet.text)
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 44)
-                                .overlay(Capsule().strokeBorder(Sheet.rule, lineWidth: 1))
-                                .contentShape(Capsule())
+                    Button {
+                        store.rename = RenameRequest(title: "Edit Caption", text: shot.caption) { [store] in
+                            store.setCaption(id, to: $0)
                         }
-                        .buttonStyle(.plain)
-                        Button {
-                            sheetID = nil
-                            reframe(shot)
-                        } label: {
-                            Text("Reframe")
-                                .font(.osRow)
-                                .foregroundStyle(Sheet.bg)
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 44)
-                                .background(Sheet.text, in: Capsule())
-                                .contentShape(Capsule())
-                        }
-                        .buttonStyle(.plain)
+                    } label: {
+                        Text("Edit Caption")
+                            .font(.osRow)
+                            .foregroundStyle(Sheet.text)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 44)
+                            .overlay(Capsule().strokeBorder(Sheet.rule, lineWidth: 1))
+                            .contentShape(Capsule())
                     }
+                    .buttonStyle(.plain)
                 }
                 .padding(.horizontal, Space.l)
                 .padding(.top, Space.l)
@@ -562,31 +556,41 @@ struct ShotListView: View {
     @ViewBuilder private var detailPane: some View {
         if let item = selected {
             let shot = item.shot
-            VStack(alignment: .leading, spacing: Space.s) {
-                HStack(alignment: .top, spacing: Space.l) {
-                    ShotThumb(shot: shot)
-                        .aspectRatio(shot.aspect.value, contentMode: .fit)
-                        .frame(maxWidth: 260, maxHeight: 112)
-                        // A tap anywhere on the picture opens it full screen; the corner icon says so.
-                        .overlay(alignment: .bottomTrailing) {
-                            Button { enlarged = shot } label: {
-                                Image(systemName: "arrow.up.left.and.arrow.down.right")
-                                    .font(.system(size: 10))
-                                    .foregroundStyle(Sheet.text)
-                                    .frame(width: 24, height: 24)
-                                    .background(Color.black.opacity(0.45))
-                                    .padding(4)
-                                    .frame(width: 44, height: 44, alignment: .bottomTrailing)
-                                    .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel("view full screen")
-                        }
-                        .onTapGesture { enlarged = shot }
-                        .accessibilityAddTraits(.isButton)
-                        .accessibilityHint("tap to see it full screen")
-
+            VStack(alignment: .leading, spacing: Space.l) {
+                HStack(alignment: .top, spacing: Space.xl) {
                     VStack(alignment: .leading, spacing: Space.xs) {
+                        ShotThumb(shot: shot)
+                            .aspectRatio(shot.aspect.value, contentMode: .fit)
+                            .frame(maxWidth: 260, maxHeight: 128)
+                            // A tap anywhere on the picture opens it full screen; the corner icon says so.
+                            .overlay(alignment: .bottomTrailing) {
+                                Button { enlarged = shot } label: {
+                                    Image(systemName: "arrow.up.left.and.arrow.down.right")
+                                        .font(.system(size: 10))
+                                        .foregroundStyle(Sheet.text)
+                                        .frame(width: 24, height: 24)
+                                        .background(Color.black.opacity(0.45))
+                                        .padding(4)
+                                        .frame(width: 44, height: 44, alignment: .bottomTrailing)
+                                        .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel("view full screen")
+                            }
+                            .onTapGesture { enlarged = shot }
+                            .accessibilityAddTraits(.isButton)
+                            .accessibilityHint("tap to see it full screen")
+                        // Holding a row in the list deletes too; this is the visible way.
+                        Button("Delete") { confirmDelete = true }
+                            .font(.osDataSmall)
+                            .foregroundStyle(Sheet.muted)
+                            .buttonStyle(.plain)
+                            .frame(minHeight: 32)
+                            .contentShape(Rectangle())
+                            .accessibilityLabel("delete shot \(shot.number)")
+                    }
+
+                    VStack(alignment: .leading, spacing: Space.s) {
                         Text("\(shot.number) · \(shot.aspect.display) · \(Format.mm(shot.lensMM))mm · \(Format.time(shot.plannedTime))")
                             .font(.osNum)
                             .foregroundStyle(Sheet.muted)
@@ -613,10 +617,7 @@ struct ShotListView: View {
                     }
                 }
 
-                Rule()
-                // The day's sun under the preview, every shot in view on it; the picked one in orange.
-                SunPathStrip(shots: item.scene.shots, selected: shot, height: 56) { selectedID = $0.id }
-                Rule()
+                Rule().padding(.vertical, Space.xs)
 
                 // Frame lines can be changed after the shot; "full" shows the whole frame.
                 FadingHScroll {
@@ -636,17 +637,13 @@ struct ShotListView: View {
                 }
                 .fixedSize(horizontal: false, vertical: true)
 
-                HStack(spacing: Space.xs) {
-                    Button("Delete") { confirmDelete = true }
-                        .buttonStyle(PillButtonStyle(kind: .text))
-                    Button("Reframe") { reframe(shot) }
-                        .buttonStyle(PillButtonStyle(kind: .text))
+                Spacer(minLength: Space.m)
+                HStack {
                     Spacer()
                     Button("Export List") { store.showingExport = true }
                         .buttonStyle(PillButtonStyle(kind: .outline))
                         .frame(maxWidth: 200)
                 }
-                Spacer(minLength: 0)
             }
             .padding(Space.l)
             .confirmationDialog("Delete \(shot.number)?", isPresented: $confirmDelete, titleVisibility: .visible) {
@@ -667,16 +664,6 @@ struct ShotListView: View {
     }
 
     static func shots(_ n: Int) -> String { n == 1 ? "1 shot" : "\(n) shots" }
-
-    /// Back to the viewfinder with this shot's lens, aspect and time.
-    private func reframe(_ shot: Shot) {
-        // Snap to the nearest focal in the current kit, as switching kits does.
-        store.lensMM = store.focalLengths.min { abs($0 - shot.lensMM) < abs($1 - shot.lensMM) } ?? shot.lensMM
-        store.setAspect(shot.aspect)
-        let c = Calendar.current.dateComponents([.hour, .minute], from: shot.plannedTime)
-        store.plannedMinutes = Double((c.hour ?? 0) * 60 + (c.minute ?? 0))
-        store.showingShotList = false
-    }
 }
 
 /// E1 row: number, caption, lens and time on one ruled line. The picked row is bright,

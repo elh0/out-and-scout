@@ -12,7 +12,6 @@ struct ExportPanel: View {
 
     @State private var allScenes = false
     /// The rename / reorder list, folded away until asked for.
-    @State private var showingOrder = false
     @State private var format = Choice.pdf
     @State private var options = Exporter.Options()
     @State private var shareItem: ShareItem?
@@ -82,40 +81,6 @@ struct ExportPanel: View {
                             includeChip("Sun Times", on: options.sunTimes) { options.sunTimes.toggle() }
                         }
                     }
-
-                    // Order and names, folded away: most exports don't need it.
-                    let orderable = allScenes ? project.scenes.count > 1 : !thisScene.shots.isEmpty
-                    if orderable {
-                        Button { withAnimation(.snappy(duration: 0.2)) { showingOrder.toggle() } } label: {
-                            HStack {
-                                Text(allScenes ? "Scene order" : "Shot order and captions")
-                                Spacer()
-                                Image(systemName: showingOrder ? "chevron.up" : "chevron.down").font(.system(size: 10))
-                            }
-                            .font(.osRow)
-                            .foregroundStyle(Sheet.muted)
-                            .frame(minHeight: 36)
-                            .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.plain)
-                    }
-
-                    if showingOrder && allScenes && project.scenes.count > 1 {
-                        SceneOrder(scenes: project.scenes) { store.moveScenes(from: $0, to: $1) }
-                    }
-                    // This scene's shots: rename and reorder them right here before sending.
-                    if showingOrder, !allScenes, !thisScene.shots.isEmpty {
-                        OrderList(
-                            heading: "Shots",
-                            renameTitle: "Edit Caption",
-                            rows: thisScene.shots.map {
-                                .init(id: $0.id, number: $0.number, name: $0.caption, detail: "\(Format.mm($0.lensMM))mm")
-                            },
-                            move: { store.moveShots(in: thisScene.id, from: $0, to: $1) },
-                            rename: { store.setCaption($0, to: $1) }
-                        )
-                    }
-
                 }
                 .padding(.top, 18)
                 .padding(.horizontal, 20)

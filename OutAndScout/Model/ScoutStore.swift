@@ -65,6 +65,8 @@ final class ScoutStore {
     var pending: PendingShot?
     /// A name being edited in the floating name bar.
     var rename: RenameRequest?
+    /// Open sheets showing their own rename bar; the app's one stays hidden meanwhile.
+    var renameSheets = 0
     var toast: String?
     /// The shot just taken; the Viewfinder shows its caption for a few seconds with an edit link.
     var justSaved: UUID?
