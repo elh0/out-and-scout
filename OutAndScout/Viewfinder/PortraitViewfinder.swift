@@ -152,29 +152,38 @@ struct PortraitToolsRow: View {
     ]
 
     var body: some View {
-        HStack(spacing: Space.s) {
-            RailToggle(symbol: "sun.horizon", label: "Sun Path", on: store.overlays.sunPath) { store.toggle(\.sunPath) }
-            RailToggle(symbol: "grid", label: "Grid", on: store.overlays.grid) { store.toggle(\.grid) }
-            RailToggle(symbol: "level", label: "Level", on: store.overlays.level) { store.toggle(\.level) }
-            Spacer(minLength: 4)
+        // One quiet line of words, spread evenly: lit and underlined when on. A hairline
+        // splits the tools from the ratios, so all four ratios always fit.
+        HStack(spacing: 0) {
+            word("Sun path", on: store.overlays.sunPath) { store.toggle(\.sunPath) }
+            Spacer(minLength: 6)
+            word("Grid", on: store.overlays.grid) { store.toggle(\.grid) }
+            Spacer(minLength: 6)
+            word("Level", on: store.overlays.level) { store.toggle(\.level) }
+            Spacer(minLength: 6)
+            Rectangle().fill(Palette.nightRule).frame(width: 1, height: 14)
             ForEach(Self.ratios) { a in
                 let selected = a.label == store.aspect.label
+                Spacer(minLength: 6)
                 // Tap the picked ratio again to see the whole frame.
-                Button { store.setAspect(selected ? .full : a) } label: {
-                    Text(a.label)
-                        .font(.osData)
-                        .foregroundStyle(selected ? Palette.ink : Palette.paper)
-                        .padding(.horizontal, 7)
-                        .frame(height: 28)
-                        .background(selected ? Palette.paper : .clear, in: Capsule())
-                        .overlay(Capsule().strokeBorder(selected ? Palette.paper : Palette.nightRule, lineWidth: 1))
-                        .padding(.vertical, 8)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityAddTraits(selected ? .isSelected : [])
+                word(a.label, on: selected, numeric: true) { store.setAspect(selected ? .full : a) }
             }
         }
+    }
+
+    private func word(_ label: String, on: Bool, numeric: Bool = false, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(label)
+                .font(numeric ? .osNum : .osData)
+                .foregroundStyle(on ? Palette.paper : PortraitInk.muted)
+                .underline(on, color: Palette.paper)
+                .lineLimit(1)
+                .fixedSize()
+                .frame(minHeight: 40)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(on ? .isSelected : [])
     }
 }
 

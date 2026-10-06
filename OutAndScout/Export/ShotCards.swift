@@ -169,7 +169,10 @@ extension Exporter {
 
     /// The light for someone who isn't a DP: "low sun, behind the camera", "golden hour, sun on the left".
     static func plainLight(_ shot: Shot) -> String {
-        guard shot.sunElevation > -1 else { return "after sunset, no direct sun" }
+        guard shot.sunElevation > -1 else {
+            let m = MoonCalculator.info(at: shot.plannedTime, latitude: shot.location?.latitude ?? 0, longitude: shot.location?.longitude ?? 0)
+            return "after sunset · \(m.phaseName.lowercased()), \(Int((m.illumination * 100).rounded()))% lit"
+        }
         guard let k = shot.lightClass, let b = shot.bearing else { return "no compass heading saved" }
         let side = LightRead.rel(sunAzimuth: shot.sunAzimuth, heading: b) > 0 ? "right" : "left"
         let where_: String
@@ -360,7 +363,7 @@ extension Exporter {
 
         let from = rise.addingTimeInterval(-3600), to = set.addingTimeInterval(3600)
         let span = to.timeIntervalSince(from)
-        let plot = CGRect(x: pad, y: top + 50, width: page.width - pad * 2, height: 84)
+        let plot = CGRect(x: pad, y: top + 62, width: page.width - pad * 2, height: 84)
         let samples = day.samples.filter { $0.time >= from && $0.time <= to }
         let maxEl = max(10, samples.map(\.position.elevation).max() ?? 10)
         let minEl = -10.0
@@ -433,23 +436,43 @@ extension Exporter {
             t = t.addingTimeInterval(3600)
         }
 
-        // Each shot at its planned time: a line down to the hours, a dot on the sun, its number.
-        var placed: [CGFloat] = []
-        for shot in scene.shots {
-            let when = onDay(shot.plannedTime)
-            let px = x(when)
-            let el = LightRead.elevation(at: when, day)
-            let py = y(el)
-            hair.setFill()
-            UIRectFill(CGRect(x: px - 0.25, y: py, width: 0.5, height: plot.maxY - py))
-            sun.setFill()
-            UIBezierPath(ovalIn: CGRect(x: px - 2.5, y: py - 2.5, width: 5, height: 5)).fill()
-            let row = placed.filter { abs($0 - px) < 40 }.count
-            placed.append(px)
-            let l = NSMutableAttributedString(attributedString: text(shot.number + " ", font: mono(7)))
-            l.append(text(Format.time(shot.plannedTime), font: mono(6.5), color: grey))
+        // Shots at its planned time: a dot on the sun, and a label in a lane above the chart
+        // with a hairline down to it. Shots within a few minutes share one label, and labels
+        // that would touch move to the next lane, so they never pile up.
+        let timed = scene.shots.map { (shot: $0, when: onDay($0.plannedTime)) }.sorted { $0.when < $1.when }
+        var groups: [[(shot: Shot, when: Date)]] = []
+        for item in timed {
+            if let last = groups.last?.last, x(item.when) - x(last.when) < 10 {
+                groups[groups.count - 1].append(item)
+            } else {
+                groups.append([item])
+            }
+        }
+        var laneEnds: [CGFloat] = [-.infinity, -.infinity, -.infinity]
+        let laneY: [CGFloat] = [top + 25, top + 34, top + 43]
+        for g in groups {
+            let first = g[0], last = g[g.count - 1]
+            let px = (x(first.when) + x(last.when)) / 2
+            for item in g {
+                let dx = x(item.when), dy = y(LightRead.elevation(at: item.when, day))
+                sun.setFill()
+                UIBezierPath(ovalIn: CGRect(x: dx - 2.5, y: dy - 2.5, width: 5, height: 5)).fill()
+            }
+            let ids = g.map(\.shot.number)
+            let name = ids.count <= 3 ? ids.joined(separator: " ") : "\(ids[0])–\(ids[ids.count - 1]) (\(ids.count))"
+            let time = Format.time(first.when) + (g.count > 1 && Format.time(last.when) != Format.time(first.when) ? "–" + Format.time(last.when) : "")
+            let l = NSMutableAttributedString(attributedString: text(name + " ", font: mono(7)))
+            l.append(text(time, font: mono(6.5), color: grey))
             let lw = l.size().width
-            l.draw(at: CGPoint(x: min(max(px - lw / 2, plot.minX), plot.maxX - lw), y: py - 13 - CGFloat(min(row, 3)) * 9))
+            let lx = min(max(px - lw / 2, plot.minX), plot.maxX - lw)
+            let lane = laneEnds.firstIndex { $0 + 6 < lx } ?? laneEnds.indices.min { laneEnds[$0] < laneEnds[$1] }!
+            laneEnds[lane] = lx + lw
+            let ly = laneY[lane]
+            l.draw(at: CGPoint(x: lx, y: ly))
+            // The hairline from the label to the highest dot of its group.
+            let topDot = g.map { y(LightRead.elevation(at: $0.when, day)) }.min() ?? plot.maxY
+            hair.setFill()
+            UIRectFill(CGRect(x: px - 0.25, y: ly + 10, width: 0.5, height: max(0, topDot - ly - 12)))
         }
         return axisY + 10
     }

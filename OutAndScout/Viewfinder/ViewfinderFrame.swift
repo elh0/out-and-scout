@@ -24,6 +24,11 @@ struct ViewfinderFrame: View {
     var clear = EdgeInsets()
 
 
+    /// The moon at the planned time, for after sunset.
+    private var moon: MoonInfo {
+        MoonCalculator.info(at: planned, latitude: location.coordinate.latitude, longitude: location.coordinate.longitude)
+    }
+
     @State private var focusPoint: CGPoint?
     @State private var focusShownAt = Date.distantPast
     /// The lens when the pinch began.
@@ -77,6 +82,8 @@ struct ViewfinderFrame: View {
                         // When the time is scrubbed, a ring marks where the sun is right now.
                         nowSun: store.plannedMinutes == nil ? nil : SunCalculator.position(
                             at: Date(), latitude: location.coordinate.latitude, longitude: location.coordinate.longitude),
+                        // After sunset, the moon takes the sun's place.
+                        moon: sun.elevation < -1 ? moon : nil,
                         projector: Projector(heading: heading, elevation: motion.cameraElevation, hfov: 2 * atan(tan(camera.previewHFOV * .pi / 360) * shrink) * 360 / .pi, size: size)
                     )
                 }
@@ -92,8 +99,8 @@ struct ViewfinderFrame: View {
                             y: fullBleed ? min(frame.maxY - 20, size.height - clear.bottom - 16) : frame.maxY - 20)
 
                 // Portrait board: the sun's height in the frame's top-right corner.
-                if portrait, sun.elevation > 0 {
-                    Text("Sun \(Int(sun.elevation.rounded()))° up")
+                if portrait {
+                    Text(sun.elevation > 0 ? "Sun \(Int(sun.elevation.rounded()))° up" : "Moon · \(moon.summary)")
                         .font(.osDataSmall)
                         .foregroundStyle(Palette.paper)
                         .padding(.horizontal, 6)
@@ -469,6 +476,8 @@ struct SunPathOverlay: View {
     let sunDay: SunDay?
     let sun: SunPosition
     var nowSun: SunPosition?
+    /// Set once the sun is down: drawn instead of the sun, with its phase.
+    var moon: MoonInfo?
     let projector: Projector
 
     var body: some View {
@@ -524,7 +533,9 @@ struct SunPathOverlay: View {
                 }
             }
 
-            if let p = projector.point(azimuth: sun.azimuth, elevation: sun.elevation),
+            if let moon {
+                drawMoon(moon, in: &ctx, size: size)
+            } else if let p = projector.point(azimuth: sun.azimuth, elevation: sun.elevation),
                bounds.insetBy(dx: -8, dy: -8).contains(p) {
                 let r: CGFloat = 7
                 let dot = Path(ellipseIn: CGRect(x: p.x - r, y: p.y - r, width: r * 2, height: r * 2))
@@ -555,6 +566,58 @@ struct SunPathOverlay: View {
             }
         }
         .allowsHitTesting(false)
+    }
+
+    /// The moon where it is, lit to its phase, with "Moon · Waxing gibbous · 78% lit"; an arrow
+    /// at the edge when it's out of frame; a quiet line when it hasn't risen.
+    private func drawMoon(_ moon: MoonInfo, in ctx: inout GraphicsContext, size: CGSize) {
+        let bounds = CGRect(origin: .zero, size: size)
+        let label = "Moon · \(moon.summary)"
+        guard moon.position.elevation > -0.5 else {
+            ctx.draw(Text("Moon below the horizon · \(moon.summary)").font(.osDataSmall).foregroundColor(Palette.paper.opacity(0.8)),
+                     at: CGPoint(x: size.width / 2, y: 14), anchor: .top)
+            return
+        }
+        if let p = projector.point(azimuth: moon.position.azimuth, elevation: moon.position.elevation),
+           bounds.insetBy(dx: -8, dy: -8).contains(p) {
+            let r: CGFloat = 8
+            let disc = CGRect(x: p.x - r, y: p.y - r, width: r * 2, height: r * 2)
+            ctx.fill(Path(ellipseIn: disc), with: .color(Palette.paper.opacity(0.18)))
+            // The lit part: a half disc plus or minus an ellipse for the terminator.
+            var lit = Path()
+            let k = CGFloat(1 - 2 * moon.illumination)
+            let rightLit = moon.waxing
+            lit.addArc(center: p, radius: r, startAngle: .degrees(-90), endAngle: .degrees(90), clockwise: !rightLit)
+            let steps = 24
+            for i in 0...steps {
+                let a = Double.pi / 2 - Double(i) / Double(steps) * Double.pi
+                let x = p.x + (rightLit ? 1 : -1) * k * r * CGFloat(cos(a))
+                let y = p.y + r * CGFloat(sin(a))
+                lit.addLine(to: CGPoint(x: x, y: y))
+            }
+            lit.closeSubpath()
+            ctx.fill(lit, with: .color(Palette.paper))
+            ctx.stroke(Path(ellipseIn: disc), with: .color(Palette.paper.opacity(0.6)), lineWidth: 0.75)
+            let readout = ctx.resolve(Text(label).font(.osDataSmall).foregroundColor(Palette.paper))
+            let w = readout.measure(in: size).width
+            let right = p.x + r + 5 + w < size.width - 6
+            let y = min(max(p.y, 12), size.height - 12)
+            ctx.draw(readout, at: CGPoint(x: right ? p.x + r + 5 : max(p.x - r - 5, w + 6), y: y), anchor: right ? .leading : .trailing)
+        } else {
+            let left = Bearing.difference(moon.position.azimuth, projector.heading) < 0
+            let y = size.height / 2
+            let x: CGFloat = left ? 14 : size.width - 14
+            var tri = Path()
+            if left {
+                tri.move(to: CGPoint(x: x - 6, y: y)); tri.addLine(to: CGPoint(x: x + 4, y: y - 6)); tri.addLine(to: CGPoint(x: x + 4, y: y + 6))
+            } else {
+                tri.move(to: CGPoint(x: x + 6, y: y)); tri.addLine(to: CGPoint(x: x - 4, y: y - 6)); tri.addLine(to: CGPoint(x: x - 4, y: y + 6))
+            }
+            tri.closeSubpath()
+            ctx.fill(tri, with: .color(Palette.paper))
+            ctx.draw(Text("Moon \(Int(moon.position.azimuth.rounded()))° · \(Int((moon.illumination * 100).rounded()))% lit").font(.osDataSmall).foregroundColor(Palette.paper),
+                     at: CGPoint(x: left ? x + 10 : x - 10, y: y + 16), anchor: left ? .leading : .trailing)
+        }
     }
 }
 

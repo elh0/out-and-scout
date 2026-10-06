@@ -110,7 +110,7 @@ struct FloatingNameBar: View {
                     .frame(minHeight: 36)
             }
             HStack(spacing: Space.xs) {
-                TextField("", text: $text, prompt: Text("Type a name").foregroundStyle(Palette.nightMuted))
+                TextField("", text: $text, prompt: Text(prompt).foregroundStyle(Palette.nightMuted))
                     .font(.osRow)
                     .foregroundStyle(Palette.paper)
                     .tint(Palette.paper)
@@ -140,9 +140,22 @@ struct FloatingNameBar: View {
         }
     }
 
+    /// What to type, from what's being edited: a caption, notes, a ratio, or a name.
+    private var prompt: String {
+        let t = request.title.lowercased()
+        if t.contains("note") { return "Add some notes: access, power, sound…" }
+        if t.contains("caption") { return "Describe the shot" }
+        if t.contains("file") { return "File name" }
+        if t.contains("scene") { return "Name this scene" }
+        if t.contains("project") { return "Name this project" }
+        return "Type a name"
+    }
+
     private func done() {
         let name = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !name.isEmpty, name != request.text { request.commit(name) }
+        // Notes can be cleared; names and captions can't be left blank.
+        let clearable = request.title.lowercased().contains("note")
+        if (clearable || !name.isEmpty), name != request.text { request.commit(name) }
         store.rename = nil
     }
 }

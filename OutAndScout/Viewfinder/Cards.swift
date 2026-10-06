@@ -230,7 +230,7 @@ struct NameSceneCard: View {
             }
 
             HStack(spacing: Space.xs) {
-                TextField("", text: $text, prompt: Text("Type a name").foregroundStyle(Palette.nightMuted))
+                TextField("", text: $text, prompt: Text("Name this scene").foregroundStyle(Palette.nightMuted))
                     .font(.osRow)
                     .foregroundStyle(Palette.paper)
                     .tint(Palette.paper)
