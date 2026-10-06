@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// After the opening: one tap to carry on where you were, or start a new project. Sits over
-/// the live viewfinder, veiled, so the camera is already up when you choose.
+/// After the opening: one tap to carry on where you were, or start a new project. Covers the
+/// viewfinder on solid ink while the camera starts underneath.
 struct StartScreen: View {
     @Environment(ScoutStore.self) private var store
     let done: () -> Void
@@ -11,7 +11,9 @@ struct StartScreen: View {
             let portrait = geo.size.height > geo.size.width
             let side: CGFloat = portrait ? 24 : 56
             ZStack(alignment: .topLeading) {
-                Sheet.bg.opacity(0.62).ignoresSafeArea()
+                // Solid ink: the viewfinder's controls must not show through and collide
+                // with the choices. The camera is still starting underneath.
+                Sheet.bg.ignoresSafeArea()
 
                 HStack(alignment: .firstTextBaseline) {
                     Wordmark(size: 17)
