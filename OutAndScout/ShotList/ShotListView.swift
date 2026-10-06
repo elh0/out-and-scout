@@ -515,6 +515,20 @@ struct ShotListView: View {
                     ShotThumb(shot: shot)
                         .aspectRatio(shot.aspect.value, contentMode: .fit)
                         .frame(maxWidth: 300, maxHeight: 130)
+                        // A pencil in the corner: tap it to reframe, the rest to see it big.
+                        .overlay(alignment: .bottomTrailing) {
+                            Button { reframe(shot) } label: {
+                                Image(systemName: "pencil")
+                                    .font(.system(size: 11))
+                                    .foregroundStyle(Sheet.text)
+                                    .frame(width: 26, height: 26)
+                                    .background(Sheet.bg.opacity(0.75))
+                                    .frame(width: 44, height: 44, alignment: .bottomTrailing)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("reframe this shot")
+                        }
                         .onTapGesture { enlarged = shot }
                         .accessibilityAddTraits(.isButton)
                         .accessibilityHint("tap to see it full screen")
@@ -524,12 +538,12 @@ struct ShotListView: View {
                             .font(.osNum)
                             .foregroundStyle(Sheet.muted)
                         // Tap the caption to rewrite it; the export uses whatever's here.
-                        EditableName(text: shot.caption, font: .osTitle, lineLimit: 3, emptyLabel: "Untitled", title: "Edit Caption") {
+                        EditableName(text: shot.caption, font: .osTitle, lineLimit: 3, emptyLabel: "Untitled", title: "Edit Caption", pencil: true) {
                             store.setCaption(shot.id, to: $0)
                         }
                         .id(shot.id)
                         HStack(spacing: 0) {
-                            EditableName(text: item.scene.name, font: .osSupport, color: Sheet.muted, title: "Rename Scene") {
+                            EditableName(text: item.scene.name, font: .osSupport, color: Sheet.muted, title: "Rename Scene", pencil: true) {
                                 store.renameScene(item.scene.id, to: $0)
                             }
                             Text(" · \(shot.cameraName)").font(.osSupport).foregroundStyle(Sheet.muted)
@@ -552,8 +566,12 @@ struct ShotListView: View {
                 // Frame lines can be changed after the shot; "full" shows the whole frame.
                 FadingHScroll {
                     HStack(spacing: Space.xxs) {
-                        Text("Frame lines").font(.osDataSmall).foregroundStyle(Sheet.muted)
-                            .padding(.trailing, Space.xxs)
+                        HStack(spacing: 4) {
+                            Text("Frame lines")
+                            Image(systemName: "pencil").font(.system(size: 9)).accessibilityHidden(true)
+                        }
+                        .font(.osDataSmall).foregroundStyle(Sheet.muted)
+                        .padding(.trailing, Space.xxs)
                         ForEach([AspectRatio.full(shot.stillAspect ?? AspectRatio.viewfinderValue)] + store.aspectStrip) { a in
                             Chip(label: a.display, selected: a.label == shot.aspect.label, underline: true) {
                                 store.setShotAspect(shot.id, to: a)

@@ -61,6 +61,9 @@ struct CameraPreview: UIViewRepresentable {
         view.previewLayer.session = camera.session
         view.previewLayer.videoGravity = .resizeAspectFill
         view.backgroundColor = UIColor(Palette.night)
+        // Fit's side bars in the same ink as the controls, so they read as part of the
+        // camera's frame rather than black bars.
+        view.previewLayer.backgroundColor = UIColor(Palette.night).cgColor
         camera.previewLayer = view.previewLayer
         shared = view
         return view

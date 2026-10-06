@@ -113,6 +113,8 @@ struct RootView: View {
     @Environment(CameraController.self) private var camera
     @Environment(LocationService.self) private var location
     @Environment(MotionService.self) private var motion
+    /// The opening mark, shown until the camera is running (at least long enough to see).
+    @State private var opening = true
 
     var body: some View {
         // The switch decides which way the screen may turn (never the gyro); the layout then
@@ -120,6 +122,19 @@ struct RootView: View {
         GeometryReader { geo in
             let portrait = geo.size.height > geo.size.width
             content(portrait: portrait).environment(\.isPortrait, portrait)
+        }
+        .overlay {
+            if opening {
+                LaunchMark().transition(.opacity)
+            }
+        }
+        .task {
+            // At least 0.9 s so the sun finishes rising; at most 2.5 s, camera or not.
+            try? await Task.sleep(for: .milliseconds(900))
+            for _ in 0..<16 where camera.status == .idle {
+                try? await Task.sleep(for: .milliseconds(100))
+            }
+            withAnimation(.easeOut(duration: 0.35)) { opening = false }
         }
     }
 

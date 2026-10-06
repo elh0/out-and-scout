@@ -203,12 +203,6 @@ struct LeftRail: View {
             // Centred on the viewfinder, not on the viewfinder plus the bottom bar.
             .frame(maxHeight: .infinity)
             .padding(.bottom, 56)
-
-            // A bit of branding, level with the ratio strip.
-            SunMark()
-                .frame(width: 30, height: 22)
-                .padding(.bottom, 17)
-                .accessibilityHidden(true)
         }
     }
 }

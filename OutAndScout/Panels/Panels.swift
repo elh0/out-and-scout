@@ -259,13 +259,15 @@ struct KitPanel: View {
             )
 
             // Everything under the header scrolls together, so the tabs, sensor modes and
-            // search slide away and the list gets the whole panel.
+            // search slide away and the list gets the whole panel. The Camera / Lenses tabs
+            // stay put under the header, so you can switch without scrolling back up.
+            HStack(spacing: Space.l) {
+                Chip(label: "Camera", selected: tab == .camera, underline: true) { tab = .camera }
+                Chip(label: "Lenses", selected: tab == .lenses, underline: true) { tab = .lenses }
+            }
+            Rule()
             ScrollView {
                 VStack(alignment: .leading, spacing: Space.s) {
-                    HStack(spacing: Space.xxs) {
-                        Chip(label: "Camera", selected: tab == .camera, underline: true) { tab = .camera }
-                        Chip(label: "Lenses", selected: tab == .lenses, underline: true) { tab = .lenses }
-                    }
 
                     if tab == .camera, store.kit.camera.modes.count > 1 {
                         Text("Sensor mode").font(.osDataSmall).foregroundStyle(Sheet.muted)
