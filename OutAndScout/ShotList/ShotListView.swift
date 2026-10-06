@@ -29,7 +29,7 @@ struct ShotListView: View {
             } else {
                 HStack(spacing: 0) {
                     listPane
-                        .frame(width: 300)
+                        .frame(width: 340)
                     Sheet.rule.frame(width: 1).ignoresSafeArea()
                     detailPane
                         .frame(maxWidth: .infinity)
@@ -230,8 +230,6 @@ struct ShotListView: View {
                     .padding(.top, Space.m)
                 Spacer()
             } else {
-                // The day's sun stays put above the shots as they scroll.
-                SunPathStrip(shots: visible.map(\.shot), selected: selected?.shot, height: 40) { selectedID = $0.id }
                 ScrollView {
                     LazyVStack(spacing: 0) {
                         ForEach(visible) { item in
@@ -541,7 +539,7 @@ struct ShotListView: View {
                 HStack(alignment: .top, spacing: Space.l) {
                     ShotThumb(shot: shot)
                         .aspectRatio(shot.aspect.value, contentMode: .fit)
-                        .frame(maxWidth: 300, maxHeight: 130)
+                        .frame(maxWidth: 260, maxHeight: 112)
                         // A tap anywhere on the picture opens it full screen; the corner icon says so.
                         .overlay(alignment: .bottomTrailing) {
                             Button { enlarged = shot } label: {
@@ -589,13 +587,8 @@ struct ShotListView: View {
                 }
 
                 Rule()
-                HStack(spacing: 0) {
-                    readout("Lens", "\(Format.mm(shot.lensMM))mm")
-                    readout("Time", Format.time(shot.plannedTime))
-                    readout("Light", shot.light.label, golden: shot.isGolden)
-                    readout("Light read", shot.lightRead ?? "–")
-                    readout("Sun", "\(Int(shot.sunAzimuth.rounded()))° / \(Int(shot.sunElevation.rounded()))°")
-                }
+                // The day's sun under the preview, every shot in view on it; the picked one in orange.
+                SunPathStrip(shots: visible.map(\.shot), selected: shot, height: 56) { selectedID = $0.id }
                 Rule()
 
                 // Frame lines can be changed after the shot; "full" shows the whole frame.
@@ -647,17 +640,6 @@ struct ShotListView: View {
     }
 
     static func shots(_ n: Int) -> String { n == 1 ? "1 shot" : "\(n) shots" }
-
-    private func readout(_ label: String, _ value: String, golden: Bool? = nil) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(label).font(.osDataSmall).foregroundStyle(Sheet.muted)
-            HStack(spacing: Space.xxs) {
-                if let golden { LightDot(golden: golden) }
-                Text(value).font(.osData).lineLimit(1).minimumScaleFactor(0.75)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
 
     /// Back to the viewfinder with this shot's lens, aspect and time.
     private func reframe(_ shot: Shot) {
