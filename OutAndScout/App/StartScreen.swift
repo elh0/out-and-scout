@@ -9,7 +9,8 @@ struct StartScreen: View {
     var body: some View {
         GeometryReader { geo in
             let portrait = geo.size.height > geo.size.width
-            let side: CGFloat = portrait ? 24 : 56
+            // The prototype's 56pt margin is from the screen edge; the safe area already gives ~47.
+            let side: CGFloat = portrait ? 24 : Space.xs
             ZStack(alignment: .topLeading) {
                 // Solid ink: the viewfinder's controls must not show through and collide
                 // with the choices. The camera is still starting underneath.
@@ -78,7 +79,7 @@ struct StartScreen: View {
         choice(kicker: "Start", title: "New project", sub: "Name it later. Opens straight to the camera.") {
             let n = store.projects.filter { $0.name.hasPrefix("Untitled") }.count + 1
             store.addProject(named: "Untitled \(n)")
-            store.toast = "New project. Rename it from Projects."
+            store.toast = "New project. Rename it under Edit in Projects."
             done()
         }
     }
