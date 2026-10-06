@@ -65,7 +65,7 @@ struct LayoutSwitch: View {
                     .foregroundStyle(Palette.nightMuted)
                     .lineLimit(1)
                     .fixedSize()
-                    .frame(minWidth: 44, minHeight: 36, alignment: .leading)
+                    .frame(minWidth: 44, minHeight: 30, alignment: .leading)
                     .contentShape(Rectangle())
             } else {
                 HStack(spacing: 6) {

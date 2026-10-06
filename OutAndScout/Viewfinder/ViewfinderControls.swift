@@ -49,18 +49,27 @@ struct TopBar: View {
     var body: some View {
         ZStack {
             HStack(spacing: Space.xs) {
-                // The way back to your projects: "Projects / project / scene", one tap opens
-                // the Projects panel. Renaming lives there (Edit) and on the big titles.
+                // HUD D: "Projects" sits over the left column, the way back to all your
+                // projects; the names start where the picture's window starts.
+                Button { store.panel = .projects } label: {
+                    Text("Projects")
+                        .font(.osData)
+                        .foregroundStyle(Palette.paper)
+                        .underline(color: Ink.muted)
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .frame(width: 76 - Space.xs, alignment: .leading)
+                .accessibilityHint("opens your projects")
+
                 Button { store.panel = .projects } label: {
                     HStack(alignment: .firstTextBaseline, spacing: Space.xs) {
-                        Text("Projects").foregroundStyle(Ink.muted)
-                        Text("/").foregroundStyle(Ink.muted)
-                        Text(store.currentProject.name).foregroundStyle(Palette.paper)
+                        Text(store.currentProject.name).foregroundStyle(Ink.muted)
                             .lineLimit(1)
                             .frame(maxWidth: 90, alignment: .leading)
                         Text("/").foregroundStyle(Ink.muted)
                         Text(store.currentScene.name).foregroundStyle(Palette.paper)
-                            .underline(color: Ink.muted)
                             .lineLimit(1)
                             .layoutPriority(1)
                     }
@@ -69,16 +78,10 @@ struct TopBar: View {
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Projects, \(store.currentProject.name), \(store.currentScene.name)")
+                .accessibilityLabel("\(store.currentProject.name), \(store.currentScene.name)")
                 .accessibilityHint("opens your projects")
                 // Long names truncate rather than run under the compass.
                 .frame(maxWidth: 260, alignment: .leading)
-
-                NightPill(height: 26, action: { store.requestNewScene() }) {
-                    Image(systemName: "plus").font(.system(size: 9, weight: .semibold))
-                    Text("Scene")
-                }
-                .accessibilityLabel("new scene here")
 
                 // The compass sits in the row between the two sides, so long names push it
                 // over rather than running underneath it.
@@ -169,18 +172,54 @@ struct LeftRail: View {
     @Environment(ScoutStore.self) private var store
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            VStack(alignment: .leading, spacing: 4) {
+        // HUD D: this project's scenes on top (tap to switch, + Scene to add one),
+        // the overlay toggles at the bottom.
+        VStack(alignment: .leading, spacing: 0) {
+            Caps(text: "Scenes").foregroundStyle(Ink.muted)
+                .padding(.bottom, Space.xs)
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 0) {
+                    ForEach(store.currentProject.scenes) { scene in
+                        let current = scene.id == store.currentSceneID
+                        Button { store.select(project: store.currentProjectID, scene: scene.id) } label: {
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(scene.name)
+                                    .font(.osDataSmall)
+                                    .foregroundStyle(current ? Palette.paper : Ink.muted)
+                                    .lineLimit(1)
+                                Text("\(scene.shots.count)")
+                                    .font(.osNumTiny)
+                                    .foregroundStyle(Ink.muted)
+                            }
+                            .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityAddTraits(current ? [.isSelected] : [])
+                    }
+                    Button { store.requestNewScene() } label: {
+                        Text("+ Scene")
+                            .font(.osDataSmall)
+                            .foregroundStyle(Palette.paper)
+                            .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("new scene here")
+                }
+            }
+
+            Spacer(minLength: Space.xs)
+            VStack(alignment: .leading, spacing: 0) {
                 RailToggle(symbol: "sun.horizon", label: "Sun Path", on: store.overlays.sunPath) { store.toggle(\.sunPath) }
                 RailToggle(symbol: "grid", label: "Grid", on: store.overlays.grid) { store.toggle(\.grid) }
                 RailToggle(symbol: "level", label: "Level", on: store.overlays.level) { store.toggle(\.level) }
                 // Portrait layout, picked by hand rather than by tilting the phone.
                 LayoutSwitch(vertical: true)
             }
-            // Centred on the viewfinder, not on the viewfinder plus the bottom bar.
-            .frame(maxHeight: .infinity)
-            .padding(.bottom, 56)
         }
+        .padding(.top, 2)
+        .padding(.bottom, Space.xs)
     }
 }
 
@@ -200,7 +239,7 @@ struct RailToggle: View {
                 .underline(on, color: Palette.paper)
                 .lineLimit(1)
                 .fixedSize()
-                .frame(minWidth: 44, minHeight: 36, alignment: .leading)
+                .frame(minWidth: 44, minHeight: 30, alignment: .leading)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

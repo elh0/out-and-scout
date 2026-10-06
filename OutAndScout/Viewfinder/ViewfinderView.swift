@@ -162,11 +162,13 @@ struct ViewfinderView: View {
                 planned: planned
             )
             .frame(height: 44)
-            .padding(.horizontal, Space.m)
+            // Lines "Projects" up over the left column and the names over the window.
+            .padding(.leading, Space.s)
+            .padding(.trailing, Space.m)
 
             HStack(spacing: Space.s) {
                 LeftRail()
-                    .frame(width: 52)
+                    .frame(width: 64)
                     .padding(.leading, Space.s)
 
                 VStack(spacing: 0) {
