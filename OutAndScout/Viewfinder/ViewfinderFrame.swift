@@ -23,9 +23,6 @@ struct ViewfinderFrame: View {
     /// fit inside it (that made wide lenses look tight); notices sit inside it.
     var clear = EdgeInsets()
 
-    /// One view, no modes: landscape always shows the camera's whole picture, so what's
-    /// inside the frame lines is exactly what's in your frame. (Fit/Fill was confusing.)
-    private var fits: Bool { fullBleed }
 
     @State private var focusPoint: CGPoint?
     @State private var focusShownAt = Date.distantPast
@@ -62,7 +59,7 @@ struct ViewfinderFrame: View {
 
                 // Corner ticks always mark the frame, Full included, and outside it goes dark
                 // enough that there's no doubt what's in shot.
-                AspectMask(frame: frame, lines: !(fullBleed && store.aspect.isFull && !fits), shade: fullBleed ? 0.55 : nil,
+                AspectMask(frame: frame, shade: fullBleed ? 0.55 : nil,
                            ticks: fullBleed)
 
                 if store.overlays.grid {
@@ -177,7 +174,7 @@ struct ViewfinderFrame: View {
     @ViewBuilder private var cameraLayer: some View {
         switch camera.status {
         case .running:
-            CameraPreview(camera: camera, fill: !fits)
+            CameraPreview(camera: camera)
         case .unauthorized:
             placeholder("Camera access is off. Turn it on in Settings to frame shots.", settingsButton: true)
         case .unavailable:
@@ -230,19 +227,9 @@ struct ViewfinderFrame: View {
     /// Where the cine frame sits. Its width decides how wide a lens the phone can show, so
     /// it's kept as big as it will go.
     private func frameRect(_ size: CGSize) -> CGRect {
-        // E2 Full: the whole screen width is the cine frame, so the widest lens reaches the
-        // phone's 0.5x. The top and bottom of the frame run off screen, like the Camera app's
-        // full-screen view.
-        // Fit Full: the cine frame as big as the picture allows, with no margin.
-        if fits, store.aspect.isFull {
-            let img = imageRect(size)
-            return FrameMath.fit(aspect: lineAspect, in: img.size).offsetBy(dx: img.minX, dy: img.minY)
-        }
-        if fullBleed, store.aspect.isFull {
-            let h = size.width / lineAspect
-            return CGRect(x: 0, y: (size.height - h) / 2, width: size.width, height: h)
-        }
-        let box = fits ? imageRect(size).insetBy(dx: 6, dy: 6) : inset(size)
+        // The picture always fills the screen (no bars, no modes); every ratio, Full included,
+        // is fitted whole inside it with corner ticks, so what's in the lines is the shot.
+        let box = inset(size)
         return FrameMath.fit(aspect: lineAspect, in: box.size).offsetBy(dx: box.minX, dy: box.minY)
     }
 
@@ -252,10 +239,9 @@ struct ViewfinderFrame: View {
         return CGPoint(x: frame.midX + (p.x - frame.midX) * s, y: frame.midY + (p.y - frame.midY) * s)
     }
 
-    /// Where the camera picture sits: the whole view, or (Fit) the sensor's 4:3 centred in it.
+    /// Where the camera picture sits: always the whole view, edge to edge.
     private func imageRect(_ size: CGSize) -> CGRect {
-        guard fits else { return CGRect(origin: .zero, size: size) }
-        return FrameMath.fit(aspect: camera.formatAspect, in: size)
+        CGRect(origin: .zero, size: size)
     }
 
     /// A small margin so even the widest ratio reads as a frame rather than full bleed.

@@ -118,6 +118,9 @@ final class CameraController: NSObject {
             }
         }
         configured = ok
+        // The photo preset switches the camera to its 4:3 photo format; read the field of
+        // view again from that, not the start-up format, so the lens matching is true.
+        if ok { readLensInfo(from: device) }
         status = ok ? .running : .unavailable
         // Exposure stays where you put it, even after the app is closed.
         let saved = UserDefaults.standard.float(forKey: Self.biasKey)
