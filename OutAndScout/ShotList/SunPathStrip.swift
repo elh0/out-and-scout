@@ -29,13 +29,24 @@ struct SunPathStrip: View {
     private func caption(_ s: Shot) -> some View {
         HStack(spacing: 0) {
             Text(s.number + " · " + Format.time(s.plannedTime)).foregroundStyle(Palette.sun)
-            Text(" · " + ([s.lightRead, s.sunElevation > -1 ? "\(Int(s.sunElevation.rounded()))° up" : "sun down"]
+            Text(" · " + ([s.lightRead, s.sunElevation > -1 ? "\(Int(s.sunElevation.rounded()))° up" : "sun down", lasts(s)]
                 .compactMap { $0 }.joined(separator: " · ")))
                 .foregroundStyle(Sheet.muted)
         }
         .font(.osDataSmall)
         .lineLimit(1)
         .minimumScaleFactor(0.8)
+    }
+
+    /// "same light till 19:40": when the sun leaves this side of the frame, from the shot's heading.
+    private func lasts(_ s: Shot) -> String? {
+        guard let day, let b = s.bearing, s.sunElevation > -1 else { return nil }
+        let cal = Calendar.current
+        let c = cal.dateComponents([.hour, .minute], from: s.plannedTime)
+        guard let rise = day.sunrise,
+              let t = cal.date(bySettingHour: c.hour ?? 12, minute: c.minute ?? 0, second: 0, of: rise),
+              let w = LightRead.windows(day: day, heading: b).first(where: { $0.start <= t && $0.end >= t }) else { return nil }
+        return "same light till \(Format.time(w.end))"
     }
 
     /// The selected shot's day and place, else the first shot with a place.
@@ -153,9 +164,9 @@ struct SunPathStrip: View {
             return items.dropFirst().reduce(first) { $0 + Text("  ") + $1 }
         }
         return HStack {
-            join([item("Dawn", amBlue?.lowerBound, Self.blue), item("Sunrise", rise), item("Golden till", amGold?.upperBound, Palette.sun)])
+            join([item("Blue hour", amBlue?.lowerBound, Self.blue), item("Sunrise", rise), item("Golden hour till", amGold?.upperBound, Palette.sun)])
             Spacer(minLength: Space.s)
-            join([item("Golden from", pmGold?.lowerBound, Palette.sun), item("Sunset", set), item("Dusk", pmBlue?.upperBound, Self.blue)])
+            join([item("Golden hour", pmGold?.lowerBound, Palette.sun), item("Sunset", set), item("Blue hour till", pmBlue?.upperBound, Self.blue)])
         }
         .font(.osNumTiny)
         .lineLimit(1)

@@ -355,6 +355,13 @@ extension Exporter {
         }
     }
 
+    private static func onDayMinutes(_ d: Date) -> Int {
+        let c = Calendar.current.dateComponents([.hour, .minute], from: d)
+        return (c.hour ?? 0) * 60 + (c.minute ?? 0)
+    }
+
+    private static func hm(_ m: Int) -> String { String(format: "%02d:%02d", m / 60, m % 60) }
+
     /// The day as a timeline anyone can read: hours along the bottom, the sun's height up the
     /// side, golden hour shaded orange, and each shot's number at its planned time.
     private static func dayChart(_ scene: ScoutScene, at loc: ShotLocation, on date: Date, y top: CGFloat) -> CGFloat {
@@ -362,8 +369,16 @@ extension Exporter {
         guard let rise = day.sunrise, let set = day.sunset else { return top }
         let cal = Calendar.current
         caps("The day").draw(at: CGPoint(x: pad, y: top))
-        text("The sun across the day: the higher the line, the higher the sun. Each shot sits at its planned time.", font: mono(7.5), color: grey)
-            .draw(at: CGPoint(x: pad, y: top + 10))
+        let times = scene.shots.map { onDayMinutes($0.plannedTime) }
+        var sub = "The sun across the day at this scene's spot: the higher the line, the higher the sun."
+        if let a = times.min(), let b = times.max() {
+            let span = b - a
+            sub += b > a
+                ? " Shots from \(hm(a)) to \(hm(b)), \(span / 60 > 0 ? "\(span / 60) h " : "")\(span % 60) min."
+                : " All shots at \(hm(a))."
+        }
+        text(sub, font: mono(7.5), color: grey)
+            .draw(with: CGRect(x: pad, y: top + 10, width: page.width - pad * 2, height: 12), options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], context: nil)
 
         let from = rise.addingTimeInterval(-3600), to = set.addingTimeInterval(3600)
         let span = to.timeIntervalSince(from)
@@ -385,8 +400,6 @@ extension Exporter {
             guard x1 - x0 > 1 else { return }
             color.setFill()
             UIRectFill(CGRect(x: x0, y: plot.minY, width: x1 - x0, height: plot.height))
-            let l = caps(name, size: 5.5, color: label)
-            if l.size().width + 6 < x1 - x0 { l.draw(at: CGPoint(x: x0 + 3, y: plot.minY + 3)) }
         }
         // Night runs up to the morning blue hour and on from the evening one.
         let amBlue = day.blueWindows.first { $0.upperBound <= rise }
@@ -396,15 +409,12 @@ extension Exporter {
         for bw in day.blueWindows {
             band(bw.lowerBound, bw.upperBound, UIColor(red: 0.35, green: 0.45, blue: 0.75, alpha: 0.14), "Blue", grey)
         }
-        caps("Daylight", size: 5.5).draw(at: CGPoint(x: x(rise.addingTimeInterval(set.timeIntervalSince(rise) / 2)) - 18, y: plot.minY + 3))
 
         // Golden hour, shaded the full height and named.
         for g in day.goldenWindows where g.upperBound > from && g.lowerBound < to {
             let gx0 = x(max(g.lowerBound, from)), gx1 = x(min(g.upperBound, to))
             sun.withAlphaComponent(0.12).setFill()
             UIRectFill(CGRect(x: gx0, y: plot.minY, width: gx1 - gx0, height: plot.height))
-            let l = caps("Golden hour", size: 5.5, color: sun)
-            l.draw(at: CGPoint(x: min(gx0 + 3, plot.maxX - l.size().width), y: plot.minY + 3))
         }
 
         // Horizon, with sunrise and sunset on it.
@@ -438,6 +448,33 @@ extension Exporter {
                 UIRectFill(CGRect(x: x(t) - 0.25, y: plot.maxY - 3, width: 0.5, height: 3))
             }
             t = t.addingTimeInterval(3600)
+        }
+
+        // The light's names under the hours, each centred on its stretch with its times, so
+        // every band is named and nothing spills out of its colour. Two rows if they'd touch.
+        let amBlue = day.blueWindows.first { $0.upperBound <= rise.addingTimeInterval(3600) }
+        let pmBlue = day.blueWindows.last { $0.lowerBound >= set.addingTimeInterval(-3600) }
+        let amGold = day.goldenWindows.first { $0.lowerBound <= rise.addingTimeInterval(3600) }
+        let pmGold = day.goldenWindows.last { $0.upperBound >= set.addingTimeInterval(-3600) }
+        let blueInk = UIColor(red: 0.30, green: 0.40, blue: 0.70, alpha: 1)
+        var phases: [(name: String, range: ClosedRange<Date>, color: UIColor)] = []
+        if let b = amBlue { phases.append(("Blue hour", b, blueInk)) }
+        if let g = amGold { phases.append(("Golden hour", g, sun)) }
+        let dayStart = amGold?.upperBound ?? rise, dayEnd = pmGold?.lowerBound ?? set
+        if dayEnd > dayStart { phases.append(("Daylight", dayStart...dayEnd, grey)) }
+        if let g = pmGold { phases.append(("Golden hour", g, sun)) }
+        if let b = pmBlue { phases.append(("Blue hour", b, blueInk)) }
+        var rowEnds: [CGFloat] = [-.infinity, -.infinity]
+        let phaseY = axisY + 12
+        for p in phases {
+            let l = NSMutableAttributedString(attributedString: caps(p.name, size: 5.5, color: p.color))
+            l.append(text(" " + Format.time(p.range.lowerBound) + "–" + Format.time(p.range.upperBound), font: mono(6), color: grey))
+            let lw = l.size().width
+            let cx = (x(max(p.range.lowerBound, from)) + x(min(p.range.upperBound, to))) / 2
+            let lx = min(max(cx - lw / 2, plot.minX), plot.maxX - lw)
+            let row = rowEnds.firstIndex { $0 + 6 < lx } ?? 1
+            rowEnds[row] = lx + lw
+            l.draw(at: CGPoint(x: lx, y: phaseY + CGFloat(row) * 10))
         }
 
         // Shots at its planned time: a dot on the sun, and a label in a lane above the chart
@@ -478,7 +515,7 @@ extension Exporter {
             hair.setFill()
             UIRectFill(CGRect(x: px - 0.25, y: ly + 10, width: 0.5, height: max(0, topDot - ly - 12)))
         }
-        return axisY + 10
+        return axisY + 12 + 20
     }
 
     /// Seven days across the page: the day, the sky in words, high/low, rain and sun hours.

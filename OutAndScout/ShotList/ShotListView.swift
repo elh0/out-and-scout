@@ -615,7 +615,7 @@ struct ShotListView: View {
 
                 Rule()
                 // The day's sun under the preview, every shot in view on it; the picked one in orange.
-                SunPathStrip(shots: visible.map(\.shot), selected: shot, height: 56) { selectedID = $0.id }
+                SunPathStrip(shots: item.scene.shots, selected: shot, height: 56) { selectedID = $0.id }
                 Rule()
 
                 // Frame lines can be changed after the shot; "full" shows the whole frame.
