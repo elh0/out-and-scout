@@ -56,22 +56,23 @@ struct ExportPanel: View {
                     }
                     .overlay(Rectangle().strokeBorder(Sheet.text, lineWidth: 1))
 
-                    VStack(alignment: .leading, spacing: 0) {
+                    // What to send: six tiles, two across, so every choice is on screen at once.
+                    VStack(alignment: .leading, spacing: 6) {
                         Caps(text: "What to send").foregroundStyle(Sheet.muted)
-                            .padding(.bottom, 6)
-                        Rule()
-                        ForEach(Exporter.Tier.allCases, id: \.self) { t in
-                            kindRow(selected: format == .pdf && options.tier == t, t.label, "PDF", tierNote(t)) {
-                                format = .pdf
-                                options.tier = t
+                        LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
+                            ForEach(Exporter.Tier.allCases, id: \.self) { t in
+                                tile(selected: format == .pdf && options.tier == t, t.label, "PDF", tierShort(t)) {
+                                    format = .pdf
+                                    options.tier = t
+                                }
                             }
+                            tile(selected: format == .csv, "Spreadsheet", "CSV", "For the AD") { format = .csv }
+                            tile(selected: format == .photos, "Camera roll", nil, "Stills to Photos") { format = .photos }
+                            // The live link needs outandscout.com/s/<project> to exist first.
+                            tile(selected: false, "Live link", nil, "Soon") {}
+                                .opacity(0.45)
+                                .disabled(true)
                         }
-                        kindRow(selected: format == .csv, "Spreadsheet", "CSV", "For the AD and the schedule") { format = .csv }
-                        kindRow(selected: format == .photos, "Camera roll", nil, "The stills, saved to Photos") { format = .photos }
-                        // The live link needs outandscout.com/s/<project> to exist first.
-                        kindRow(selected: false, "Live link", nil, "Soon") {}
-                            .opacity(0.45)
-                            .disabled(true)
                     }
 
                     if format == .csv || (format == .pdf && options.tier == .summary) {
@@ -187,33 +188,6 @@ struct ExportPanel: View {
         }
     }
 
-    /// A ruled row: a dot (filled when picked), the name with its file type, a grey line under.
-    private func kindRow(selected: Bool, _ label: String, _ type: String?, _ sub: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(alignment: .firstTextBaseline, spacing: 12) {
-                Circle()
-                    .fill(selected ? Sheet.text : .clear)
-                    .overlay(Circle().strokeBorder(Sheet.text, lineWidth: 1))
-                    .frame(width: 7, height: 7)
-                VStack(alignment: .leading, spacing: 3) {
-                    HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        Text(label).font(.osRow)
-                            .underline(selected, color: Sheet.text)
-                        if let type { Text(type).font(.osDataSmall).foregroundStyle(Sheet.muted) }
-                    }
-                    Text(sub).font(.osData).foregroundStyle(Sheet.muted)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(.vertical, 8)
-            .overlay(alignment: .bottom) { Rule() }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(selected ? .isSelected : [])
-    }
-
     /// Half of the scope switch: the name big, what's in it small; filled when picked.
     private func scopeHalf(_ title: String, _ sub: String, on: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
@@ -232,11 +206,33 @@ struct ExportPanel: View {
         .accessibilityAddTraits(on ? .isSelected : [])
     }
 
-    private func tierNote(_ t: Exporter.Tier) -> String {
+    /// One choice as a small box: the name, its file type, a line on what it's for.
+    private func tile(selected: Bool, _ label: String, _ type: String?, _ sub: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(alignment: .firstTextBaseline, spacing: 5) {
+                    Text(label).font(.osRow)
+                    if let type { Text(type).font(.osDataSmall).opacity(0.6) }
+                }
+                Text(sub).font(.osDataSmall).opacity(0.7).lineLimit(1)
+            }
+            .foregroundStyle(selected ? Sheet.bg : Sheet.text)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 9)
+            .background(selected ? Sheet.text : .clear)
+            .overlay(Rectangle().strokeBorder(selected ? Sheet.text : Sheet.rule, lineWidth: 1))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    private func tierShort(_ t: Exporter.Tier) -> String {
         switch t {
-        case .detailed: return "Two shot cards a page: the light, when to be there, the kit"
-        case .summary: return "A cover with sun times, then a row per shot"
-        case .photos: return "Just the frames, two across"
+        case .detailed: return "Shot cards, the light"
+        case .summary: return "A row per shot"
+        case .photos: return "Just the frames"
         }
     }
 
