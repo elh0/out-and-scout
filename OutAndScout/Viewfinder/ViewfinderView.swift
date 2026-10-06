@@ -108,8 +108,9 @@ struct ViewfinderView: View {
     /// Chips sit just under the top bar in landscape; upright, just inside the frame.
     private var chipTop: CGFloat { portrait ? 92 : 52 }
 
-    /// Upright, top to bottom: names, clock and kit; + scene, compass and the layout
-    /// switch; the frame; toggles and ratios; time over the sun timeline; shots, shutter, lens.
+    /// Upright, top to bottom: Projects, names, clock and kit; compass and the layout switch;
+    /// the framed window; scenes; toggles and ratios; time over the sun timeline; shots,
+    /// shutter, lens.
     private func portraitLayout(sun: SunPosition, planned: Date) -> some View {
         VStack(spacing: 0) {
             PortraitTopRow(planned: planned)
@@ -124,10 +125,18 @@ struct ViewfinderView: View {
             .padding(.horizontal, Space.m)
             .frame(height: 36)
 
+            // HUD D upright: the picture in one fixed window with a hairline edge, the
+            // controls on ink around it, never over it.
             ViewfinderFrame(sun: sun, sunDay: sunDay, planned: planned, frameFraction: $frameFraction, portrait: true)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .clipped()
+                .overlay(Rectangle().strokeBorder(Sheet.rule, lineWidth: 1))
+                .padding(.horizontal, Space.m)
                 .padding(.top, 4)
+
+            PortraitScenesRow()
+                .padding(.horizontal, Space.m)
+                .frame(height: 40)
 
             PortraitToolsRow()
                 .padding(.horizontal, Space.m)

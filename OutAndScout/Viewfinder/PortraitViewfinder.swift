@@ -11,28 +11,40 @@ private enum PortraitInk {
     static let faint = Color(hex: 0x45453F)
 }
 
-/// "night shift / brick lane" on the left, the clock pill on the right.
+/// HUD D upright: "Projects", then "project / scene", the clock and kit pills on the right.
 struct PortraitTopRow: View {
     @Environment(ScoutStore.self) private var store
     let planned: Date
 
     var body: some View {
-        HStack {
-            // Tap for projects and scenes; the names rename in landscape and in Projects.
+        HStack(spacing: Space.s) {
             Button { store.panel = .projects } label: {
-                HStack(spacing: 6) {
-                    Text("\(store.currentProject.name) /").foregroundStyle(PortraitInk.muted)
+                Text("Projects")
+                    .font(.osData)
+                    .foregroundStyle(Palette.paper)
+                    .underline(color: PortraitInk.muted)
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .fixedSize()
+            .accessibilityHint("opens your projects")
+
+            Button { store.panel = .projects } label: {
+                HStack(alignment: .firstTextBaseline, spacing: Space.xs) {
+                    Text(TopBar.short(store.currentProject.name, max: 10)).foregroundStyle(PortraitInk.muted)
+                        .fixedSize()
+                    Text("/").foregroundStyle(PortraitInk.muted)
                     Text(store.currentScene.name).foregroundStyle(Palette.paper)
                 }
-                .font(.osRow)
+                .font(.osData)
                 .lineLimit(1)
-                .padding(.horizontal, 4)
-                .frame(height: 36)
                 .frame(minHeight: 44)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .accessibilityHint("projects and scenes")
+            .accessibilityLabel("\(store.currentProject.name), \(store.currentScene.name)")
+            .accessibilityHint("opens your projects")
 
             Spacer(minLength: Space.xs)
 
@@ -70,7 +82,7 @@ struct PortraitTopRow: View {
     }
 }
 
-/// "+ scene" on the left, the compass in the middle, portrait | landscape on the right.
+/// The compass in the middle, the layout switch as a word on the right.
 struct PortraitCompassRow: View {
     @Environment(ScoutStore.self) private var store
     let heading: Double?
@@ -80,21 +92,6 @@ struct PortraitCompassRow: View {
     var body: some View {
         ZStack {
             HStack {
-                Button { store.requestNewScene() } label: {
-                    HStack(spacing: 6) {
-                        Image(systemName: "plus").font(.system(size: 9, weight: .semibold))
-                        Text("Scene")
-                    }
-                    .font(.osData)
-                    .foregroundStyle(Palette.paper)
-                    .padding(.horizontal, 12)
-                    .frame(height: 28)
-                    .overlay(Capsule().strokeBorder(Palette.nightRule, lineWidth: 1))
-                    .frame(minHeight: 44)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("new scene here")
                 Spacer()
                 LayoutSwitch()
             }
@@ -104,7 +101,45 @@ struct PortraitCompassRow: View {
     }
 }
 
-/// Sun path, grid and level as small round toggles, then the upright ratios.
+/// HUD D's Scenes column laid on its side: this project's scenes (tap to switch), + Scene.
+struct PortraitScenesRow: View {
+    @Environment(ScoutStore.self) private var store
+
+    var body: some View {
+        HStack(spacing: Space.m) {
+            Caps(text: "Scenes").foregroundStyle(PortraitInk.muted)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(alignment: .firstTextBaseline, spacing: Space.m) {
+                    ForEach(store.currentProject.scenes) { scene in
+                        let current = scene.id == store.currentSceneID
+                        Button { store.select(project: store.currentProjectID, scene: scene.id) } label: {
+                            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                                Text(scene.name).font(.osData)
+                                    .foregroundStyle(current ? Palette.paper : PortraitInk.muted)
+                                    .underline(current, color: Palette.paper)
+                                Text("\(scene.shots.count)").font(.osNumTiny).foregroundStyle(PortraitInk.muted)
+                            }
+                            .lineLimit(1)
+                            .frame(minHeight: 40)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityAddTraits(current ? [.isSelected] : [])
+                    }
+                    Button { store.requestNewScene() } label: {
+                        Text("+ Scene").font(.osData).foregroundStyle(Palette.paper)
+                            .frame(minHeight: 40)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("new scene here")
+                }
+            }
+        }
+    }
+}
+
+/// Sun path, grid and level as words (lit and underlined when on), then the upright ratios.
 struct PortraitToolsRow: View {
     @Environment(ScoutStore.self) private var store
 
@@ -117,10 +152,10 @@ struct PortraitToolsRow: View {
     ]
 
     var body: some View {
-        HStack(spacing: 6) {
-            toggle("sun.horizon", "sun path", on: store.overlays.sunPath) { store.toggle(\.sunPath) }
-            toggle("grid", "grid", on: store.overlays.grid) { store.toggle(\.grid) }
-            toggle("level", "level", on: store.overlays.level) { store.toggle(\.level) }
+        HStack(spacing: Space.s) {
+            RailToggle(symbol: "sun.horizon", label: "Sun Path", on: store.overlays.sunPath) { store.toggle(\.sunPath) }
+            RailToggle(symbol: "grid", label: "Grid", on: store.overlays.grid) { store.toggle(\.grid) }
+            RailToggle(symbol: "level", label: "Level", on: store.overlays.level) { store.toggle(\.level) }
             Spacer(minLength: 4)
             ForEach(Self.ratios) { a in
                 let selected = a.label == store.aspect.label
@@ -129,7 +164,7 @@ struct PortraitToolsRow: View {
                     Text(a.label)
                         .font(.osData)
                         .foregroundStyle(selected ? Palette.ink : Palette.paper)
-                        .padding(.horizontal, 8)
+                        .padding(.horizontal, 7)
                         .frame(height: 28)
                         .background(selected ? Palette.paper : .clear, in: Capsule())
                         .overlay(Capsule().strokeBorder(selected ? Palette.paper : Palette.nightRule, lineWidth: 1))
@@ -140,22 +175,6 @@ struct PortraitToolsRow: View {
                 .accessibilityAddTraits(selected ? .isSelected : [])
             }
         }
-    }
-
-    private func toggle(_ symbol: String, _ label: String, on: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: symbol)
-                .font(.system(size: 13))
-                .foregroundStyle(on ? Palette.ink : Palette.paper.opacity(0.8))
-                .frame(width: 34, height: 34)
-                .background(on ? Palette.paper : .clear, in: Circle())
-                .overlay(Circle().strokeBorder(on ? .clear : Palette.nightRule, lineWidth: 1))
-                .frame(minWidth: 40, minHeight: 44)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel(label)
-        .accessibilityAddTraits(on ? .isSelected : [])
     }
 }
 

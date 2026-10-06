@@ -56,29 +56,15 @@ struct LayoutSwitch: View {
     var body: some View {
         let mode = LayoutMode.shared
         let target = mode.portrait ? "Landscape" : "Portrait"
-        let symbol = mode.portrait ? "rectangle.landscape.rotate" : "rectangle.portrait.rotate"
         Button { mode.set(portrait: !mode.portrait) } label: {
-            if vertical {
-                // HUD D rail: a grey word like the toggles above it.
-                Text(target)
-                    .font(.osData)
-                    .foregroundStyle(Palette.nightMuted)
-                    .lineLimit(1)
-                    .fixedSize()
-                    .frame(minWidth: 44, minHeight: 30, alignment: .leading)
-                    .contentShape(Rectangle())
-            } else {
-                HStack(spacing: 6) {
-                    Image(systemName: symbol).font(.system(size: 11))
-                    Text(target).font(.osData)
-                }
-                .foregroundStyle(Palette.paper)
-                .padding(.horizontal, 12)
-                .frame(height: 28)
-                .overlay(Capsule().strokeBorder(Palette.nightRule, lineWidth: 1))
-                .frame(minHeight: 44)
+            // HUD D, both layouts: a grey word like the toggles.
+            Text(target)
+                .font(.osData)
+                .foregroundStyle(Palette.nightMuted)
+                .lineLimit(1)
+                .fixedSize()
+                .frame(minWidth: 44, minHeight: vertical ? 30 : 44, alignment: vertical ? .leading : .trailing)
                 .contentShape(Rectangle())
-            }
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Switch to \(target.lowercased()) layout")
