@@ -16,27 +16,6 @@ private enum Ink {
     static let soft = Palette.paper.opacity(0.8)
 }
 
-/// Outlined pill on the dark viewfinder, 30 tall (hit area padded to 44).
-private struct NightPill<Label: View>: View {
-    var height: CGFloat = 30
-    let action: () -> Void
-    @ViewBuilder let label: Label
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 6) { label }
-                .font(.osData)
-                .foregroundStyle(Palette.paper)
-                .padding(.horizontal, 12)
-                .frame(height: height)
-                .overlay(Capsule().strokeBorder(Palette.nightRule, lineWidth: 1))
-                .padding(.vertical, (44 - height) / 2)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
-}
-
 // MARK: - Top bar: project / scene, + scene, compass, clock, kit
 
 struct TopBar: View {
@@ -47,26 +26,24 @@ struct TopBar: View {
     let planned: Date
 
     var body: some View {
+        // One quiet line of words on a shared baseline: Projects, then project / scene from
+        // the window's left edge; the compass centred over the window; the time and kit as
+        // plain words on the right (no pills).
         ZStack {
-            HStack(spacing: Space.xs) {
-                // HUD D: "Projects" sits over the left column, the way back to all your
-                // projects; the names start where the picture's window starts.
+            HStack(alignment: .firstTextBaseline, spacing: 0) {
                 Button { store.panel = .projects } label: {
                     Text("Projects")
-                        .font(.osData)
                         .foregroundStyle(Palette.paper)
                         .underline(color: Ink.muted)
                         .frame(minHeight: 44)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .frame(width: 76 - Space.xs, alignment: .leading)
+                .frame(width: 76, alignment: .leading)
                 .accessibilityHint("opens your projects")
 
                 Button { store.panel = .projects } label: {
-                    HStack(alignment: .firstTextBaseline, spacing: Space.xs) {
-                        // Shortened in code rather than with a max-width frame: the frame
-                        // always took its full 90 pt, leaving a gap before the slash.
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
                         Text(Self.short(store.currentProject.name)).foregroundStyle(Ink.muted)
                             .lineLimit(1)
                             .fixedSize()
@@ -75,39 +52,52 @@ struct TopBar: View {
                             .lineLimit(1)
                             .layoutPriority(1)
                     }
-                    .font(.osData)
                     .frame(minHeight: 44)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("\(store.currentProject.name), \(store.currentScene.name)")
                 .accessibilityHint("opens your projects")
-                // Long names truncate rather than run under the compass.
-                .frame(maxWidth: 260, alignment: .leading)
+                // Stops short of the compass.
+                .frame(maxWidth: 230, alignment: .leading)
 
-                // The compass sits in the row between the two sides, so long names push it
-                // over rather than running underneath it.
-                Spacer(minLength: Space.xs)
-                CompassTape(heading: heading, accuracy: headingAccuracy, sunAzimuth: sunAzimuth)
-                    .frame(width: 150, height: 26)
-                Spacer(minLength: Space.xs)
+                Spacer(minLength: Space.m)
 
                 // Just the time: white for now, orange when the sun timeline is scrubbed.
                 // Tap to snap back to now.
-                NightPill(action: { store.plannedMinutes = nil }) {
+                Button { store.plannedMinutes = nil } label: {
                     Text(Format.time(store.plannedMinutes == nil ? Date() : planned))
+                        .font(.osNum)
                         .foregroundStyle(store.plannedMinutes == nil ? Palette.paper : Palette.sun)
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
                 }
-                .lineLimit(1)
+                .buttonStyle(.plain)
                 .fixedSize()
                 .accessibilityHint("back to now")
 
-                NightPill(action: { store.panel = .kit }) {
-                    Text(store.kit.label).lineLimit(1)
-                }
-                .frame(maxWidth: 110)
-            }
+                Text("·").foregroundStyle(Ink.muted).padding(.horizontal, Space.xs)
 
+                Button { store.panel = .kit } label: {
+                    Text(store.kit.label)
+                        .foregroundStyle(Palette.paper)
+                        .underline(color: Ink.muted)
+                        .lineLimit(1)
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .frame(maxWidth: 120, alignment: .trailing)
+                .accessibilityLabel("kit, \(store.kit.label)")
+            }
+            .font(.osData)
+
+            // Centred over the picture's window (which starts after the 76 pt column).
+            CompassTape(heading: heading, accuracy: headingAccuracy, sunAzimuth: sunAzimuth)
+                .frame(width: 150, height: 26)
+                .frame(maxWidth: .infinity)
+                .padding(.leading, 76)
+                .allowsHitTesting(false)
         }
     }
 

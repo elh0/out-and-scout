@@ -217,6 +217,7 @@ struct ExportPanel: View {
         let options = picked, name = customName
         // Off the main thread, so the panel stays responsive while the stills are drawn.
         Task {
+            await Forecast.prefetch(project: project, scene: scene)
             let url = await Task.detached(priority: .userInitiated) {
                 try? Exporter.export(project: project, scene: scene, format: .pdf, options: options, name: name)
             }.value
@@ -249,6 +250,7 @@ struct ExportPanel: View {
         let options = picked, name = customName
         let fileFormat: Exporter.FileFormat = format == .csv ? .csv : .pdf
         Task {
+            if fileFormat == .pdf { await Forecast.prefetch(project: project, scene: scene) }
             let url = await Task.detached(priority: .userInitiated) {
                 try? Exporter.export(project: project, scene: scene, format: fileFormat, options: options, name: name)
             }.value

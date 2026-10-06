@@ -15,6 +15,7 @@ struct SunPathStrip: View {
                 if let s = selected { caption(s) }
                 arc(day)
                     .frame(height: height)
+                times(day)
             }
             .accessibilityElement(children: .combine)
         } else {
@@ -53,7 +54,10 @@ struct SunPathStrip: View {
 
     private func arc(_ day: SunDay) -> some View {
         let rise = day.sunrise!, set = day.sunset!
-        let from = rise.addingTimeInterval(-45 * 60), to = set.addingTimeInterval(45 * 60)
+        let amBlue = day.blueWindows.first { $0.upperBound <= rise.addingTimeInterval(3600) }
+        let pmBlue = day.blueWindows.last { $0.lowerBound >= set.addingTimeInterval(-3600) }
+        let from = (amBlue?.lowerBound ?? rise.addingTimeInterval(-40 * 60)).addingTimeInterval(-15 * 60)
+        let to = (pmBlue?.upperBound ?? set.addingTimeInterval(40 * 60)).addingTimeInterval(15 * 60)
         let samples = day.samples.filter { $0.time >= from && $0.time <= to }
         let top = max(10, samples.map(\.position.elevation).max() ?? 10)
         let low = -8.0
@@ -66,7 +70,7 @@ struct SunPathStrip: View {
         }
 
         return GeometryReader { geo in
-            let w = geo.size.width, h = geo.size.height - 12
+            let w = geo.size.width, h = geo.size.height - 2
             let span = to.timeIntervalSince(from)
             let x = { (t: Date) in CGFloat(min(max(t.timeIntervalSince(from), 0), span) / span) * w }
             let y = { (el: Double) in CGFloat((top - max(el, low)) / (top - low)) * h }
@@ -78,6 +82,11 @@ struct SunPathStrip: View {
 
             ZStack(alignment: .topLeading) {
                 Canvas { ctx, _ in
+                    // Dawn and dusk (blue hour), shaded behind the arc.
+                    for b in [amBlue, pmBlue].compactMap({ $0 }) {
+                        let r = CGRect(x: x(b.lowerBound), y: 0, width: max(1, x(b.upperBound) - x(b.lowerBound)), height: h)
+                        ctx.fill(Path(r), with: .color(Self.blue.opacity(0.22)))
+                    }
                     var line = Path()
                     line.move(to: CGPoint(x: 0, y: horizon))
                     line.addLine(to: CGPoint(x: w, y: horizon))
@@ -110,8 +119,6 @@ struct SunPathStrip: View {
                         .position(p)
                 }
 
-                Text(Format.time(rise)).fixedSize().position(x: max(x(rise), 14), y: h + 7)
-                Text(Format.time(set)).fixedSize().position(x: min(x(set), w - 14), y: h + 7)
             }
             .font(.osNumTiny)
             .foregroundStyle(Sheet.muted)
@@ -124,6 +131,35 @@ struct SunPathStrip: View {
             }
         }
         .accessibilityLabel("sun path, sunrise \(Format.time(rise)), sunset \(Format.time(set))")
+    }
+
+    static let blue = Color(hex: 0x5A73BF)
+
+    /// "Dawn 06:42 · Sunrise 07:14 · Golden till 07:58" and "Golden from 18:02 · Sunset 18:46 ·
+    /// Dusk 19:19": the light's names and times, morning on the left, evening on the right.
+    private func times(_ day: SunDay) -> some View {
+        let rise = day.sunrise!, set = day.sunset!
+        let amBlue = day.blueWindows.first { $0.upperBound <= rise.addingTimeInterval(3600) }
+        let pmBlue = day.blueWindows.last { $0.lowerBound >= set.addingTimeInterval(-3600) }
+        let amGold = day.goldenWindows.first { $0.lowerBound <= rise.addingTimeInterval(3600) }
+        let pmGold = day.goldenWindows.last { $0.upperBound >= set.addingTimeInterval(-3600) }
+        func item(_ name: String, _ t: Date?, _ color: Color = Sheet.muted) -> Text? {
+            guard let t else { return nil }
+            return Text(name + " ").foregroundColor(color) + Text(Format.time(t)).foregroundColor(Sheet.text)
+        }
+        func join(_ parts: [Text?]) -> Text {
+            let items = parts.compactMap { $0 }
+            guard let first = items.first else { return Text("") }
+            return items.dropFirst().reduce(first) { $0 + Text("  ") + $1 }
+        }
+        return HStack {
+            join([item("Dawn", amBlue?.lowerBound, Self.blue), item("Sunrise", rise), item("Golden till", amGold?.upperBound, Palette.sun)])
+            Spacer(minLength: Space.s)
+            join([item("Golden from", pmGold?.lowerBound, Palette.sun), item("Sunset", set), item("Dusk", pmBlue?.upperBound, Self.blue)])
+        }
+        .font(.osNumTiny)
+        .lineLimit(1)
+        .minimumScaleFactor(0.7)
     }
 }
 

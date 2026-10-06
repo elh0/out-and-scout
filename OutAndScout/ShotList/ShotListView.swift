@@ -17,6 +17,8 @@ struct ShotListView: View {
     /// Upright: the shot open in the bottom sheet.
     @State private var sheetID: UUID?
     @Environment(\.isPortrait) private var portrait
+    /// The two-week forecast for the scene in view.
+    @State private var showingWeather = false
 
     var body: some View {
         ZStack {
@@ -88,6 +90,22 @@ struct ShotListView: View {
             .foregroundStyle(Sheet.text)
             .presentationDetents([.medium, .large])
             .font(.osRow)
+        }
+        .sheet(isPresented: $showingWeather) {
+            let sc = sceneFilter.flatMap(scene(for:)) ?? store.currentScene
+            if let place = Exporter.place(of: sc) {
+                ForecastSheet(sceneName: sc.name, place: place, shots: sc.shots) { showingWeather = false }
+                    .presentationDetents([.medium, .large])
+            } else {
+                VStack(alignment: .leading, spacing: Space.s) {
+                    PanelHeader(title: "Weather · \(sc.name)", sub: "No location saved for this scene yet.", action: ("Done", { showingWeather = false }))
+                    Text("Pin a shot here first; its spot is used for the forecast.").font(.osRow).foregroundStyle(Sheet.muted)
+                    Spacer()
+                }
+                .padding(.top, 18).padding(.horizontal, 20)
+                .background(Sheet.bg).foregroundStyle(Sheet.text)
+                .presentationDetents([.medium])
+            }
         }
         .confirmationDialog(
             "Delete \"\(deletingScene?.name ?? "")\"?",
@@ -171,6 +189,11 @@ struct ShotListView: View {
                             Text("The stills go too. This can't be undone.")
                         }
                 }
+                Button("Weather") { showingWeather = true }
+                    .font(.osSupport)
+                    .buttonStyle(.plain)
+                    .frame(minHeight: 44)
+                    .padding(.trailing, Space.s)
                 Button("Projects") {
                     store.showingShotList = false
                     store.panel = .projects
@@ -275,6 +298,10 @@ struct ShotListView: View {
                         store.renameProject(project.id, to: $0)
                     }
                     Spacer()
+                    Button("Weather") { showingWeather = true }
+                        .font(.osData).foregroundStyle(Sheet.text).underline(color: Sheet.muted)
+                        .buttonStyle(.plain)
+                        .padding(.trailing, Space.s)
                     Text(Format.time(Date())).font(.osNum).foregroundStyle(Sheet.muted)
                 }
                 EditableName(text: s.name, font: Fonts.mono(22), title: "Rename Scene", pencil: true, pencilSize: 14, inPlace: true) { store.renameScene(s.id, to: $0) }

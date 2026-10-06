@@ -135,6 +135,10 @@ extension Exporter {
         }
         let t = sunTimes(at: loc, on: date)
         y = grid([("Sunrise", t.rise, false), ("Golden hour", t.golden, true), ("Sunset", t.set, false), ("Blue hour", t.blue, false)], y: y) + 14
+        // The week's weather, when forecasts are on and it was fetched for this export.
+        if Forecast.allowed, let days = Forecast.cached(latitude: loc.latitude, longitude: loc.longitude), !days.isEmpty {
+            y = weatherStrip(Array(days.prefix(7)), y: y) + 14
+        }
         // The map, when it can be fetched: every shot where it was taken, facing its way.
         let mapRect = CGRect(x: pad, y: y, width: page.width - pad * 2, height: 176)
         if shotMap(scene, around: loc, kit: kit, in: mapRect, ctx: ctx) { y = mapRect.maxY + 16 }
@@ -475,6 +479,29 @@ extension Exporter {
             UIRectFill(CGRect(x: px - 0.25, y: ly + 10, width: 0.5, height: max(0, topDot - ly - 12)))
         }
         return axisY + 10
+    }
+
+    /// Seven days across the page: the day, the sky in words, high/low, rain and sun hours.
+    private static func weatherStrip(_ days: [DayForecast], y top: CGFloat) -> CGFloat {
+        caps("Weather, next \(days.count) days").draw(at: CGPoint(x: pad, y: top))
+        let colW = (page.width - pad * 2) / CGFloat(days.count)
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_GB")
+        f.dateFormat = "EEE d"
+        for (i, d) in days.enumerated() {
+            let x = pad + CGFloat(i) * colW
+            let y = top + 12
+            hair.setFill()
+            UIRectFill(CGRect(x: x, y: y, width: colW - 6, height: 0.5))
+            text(f.string(from: d.date), font: mono(7.5)).draw(at: CGPoint(x: x, y: y + 3))
+            text(d.summary, font: mono(7.5), color: d.code >= 51 ? ink : grey)
+                .draw(with: CGRect(x: x, y: y + 13, width: colW - 8, height: 10), options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], context: nil)
+            text("\(Int(d.tempMax.rounded()))°/\(Int(d.tempMin.rounded()))° · \(d.rain)%", font: mono(6.75), color: grey)
+                .draw(at: CGPoint(x: x, y: y + 23))
+        }
+        let credit = text(Forecast.provider.credit, font: mono(5.5), color: grey)
+        credit.draw(at: CGPoint(x: page.width - pad - credit.size().width, y: top))
+        return top + 12 + 34
     }
 
     /// A quiet map of the scene with each shot's camera as a dot, its field of view as a cone
