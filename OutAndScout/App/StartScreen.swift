@@ -45,14 +45,16 @@ struct StartScreen: View {
                             newChoice
                         }
                     } else {
+                        // The prototype's 1.4fr / 1fr columns. Fixed widths: two flexible
+                        // columns let Continue take the whole row and squeezed New project out.
+                        let row = max(0, geo.size.width - side * 2 - 1)
                         HStack(alignment: .top, spacing: 0) {
                             continueChoice
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .layoutPriority(1.4)
+                                .frame(width: row * 1.4 / 2.4, alignment: .leading)
                             Sheet.text.opacity(0.22).frame(width: 1)
                             newChoice
                                 .padding(.leading, Space.xl)
-                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .frame(width: row / 2.4, alignment: .leading)
                         }
                         .fixedSize(horizontal: false, vertical: true)
                     }
