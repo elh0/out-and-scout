@@ -232,6 +232,9 @@ struct ShotListView: View {
             } else {
                 ScrollView {
                     LazyVStack(spacing: 0) {
+                        // The day's sun, scrolling away with the list when there are many shots.
+                        SunPathStrip(shots: visible.map(\.shot), selected: selected?.shot, height: 48) { selectedID = $0.id }
+                            .padding(.bottom, Space.s)
                         ForEach(visible) { item in
                             ShotRow(shot: item.shot, sceneName: sceneFilter == nil ? item.scene.name : nil, selected: item.shot.id == selected?.shot.id)
                                 .onTapGesture { selectedID = item.shot.id }
@@ -323,12 +326,24 @@ struct ShotListView: View {
 
             if project.scenes.count > 1 || !store.currentScene.shots.isEmpty { sceneHint.padding(.horizontal, Space.l).padding(.bottom, 10) }
 
+            if !s.shots.isEmpty {
+                SunPathStrip(shots: s.shots, selected: s.shots.first { $0.id == selectedID } ?? s.shots.last, height: 64) {
+                    selectedID = $0.id
+                    sheetID = $0.id
+                }
+                .padding(.horizontal, Space.l)
+                .padding(.bottom, 12)
+            }
+
             Rule()
             ScrollView {
                 LazyVStack(spacing: 0) {
                     ForEach(s.shots) { shot in
                         PortraitShotRow(shot: shot)
-                            .onTapGesture { sheetID = shot.id }
+                            .onTapGesture {
+                                selectedID = shot.id
+                                sheetID = shot.id
+                            }
                             .swipeToDelete {
                                 selectedID = shot.id
                                 confirmDelete = true
@@ -442,7 +457,7 @@ struct ShotListView: View {
                         sheetCell("Lens", "\(Format.mm(shot.lensMM))mm")
                         sheetCell("Time", Format.time(shot.plannedTime))
                         sheetCell("Light", shot.light.label)
-                        if let side = shot.sunSide { sheetCell("Sun", side.replacingOccurrences(of: "Sun ", with: "").capitalized) }
+                        if let read = shot.lightRead ?? shot.sunSide { sheetCell("Sun", read) }
                     }
 
                     HStack(spacing: Space.xs) {
@@ -568,6 +583,7 @@ struct ShotListView: View {
                     readout("Lens", "\(Format.mm(shot.lensMM))mm")
                     readout("Time", Format.time(shot.plannedTime))
                     readout("Light", shot.light.label, golden: shot.isGolden)
+                    readout("Light read", shot.lightRead ?? "–")
                     readout("Sun", "\(Int(shot.sunAzimuth.rounded()))° / \(Int(shot.sunElevation.rounded()))°")
                 }
                 Rule()
@@ -691,7 +707,7 @@ struct PortraitShotRow: View {
                     + Text(" " + (shot.caption.isEmpty ? "Untitled" : shot.caption)))
                     .font(Fonts.mono(13))
                     .lineLimit(1)
-                Text(["\(Format.mm(shot.lensMM))mm", Format.time(shot.plannedTime), shot.light.label, shot.sunSide].compactMap { $0 }.joined(separator: " · "))
+                Text(["\(Format.mm(shot.lensMM))mm", Format.time(shot.plannedTime), shot.light.label, shot.lightRead ?? shot.sunSide].compactMap { $0 }.joined(separator: " · "))
                     .font(.osData)
                     .foregroundStyle(Sheet.muted)
                     .lineLimit(1)
