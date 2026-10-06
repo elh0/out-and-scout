@@ -138,14 +138,11 @@ extension Exporter {
         // The map, when it can be fetched: every shot where it was taken, facing its way.
         let mapRect = CGRect(x: pad, y: y, width: page.width - pad * 2, height: 176)
         if shotMap(scene, around: loc, kit: kit, in: mapRect, ctx: ctx) { y = mapRect.maxY + 16 }
-        y = sunPathChart(scene: scene, at: loc, on: date, y: y, suns: true) + 6
-        text("Orange: golden hour, and where the sun was for each shot. Ticks on the horizon: the way each shot faced.",
-             font: mono(6.75), color: grey).draw(at: CGPoint(x: pad, y: y))
-        y += 24
+        y = dayChart(scene, at: loc, on: date, y: y) + 22
 
-        // The shots in order.
-        let cols: [CGFloat] = [pad, pad + 40, page.width - pad - 262, page.width - pad - 214, page.width - pad - 104, page.width - pad - 26]
-        for (i, h) in ["Shot", "Caption", "Time", "Light read", "Sun", "Page"].enumerated() {
+        // The shots in order, the light said in plain words.
+        let cols: [CGFloat] = [pad, pad + 34, pad + 76, page.width - pad - 236, page.width - pad - 26]
+        for (i, h) in ["Shot", "Time", "Caption", "The light", "Page"].enumerated() {
             caps(h).draw(at: CGPoint(x: cols[i], y: y))
         }
         y += 12
@@ -158,17 +155,33 @@ extension Exporter {
             hair.setFill()
             UIRectFill(CGRect(x: pad, y: y, width: page.width - pad * 2, height: 0.5))
             let ty = y + 4
+            let one: NSStringDrawingOptions = [.usesLineFragmentOrigin, .truncatesLastVisibleLine]
             text(shot.number, font: mono(8.25)).draw(at: CGPoint(x: cols[0], y: ty))
+            text(Format.time(shot.plannedTime), font: mono(8.25), color: shot.isGolden ? sun : ink).draw(at: CGPoint(x: cols[1], y: ty))
             text(shot.caption.isEmpty ? "Untitled" : shot.caption, font: mono(8.25))
-                .draw(with: CGRect(x: cols[1], y: ty, width: cols[2] - cols[1] - 10, height: 11), options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], context: nil)
-            text(Format.time(shot.plannedTime), font: mono(8.25), color: shot.isGolden ? sun : ink).draw(at: CGPoint(x: cols[2], y: ty))
-            text(shot.lightRead ?? (shot.bearing == nil ? "no heading" : "sun down"), font: mono(8.25), color: shot.lightRead == nil ? grey : ink)
-                .draw(with: CGRect(x: cols[3], y: ty, width: cols[4] - cols[3] - 10, height: 11), options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], context: nil)
-            text(shot.sunElevation > -1 ? "\(Int(shot.sunAzimuth.rounded()))° · \(Int(shot.sunElevation.rounded()))° up" : "down",
-                 font: mono(8.25), color: grey).draw(at: CGPoint(x: cols[4], y: ty))
-            text("\(start + 1 + n / 2)", font: mono(8.25), color: grey).draw(at: CGPoint(x: cols[5], y: ty))
+                .draw(with: CGRect(x: cols[2], y: ty, width: cols[3] - cols[2] - 10, height: 11), options: one, context: nil)
+            text(plainLight(shot), font: mono(8.25), color: shot.lightClass == nil ? grey : ink)
+                .draw(with: CGRect(x: cols[3], y: ty, width: cols[4] - cols[3] - 10, height: 11), options: one, context: nil)
+            text("\(start + 1 + n / 2)", font: mono(8.25), color: grey).draw(at: CGPoint(x: cols[4], y: ty))
             y += 18
         }
+    }
+
+    /// The light for someone who isn't a DP: "low sun, behind the camera", "golden hour, sun on the left".
+    static func plainLight(_ shot: Shot) -> String {
+        guard shot.sunElevation > -1 else { return "after sunset, no direct sun" }
+        guard let k = shot.lightClass, let b = shot.bearing else { return "no compass heading saved" }
+        let side = LightRead.rel(sunAzimuth: shot.sunAzimuth, heading: b) > 0 ? "right" : "left"
+        let where_: String
+        switch k {
+        case .backlit: where_ = "sun facing the camera"
+        case .threeQuarterBack: where_ = "sun ahead, to the \(side)"
+        case .side: where_ = "sun on the \(side)"
+        case .threeQuarterFront: where_ = "sun behind, to the \(side)"
+        case .front: where_ = "sun behind the camera"
+        }
+        let height = shot.isGolden ? "golden hour" : shot.sunElevation < 15 ? "low sun" : shot.sunElevation > 45 ? "high sun" : nil
+        return [height, where_].compactMap { $0 }.joined(separator: ", ")
     }
 
     private static func card(_ shot: Shot, scene: ScoutScene, sceneIndex: Int, kit: Kit, in r: CGRect, ctx: UIGraphicsPDFRendererContext) {
@@ -312,7 +325,8 @@ extension Exporter {
         // Notes, and a QR code that opens directions to the spot.
         let qr: CGFloat = 38
         let qrImage = loc?.directionsURL.flatMap { qrCode($0.absoluteString) }
-        let notesW = r.width - (qrImage == nil ? 0 : qr + 12)
+        let qrLabel = caps("Directions", size: 5.5)
+        let notesW = r.width - (qrImage == nil ? 0 : qr + qrLabel.size().width + 22)
         caps("Notes").draw(at: CGPoint(x: r.minX, y: y))
         if let notes = shot.notes, !notes.isEmpty {
             text(notes, font: mono(7.5)).draw(with: CGRect(x: r.minX, y: y + 10, width: notesW, height: 22),
@@ -330,9 +344,114 @@ extension Exporter {
             qrImage.draw(in: box)
             ctx.cgContext.restoreGState()
             ctx.setURL(url, for: box)
-            let d = caps("Directions", size: 5.5)
-            d.draw(at: CGPoint(x: box.minX - d.size().width - 5, y: box.maxY - d.size().height))
+            qrLabel.draw(at: CGPoint(x: box.minX - qrLabel.size().width - 6, y: box.maxY - qrLabel.size().height))
         }
+    }
+
+    /// The day as a timeline anyone can read: hours along the bottom, the sun's height up the
+    /// side, golden hour shaded orange, and each shot's number at its planned time.
+    private static func dayChart(_ scene: ScoutScene, at loc: ShotLocation, on date: Date, y top: CGFloat) -> CGFloat {
+        let day = SunCalculator.day(containing: date, latitude: loc.latitude, longitude: loc.longitude)
+        guard let rise = day.sunrise, let set = day.sunset else { return top }
+        let cal = Calendar.current
+        caps("The day").draw(at: CGPoint(x: pad, y: top))
+        text("The sun across the day: the higher the line, the higher the sun. Each shot sits at its planned time.", font: mono(7.5), color: grey)
+            .draw(at: CGPoint(x: pad, y: top + 10))
+
+        let from = rise.addingTimeInterval(-3600), to = set.addingTimeInterval(3600)
+        let span = to.timeIntervalSince(from)
+        let plot = CGRect(x: pad, y: top + 50, width: page.width - pad * 2, height: 84)
+        let samples = day.samples.filter { $0.time >= from && $0.time <= to }
+        let maxEl = max(10, samples.map(\.position.elevation).max() ?? 10)
+        let minEl = -10.0
+        func x(_ t: Date) -> CGFloat { plot.minX + plot.width * CGFloat(min(max(t.timeIntervalSince(from), 0), span) / span) }
+        func y(_ el: Double) -> CGFloat { plot.maxY - plot.height * CGFloat((max(el, minEl) - minEl) / (maxEl - minEl)) }
+        func onDay(_ t: Date) -> Date {
+            let c = cal.dateComponents([.hour, .minute], from: t)
+            return cal.date(bySettingHour: c.hour ?? 12, minute: c.minute ?? 0, second: 0, of: rise) ?? t
+        }
+
+        // Night and blue hour either side of the day, shaded and named.
+        func band(_ a: Date, _ b: Date, _ color: UIColor, _ name: String, _ label: UIColor) {
+            guard b > from, a < to else { return }
+            let x0 = x(max(a, from)), x1 = x(min(b, to))
+            guard x1 - x0 > 1 else { return }
+            color.setFill()
+            UIRectFill(CGRect(x: x0, y: plot.minY, width: x1 - x0, height: plot.height))
+            let l = caps(name, size: 5.5, color: label)
+            if l.size().width + 6 < x1 - x0 { l.draw(at: CGPoint(x: x0 + 3, y: plot.minY + 3)) }
+        }
+        // Night runs up to the morning blue hour and on from the evening one.
+        let amBlue = day.blueWindows.first { $0.upperBound <= rise }
+        let pmBlue = day.blueWindows.last { $0.lowerBound >= set }
+        band(from, amBlue?.lowerBound ?? rise, ink.withAlphaComponent(0.07), "Night", grey)
+        band(pmBlue?.upperBound ?? set, to, ink.withAlphaComponent(0.07), "Night", grey)
+        for bw in day.blueWindows {
+            band(bw.lowerBound, bw.upperBound, UIColor(red: 0.35, green: 0.45, blue: 0.75, alpha: 0.14), "Blue", grey)
+        }
+        caps("Daylight", size: 5.5).draw(at: CGPoint(x: x(rise.addingTimeInterval(set.timeIntervalSince(rise) / 2)) - 18, y: plot.minY + 3))
+
+        // Golden hour, shaded the full height and named.
+        for g in day.goldenWindows where g.upperBound > from && g.lowerBound < to {
+            let gx0 = x(max(g.lowerBound, from)), gx1 = x(min(g.upperBound, to))
+            sun.withAlphaComponent(0.12).setFill()
+            UIRectFill(CGRect(x: gx0, y: plot.minY, width: gx1 - gx0, height: plot.height))
+            let l = caps("Golden hour", size: 5.5, color: sun)
+            l.draw(at: CGPoint(x: min(gx0 + 3, plot.maxX - l.size().width), y: plot.minY + 3))
+        }
+
+        // Horizon, with sunrise and sunset on it.
+        let hy = y(0)
+        rule.setFill()
+        UIRectFill(CGRect(x: plot.minX, y: hy, width: plot.width, height: 0.75))
+        let r = text("sunrise \(Format.time(rise))", font: mono(6.75), color: grey)
+        r.draw(at: CGPoint(x: max(plot.minX, x(rise) - r.size().width / 2), y: hy + 3))
+        let st = text("sunset \(Format.time(set))", font: mono(6.75), color: grey)
+        st.draw(at: CGPoint(x: min(plot.maxX - st.size().width, x(set) - st.size().width / 2), y: hy + 3))
+
+        // The sun's height.
+        let curve = UIBezierPath()
+        for (i, s) in samples.enumerated() {
+            let p = CGPoint(x: x(s.time), y: y(s.position.elevation))
+            if i == 0 { curve.move(to: p) } else { curve.addLine(to: p) }
+        }
+        ink.withAlphaComponent(0.55).setStroke()
+        curve.lineWidth = 1
+        curve.stroke()
+
+        // Hours along the bottom.
+        let axisY = plot.maxY + 4
+        var t = cal.date(bySettingHour: cal.component(.hour, from: from) + 1, minute: 0, second: 0, of: from) ?? from
+        while t < to {
+            let h = cal.component(.hour, from: t)
+            if h % 2 == 0 {
+                let l = text(String(format: "%02d:00", h), font: mono(6.75), color: grey)
+                l.draw(at: CGPoint(x: x(t) - l.size().width / 2, y: axisY))
+                hair.setFill()
+                UIRectFill(CGRect(x: x(t) - 0.25, y: plot.maxY - 3, width: 0.5, height: 3))
+            }
+            t = t.addingTimeInterval(3600)
+        }
+
+        // Each shot at its planned time: a line down to the hours, a dot on the sun, its number.
+        var placed: [CGFloat] = []
+        for shot in scene.shots {
+            let when = onDay(shot.plannedTime)
+            let px = x(when)
+            let el = LightRead.elevation(at: when, day)
+            let py = y(el)
+            hair.setFill()
+            UIRectFill(CGRect(x: px - 0.25, y: py, width: 0.5, height: plot.maxY - py))
+            sun.setFill()
+            UIBezierPath(ovalIn: CGRect(x: px - 2.5, y: py - 2.5, width: 5, height: 5)).fill()
+            let row = placed.filter { abs($0 - px) < 40 }.count
+            placed.append(px)
+            let l = NSMutableAttributedString(attributedString: text(shot.number + " ", font: mono(7)))
+            l.append(text(Format.time(shot.plannedTime), font: mono(6.5), color: grey))
+            let lw = l.size().width
+            l.draw(at: CGPoint(x: min(max(px - lw / 2, plot.minX), plot.maxX - lw), y: py - 13 - CGFloat(min(row, 3)) * 9))
+        }
+        return axisY + 10
     }
 
     /// A quiet map of the scene with each shot's camera as a dot, its field of view as a cone
@@ -367,7 +486,8 @@ extension Exporter {
         let cg = ctx.cgContext
         cg.saveGState()
         UIRectClip(rect)
-        var placed: [CGPoint] = []
+        // Cones first, light, so the dots and numbers sit on top.
+        var spots: [(at: CGPoint, numbers: [String])] = []
         for s in scene.shots {
             guard let l = s.location else { continue }
             let p0 = snap.point(for: CLLocationCoordinate2D(latitude: l.latitude, longitude: l.longitude))
@@ -378,22 +498,31 @@ extension Exporter {
                 let a0 = (b - half - 90) * .pi / 180, a1 = (b + half - 90) * .pi / 180
                 let cone = UIBezierPath()
                 cone.move(to: p)
-                cone.addArc(withCenter: p, radius: 26, startAngle: a0, endAngle: a1, clockwise: true)
+                cone.addArc(withCenter: p, radius: 24, startAngle: a0, endAngle: a1, clockwise: true)
                 cone.close()
-                ink.withAlphaComponent(0.12).setFill()
+                ink.withAlphaComponent(0.07).setFill()
                 cone.fill()
-                ink.withAlphaComponent(0.6).setStroke()
+                ink.withAlphaComponent(0.3).setStroke()
                 cone.lineWidth = 0.5
                 cone.stroke()
             }
+            // Shots taken from the same spot share one pin.
+            if let i = spots.firstIndex(where: { hypot($0.at.x - p.x, $0.at.y - p.y) < 12 }) {
+                spots[i].numbers.append(s.number)
+            } else {
+                spots.append((p, [s.number]))
+            }
+        }
+        for spot in spots {
+            let p = spot.at
             ink.setFill()
-            UIBezierPath(ovalIn: CGRect(x: p.x - 2.5, y: p.y - 2.5, width: 5, height: 5)).fill()
-            let row = placed.filter { abs($0.x - p.x) < 18 && abs($0.y - p.y) < 10 }.count
-            placed.append(p)
-            let t = text(s.number, font: mono(7))
-            let tp = CGPoint(x: p.x + 4, y: p.y + 2 + CGFloat(row) * 9)
-            UIColor.white.withAlphaComponent(0.8).setFill()
-            UIRectFill(CGRect(origin: tp, size: t.size()).insetBy(dx: -1, dy: 0))
+            UIBezierPath(ovalIn: CGRect(x: p.x - 3, y: p.y - 3, width: 6, height: 6)).fill()
+            let n = spot.numbers
+            let label = n.count <= 3 ? n.joined(separator: " ") : "\(n[0])–\(n[n.count - 1]) (\(n.count))"
+            let t = text(label, font: mono(7))
+            let tp = CGPoint(x: min(p.x + 5, rect.maxX - t.size().width - 3), y: p.y - t.size().height / 2)
+            UIColor.white.withAlphaComponent(0.85).setFill()
+            UIRectFill(CGRect(origin: tp, size: t.size()).insetBy(dx: -2, dy: 0))
             t.draw(at: tp)
         }
         cg.restoreGState()
