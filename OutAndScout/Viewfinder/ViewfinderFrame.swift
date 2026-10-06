@@ -24,6 +24,25 @@ struct ViewfinderFrame: View {
     var clear = EdgeInsets()
 
 
+    /// "¾ back, sun left" from the camera's heading and the sun at the planned time; nil
+    /// without a compass or once the sun is down.
+    private var liveRead: String? {
+        guard sun.elevation > -1, let heading = motion.heading ?? location.heading else { return nil }
+        return LightClass.read(rel: LightRead.rel(sunAzimuth: sun.azimuth, heading: heading))
+    }
+
+    /// The frame's top-right label: the light read in orange, then (upright) the sun's height,
+    /// or the moon after sunset.
+    private var cornerLabel: Text? {
+        let height = portrait ? (sun.elevation > 0 ? "\(Int(sun.elevation.rounded()))° up" : "Moon · \(moon.summary)") : nil
+        switch (liveRead, height) {
+        case let (read?, h?): return Text(read).foregroundColor(Palette.sun) + Text(" · " + h).foregroundColor(Palette.paper)
+        case let (read?, nil): return Text(read).foregroundColor(Palette.sun)
+        case let (nil, h?): return Text(sun.elevation > 0 ? "Sun " + h : h).foregroundColor(Palette.paper)
+        default: return nil
+        }
+    }
+
     /// The moon at the planned time, for after sunset.
     private var moon: MoonInfo {
         MoonCalculator.info(at: planned, latitude: location.coordinate.latitude, longitude: location.coordinate.longitude)
@@ -98,11 +117,12 @@ struct ViewfinderFrame: View {
                     .offset(x: fullBleed ? max(frame.minX + Space.xs, clear.leading) : frame.minX + Space.xs,
                             y: fullBleed ? min(frame.maxY - 20, size.height - clear.bottom - 16) : frame.maxY - 20)
 
-                // Portrait board: the sun's height in the frame's top-right corner.
-                if portrait {
-                    Text(sun.elevation > 0 ? "Sun \(Int(sun.elevation.rounded()))° up" : "Moon · \(moon.summary)")
+                // The light as it falls on this shot, live from where the camera points
+                // (Elliot, 6 Oct 2026): "¾ back, sun left", top-right of the frame. Upright it
+                // carries the sun's height too; after sunset, the moon.
+                if let label = cornerLabel {
+                    label
                         .font(.osDataSmall)
-                        .foregroundStyle(Palette.paper)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .background(Palette.night.opacity(0.72), in: RoundedRectangle(cornerRadius: 4))

@@ -207,6 +207,15 @@ struct SunPathStrip: View {
     }
 }
 
+extension LightClass {
+    /// "¾ back, sun left", "backlit", "front lit": the sun relative to where the lens points.
+    static func read(rel: Double) -> String {
+        let k = of(rel: rel)
+        if k == .backlit || k == .front { return k.short }
+        return "\(k.short), sun \(rel > 0 ? "right" : "left")"
+    }
+}
+
 extension Shot {
     /// How the sun falls on the shot from the way the camera faced: "¾ back, sun left",
     /// "backlit", "front lit". Nil without a compass heading or once the sun is down.
@@ -216,9 +225,7 @@ extension Shot {
     }
 
     var lightRead: String? {
-        guard let k = lightClass, let bearing else { return nil }
-        if k == .backlit || k == .front { return k.short }
-        let rel = LightRead.rel(sunAzimuth: sunAzimuth, heading: bearing)
-        return "\(k.short), sun \(rel > 0 ? "right" : "left")"
+        guard lightClass != nil, let bearing else { return nil }
+        return LightClass.read(rel: LightRead.rel(sunAzimuth: sunAzimuth, heading: bearing))
     }
 }

@@ -92,6 +92,26 @@ struct ShotListView: View {
                                 rename: { store.setCaption($0, to: $1) }
                             )
                         }
+                        if !visible.isEmpty {
+                            // Clears every shot in view: this scene, or all scenes. Asks first.
+                            Button("Delete all \(Self.shots(visible.count)) in \(sceneFilter.flatMap(scene(for:))?.name ?? "All Scenes")") { confirmDeleteAll = true }
+                                .font(.osDataSmall)
+                                .foregroundStyle(Self.warning)
+                                .buttonStyle(.plain)
+                                .frame(minHeight: 44)
+                                .confirmationDialog(
+                                    "Delete \(visible.count == 1 ? "this shot" : "all \(visible.count) shots") in \(sceneFilter.flatMap(scene(for:))?.name ?? "All Scenes")?",
+                                    isPresented: $confirmDeleteAll,
+                                    titleVisibility: .visible
+                                ) {
+                                    Button("Delete \(Self.shots(visible.count))", role: .destructive) {
+                                        store.deleteShots(Set(visible.map(\.shot.id)))
+                                        selectedID = nil
+                                    }
+                                } message: {
+                                    Text("The stills go too. This can't be undone.")
+                                }
+                        }
                     }
                 }
             }
@@ -191,41 +211,24 @@ struct ShotListView: View {
                 Button { store.showingShotList = false } label: {
                     Label("Viewfinder", systemImage: "chevron.left")
                         .font(.osSupport)
+                        .lineLimit(1)
+                        .fixedSize()
                         .frame(minHeight: 44)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 Spacer()
-                if !visible.isEmpty {
-                    // Clears every shot in view: this scene, or all scenes. Asks first.
-                    Button("Delete All") { confirmDeleteAll = true }
-                        .font(.osSupport)
-                        .foregroundStyle(Sheet.muted)
-                        .buttonStyle(.plain)
-                        .frame(minHeight: 44)
-                        .padding(.trailing, Space.s)
-                        .confirmationDialog(
-                            "Delete \(visible.count == 1 ? "this shot" : "all \(visible.count) shots") in \(sceneFilter.flatMap(scene(for:))?.name ?? "All Scenes")?",
-                            isPresented: $confirmDeleteAll,
-                            titleVisibility: .visible
-                        ) {
-                            Button("Delete \(Self.shots(visible.count))", role: .destructive) {
-                                store.deleteShots(Set(visible.map(\.shot.id)))
-                                selectedID = nil
-                            }
-                        } message: {
-                            Text("The stills go too. This can't be undone.")
-                        }
-                }
                 // Rename, reorder and delete scenes in one place.
                 Button("Edit") { reordering = true }
                     .font(.osSupport)
                     .buttonStyle(.plain)
+                    .fixedSize()
                     .frame(minHeight: 44)
                     .padding(.trailing, Space.s)
                 Button("Weather") { showingWeather = true }
                     .font(.osSupport)
                     .buttonStyle(.plain)
+                    .fixedSize()
                     .frame(minHeight: 44)
                     .padding(.trailing, Space.s)
                 Button("Projects") {
@@ -233,6 +236,7 @@ struct ShotListView: View {
                     store.panel = .projects
                 }
                 .font(.osSupport)
+                .fixedSize()
                 .buttonStyle(.plain)
                 .frame(minHeight: 44)
             }
@@ -634,11 +638,16 @@ struct ShotListView: View {
 
     /// The still, with the frame lines right under it.
     private func picture(_ shot: Shot, width: CGFloat) -> some View {
-        VStack(alignment: .leading, spacing: Space.s) {
+        // Sized to the picture itself, so its tap area (open full screen) ends at its edges
+        // and never reaches the Export button above or the space beside it.
+        let ratio = CGFloat(max(shot.aspect.value, 0.1))
+        let h = min(180, width / ratio)
+        return VStack(alignment: .leading, spacing: Space.s) {
             HStack(alignment: .top, spacing: Space.xs) {
                 ShotThumb(shot: shot)
-                    .aspectRatio(shot.aspect.value, contentMode: .fit)
-                    .frame(maxWidth: width, maxHeight: 180, alignment: .topLeading)
+                    .frame(width: h * ratio, height: h)
+                    .clipped()
+                    .contentShape(Rectangle())
                     // A tap anywhere on the picture opens it full screen; the corner icon says so.
                     .overlay(alignment: .bottomTrailing) {
                         Button { enlarged = shot } label: {
