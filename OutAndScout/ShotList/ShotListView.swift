@@ -87,6 +87,7 @@ struct ShotListView: View {
             .background(Sheet.bg)
             .foregroundStyle(Sheet.text)
             .presentationDetents([.medium, .large])
+            .font(.osRow)
         }
         .confirmationDialog(
             "Delete \"\(deletingScene?.name ?? "")\"?",

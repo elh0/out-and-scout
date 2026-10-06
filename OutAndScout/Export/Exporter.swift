@@ -90,9 +90,10 @@ enum Exporter {
     private static let rule = UIColor(red: 0xD9 / 255, green: 0xD9 / 255, blue: 0xD3 / 255, alpha: 1)
     private static let sun = UIColor(red: 1, green: 0x5A / 255, blue: 0x1F / 255, alpha: 1)
 
+    // Geist Mono for every word in the PDF too, as in the app (Elliot, 6 Oct 2026).
     private static func sans(_ size: CGFloat, medium: Bool = false) -> UIFont {
-        UIFont(name: medium ? "Geist-Medium" : "Geist-Regular", size: size)
-            ?? .systemFont(ofSize: size, weight: medium ? .medium : .regular)
+        UIFont(name: medium ? "GeistMono-Medium" : "GeistMono-Regular", size: size)
+            ?? .monospacedSystemFont(ofSize: size, weight: medium ? .medium : .regular)
     }
 
     private static func mono(_ size: CGFloat) -> UIFont {

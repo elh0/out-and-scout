@@ -159,6 +159,7 @@ struct ExportPanel: View {
         .sheet(item: $shareItem) { item in
             ActivityView(items: [item.url])
                 .presentationDetents([.large])
+                .font(.osRow)
         }
     }
 
