@@ -72,7 +72,6 @@ struct ShotListView: View {
                             OrderList(
                                 heading: "Shots in \(shown.name)",
                                 renameTitle: "Edit Caption",
-                                tapHint: "Tap to edit",
                                 rows: shown.shots.map {
                                     .init(id: $0.id, number: $0.number, name: $0.caption, detail: "\(Format.mm($0.lensMM))mm")
                                 },
