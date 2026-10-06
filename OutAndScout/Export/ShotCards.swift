@@ -1,4 +1,5 @@
 import CoreImage
+import MapKit
 import SwiftUI
 import UIKit
 
@@ -81,7 +82,7 @@ extension Exporter {
             var pageNo = 2
             for (i, scene) in filled {
                 ctx.beginPage()
-                sceneDay(scene, index: i + 1, project: project, start: pageNo, ctx: ctx)
+                sceneDay(scene, index: i + 1, project: project, kit: options.kit, start: pageNo, ctx: ctx)
                 pageFooter(pageNo, legend: false)
                 pageNo += 1
                 let pages = Int(ceil(Double(scene.shots.count) / 2))
@@ -103,7 +104,7 @@ extension Exporter {
 
     /// A scene's opening page: name and place, the sun times, the sun path with each shot's
     /// sun and heading on it, then the shots in order with their time and light read.
-    private static func sceneDay(_ scene: ScoutScene, index: Int, project: Project, start: Int, ctx: UIGraphicsPDFRendererContext) {
+    private static func sceneDay(_ scene: ScoutScene, index: Int, project: Project, kit: Kit, start: Int, ctx: UIGraphicsPDFRendererContext) {
         wordmark(at: CGPoint(x: pad, y: pad), size: 10)
         let k = caps("\(project.name) · scene \(String(format: "%02d", index))")
         k.draw(at: CGPoint(x: page.width - pad - k.size().width, y: pad + 1))
@@ -133,7 +134,10 @@ extension Exporter {
             return
         }
         let t = sunTimes(at: loc, on: date)
-        y = grid([("Sunrise", t.rise, false), ("Golden hour", t.golden, true), ("Sunset", t.set, false), ("Blue hour", t.blue, false)], y: y) + 18
+        y = grid([("Sunrise", t.rise, false), ("Golden hour", t.golden, true), ("Sunset", t.set, false), ("Blue hour", t.blue, false)], y: y) + 14
+        // The map, when it can be fetched: every shot where it was taken, facing its way.
+        let mapRect = CGRect(x: pad, y: y, width: page.width - pad * 2, height: 176)
+        if shotMap(scene, around: loc, kit: kit, in: mapRect, ctx: ctx) { y = mapRect.maxY + 16 }
         y = sunPathChart(scene: scene, at: loc, on: date, y: y, suns: true) + 6
         text("Orange: golden hour, and where the sun was for each shot. Ticks on the horizon: the way each shot faced.",
              font: mono(6.75), color: grey).draw(at: CGPoint(x: pad, y: y))
@@ -329,6 +333,77 @@ extension Exporter {
             let d = caps("Directions", size: 5.5)
             d.draw(at: CGPoint(x: box.minX - d.size().width - 5, y: box.maxY - d.size().height))
         }
+    }
+
+    /// A quiet map of the scene with each shot's camera as a dot, its field of view as a cone
+    /// (heading and lens width), and its number. False when the map can't be fetched (offline).
+    private static func shotMap(_ scene: ScoutScene, around fallback: ShotLocation, kit: Kit, in rect: CGRect,
+                                ctx: UIGraphicsPDFRendererContext) -> Bool {
+        let places = scene.shots.compactMap(\.location) + [fallback]
+        let lats = places.map(\.latitude), lons = places.map(\.longitude)
+        let center = CLLocationCoordinate2D(latitude: (lats.min()! + lats.max()!) / 2, longitude: (lons.min()! + lons.max()!) / 2)
+        // At least ~300m across, so a single spot still shows its streets.
+        let latSpan = max((lats.max()! - lats.min()!) * 1.6, 0.0027 * Double(rect.height / rect.width))
+        let lonSpan = max((lons.max()! - lons.min()!) * 1.6, 0.0027 / max(cos(center.latitude * .pi / 180), 0.2))
+        let opts = MKMapSnapshotter.Options()
+        opts.region = MKCoordinateRegion(center: center, span: MKCoordinateSpan(latitudeDelta: latSpan, longitudeDelta: lonSpan))
+        opts.size = rect.size
+        opts.scale = 2
+        opts.mapType = .mutedStandard
+        opts.pointOfInterestFilter = .excludingAll
+        opts.traitCollection = UITraitCollection(userInterfaceStyle: .light)
+
+        var shot: MKMapSnapshotter.Snapshot?
+        let done = DispatchSemaphore(value: 0)
+        MKMapSnapshotter(options: opts).start(with: .global(qos: .userInitiated)) { snap, _ in
+            shot = snap
+            done.signal()
+        }
+        guard done.wait(timeout: .now() + 10) == .success, let snap = shot else { return false }
+
+        snap.image.draw(in: rect)
+        hair.setStroke()
+        UIBezierPath(rect: rect).stroke()
+        let cg = ctx.cgContext
+        cg.saveGState()
+        UIRectClip(rect)
+        var placed: [CGPoint] = []
+        for s in scene.shots {
+            guard let l = s.location else { continue }
+            let p0 = snap.point(for: CLLocationCoordinate2D(latitude: l.latitude, longitude: l.longitude))
+            let p = CGPoint(x: rect.minX + p0.x, y: rect.minY + p0.y)
+            if let b = s.bearing {
+                // North is up; a heading turns clockwise from it.
+                let half = kit.horizontalFOV(focal: s.lensMM) / 2
+                let a0 = (b - half - 90) * .pi / 180, a1 = (b + half - 90) * .pi / 180
+                let cone = UIBezierPath()
+                cone.move(to: p)
+                cone.addArc(withCenter: p, radius: 26, startAngle: a0, endAngle: a1, clockwise: true)
+                cone.close()
+                ink.withAlphaComponent(0.12).setFill()
+                cone.fill()
+                ink.withAlphaComponent(0.6).setStroke()
+                cone.lineWidth = 0.5
+                cone.stroke()
+            }
+            ink.setFill()
+            UIBezierPath(ovalIn: CGRect(x: p.x - 2.5, y: p.y - 2.5, width: 5, height: 5)).fill()
+            let row = placed.filter { abs($0.x - p.x) < 18 && abs($0.y - p.y) < 10 }.count
+            placed.append(p)
+            let t = text(s.number, font: mono(7))
+            let tp = CGPoint(x: p.x + 4, y: p.y + 2 + CGFloat(row) * 9)
+            UIColor.white.withAlphaComponent(0.8).setFill()
+            UIRectFill(CGRect(origin: tp, size: t.size()).insetBy(dx: -1, dy: 0))
+            t.draw(at: tp)
+        }
+        cg.restoreGState()
+        // North, bottom right.
+        let n = text("N ↑", font: mono(7))
+        UIColor.white.withAlphaComponent(0.8).setFill()
+        let np = CGPoint(x: rect.maxX - n.size().width - 6, y: rect.maxY - n.size().height - 5)
+        UIRectFill(CGRect(origin: np, size: n.size()).insetBy(dx: -2, dy: -1))
+        n.draw(at: np)
+        return true
     }
 
     /// A crisp black-on-white QR code for a link.
