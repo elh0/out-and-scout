@@ -278,6 +278,8 @@ struct OrderList: View {
     let rows: [Row]
     let move: (IndexSet, Int) -> Void
     let rename: (UUID, String) -> Void
+    /// Shows a trash icon on each row when set.
+    var delete: ((UUID) -> Void)? = nil
 
     @State private var dragging: UUID?
     private let pitch: CGFloat = 40
@@ -309,6 +311,17 @@ struct OrderList: View {
                 .frame(width: 22, alignment: .leading)
             EditableName(text: r.name, font: .osRow, emptyLabel: "Untitled", title: renameTitle, fillsWidth: true, pencil: true) { rename(r.id, $0) }
             Text(r.detail).font(.osNumSmall).foregroundStyle(Sheet.muted).lineLimit(1)
+            if let delete {
+                Button { delete(r.id) } label: {
+                    Image(systemName: "trash")
+                        .font(.system(size: 12))
+                        .foregroundStyle(Sheet.muted)
+                        .frame(width: 32, height: 36)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("delete \(r.name)")
+            }
             Image(systemName: "line.3.horizontal")
                 .font(.system(size: 13))
                 .foregroundStyle(Sheet.muted)
@@ -340,6 +353,7 @@ struct SceneOrder: View {
     @Environment(ScoutStore.self) private var store
     let scenes: [ScoutScene]
     let move: (IndexSet, Int) -> Void
+    var delete: ((UUID) -> Void)? = nil
 
     var body: some View {
         OrderList(
@@ -349,7 +363,8 @@ struct SceneOrder: View {
                 .init(id: s.id, number: String(format: "%02d", i + 1), name: s.name, detail: ShotListView.shots(s.shots.count))
             },
             move: move,
-            rename: { store.renameScene($0, to: $1) }
+            rename: { store.renameScene($0, to: $1) },
+            delete: delete
         )
     }
 }

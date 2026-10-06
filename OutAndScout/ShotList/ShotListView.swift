@@ -12,6 +12,7 @@ struct ShotListView: View {
     @State private var confirmDelete = false
     @State private var confirmDeleteAll = false
     @State private var deletingScene: ScoutScene?
+    @State private var sheetDeletingScene: ScoutScene?
     /// The shot shown full screen, for holding the phone up to a director.
     @State private var enlarged: Shot?
     /// Upright: the shot open in the bottom sheet.
@@ -63,7 +64,7 @@ struct ShotListView: View {
         .sheet(isPresented: $reordering) {
             let project = store.currentProject
             VStack(alignment: .leading, spacing: 16) {
-                PanelHeader(title: "Order and Names", sub: "Tap a name to rename, drag to reorder. Exports follow this.", action: ("Done", { reordering = false }))
+                PanelHeader(title: "Edit Scenes", sub: "Tap a name to rename, drag to reorder. Exports follow this order.", action: ("Done", { reordering = false }))
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
                         VStack(alignment: .leading, spacing: 6) {
@@ -75,7 +76,9 @@ struct ShotListView: View {
                             .overlay(alignment: .bottom) { Rule() }
                         }
                         if project.scenes.count > 1 {
-                            SceneOrder(scenes: project.scenes) { store.moveScenes(from: $0, to: $1) }
+                            SceneOrder(scenes: project.scenes, move: { store.moveScenes(from: $0, to: $1) }) { id in
+                                sheetDeletingScene = project.scenes.first { $0.id == id }
+                            }
                         }
                         let shown = sceneFilter.flatMap(scene(for:)) ?? store.currentScene
                         if !shown.shots.isEmpty {
@@ -99,6 +102,22 @@ struct ShotListView: View {
             .presentationDetents([.medium, .large])
             .font(.osRow)
             .renameBar()
+            // A dialog on the screen behind can't show over this sheet, so it has its own.
+            .confirmationDialog(
+                "Delete \"\(sheetDeletingScene?.name ?? "")\"?",
+                isPresented: Binding(get: { sheetDeletingScene != nil }, set: { if !$0 { sheetDeletingScene = nil } }),
+                titleVisibility: .visible,
+                presenting: sheetDeletingScene
+            ) { scene in
+                Button("Delete \(scene.name)", role: .destructive) {
+                    if sceneFilter == scene.id { sceneFilter = nil }
+                    store.deleteScene(scene.id)
+                    selectedID = nil
+                    sheetDeletingScene = nil
+                }
+            } message: { scene in
+                Text("Its \(Self.shots(scene.shots.count)) go too, stills included. This can't be undone.")
+            }
         }
         .sheet(isPresented: $showingWeather) {
             let sc = sceneFilter.flatMap(scene(for:)) ?? store.currentScene
@@ -198,6 +217,12 @@ struct ShotListView: View {
                             Text("The stills go too. This can't be undone.")
                         }
                 }
+                // Rename, reorder and delete scenes in one place.
+                Button("Edit") { reordering = true }
+                    .font(.osSupport)
+                    .buttonStyle(.plain)
+                    .frame(minHeight: 44)
+                    .padding(.trailing, Space.s)
                 Button("Weather") { showingWeather = true }
                     .font(.osSupport)
                     .buttonStyle(.plain)
@@ -242,7 +267,7 @@ struct ShotListView: View {
                         .contextMenu {
                             // A project always keeps at least one scene.
                             if project.scenes.count > 1 {
-                                Button("Rename or Reorder", systemImage: "arrow.left.arrow.right") { reordering = true }
+                                Button("Edit Scenes", systemImage: "arrow.up.arrow.down") { reordering = true }
                                 Button("Delete Scene", systemImage: "trash", role: .destructive) { deletingScene = s }
                             }
                         }
@@ -253,7 +278,6 @@ struct ShotListView: View {
                     }
                 }
             }
-            if project.scenes.count > 1 || !store.currentScene.shots.isEmpty { sceneHint }
 
             if visible.isEmpty {
                 Text("No shots in this scene yet. Pin one from the viewfinder and it lands here.")
@@ -307,6 +331,10 @@ struct ShotListView: View {
                         store.renameProject(project.id, to: $0)
                     }
                     Spacer()
+                    Button("Edit") { reordering = true }
+                        .font(.osData).foregroundStyle(Sheet.text).underline(color: Sheet.muted)
+                        .buttonStyle(.plain)
+                        .padding(.trailing, Space.s)
                     Button("Weather") { showingWeather = true }
                         .font(.osData).foregroundStyle(Sheet.text).underline(color: Sheet.muted)
                         .buttonStyle(.plain)
@@ -346,7 +374,7 @@ struct ShotListView: View {
                         .contextMenu {
                             // A project always keeps at least one scene.
                             if project.scenes.count > 1 {
-                                Button("Rename or Reorder", systemImage: "arrow.left.arrow.right") { reordering = true }
+                                Button("Edit Scenes", systemImage: "arrow.up.arrow.down") { reordering = true }
                                 Button("Delete Scene", systemImage: "trash", role: .destructive) { deletingScene = sc }
                             }
                         }
@@ -355,9 +383,8 @@ struct ShotListView: View {
                 .padding(.horizontal, Space.l)
             }
             .scrollIndicators(.hidden)
-            .padding(.bottom, project.scenes.count > 1 ? 6 : 12)
+            .padding(.bottom, 12)
 
-            if project.scenes.count > 1 || !store.currentScene.shots.isEmpty { sceneHint.padding(.horizontal, Space.l).padding(.bottom, 10) }
 
             if !s.shots.isEmpty {
                 SunPathStrip(shots: s.shots, selected: s.shots.first { $0.id == selectedID } ?? s.shots.last, height: 64) {
@@ -532,16 +559,6 @@ struct ShotListView: View {
         }
     }
 
-    /// Tells people the scene chips can be held.
-    private var sceneHint: some View {
-        Button { reordering = true } label: {
-            Text("Hold a scene to delete it · tap here to rename or reorder")
-                .font(.osDataSmall)
-                .foregroundStyle(Sheet.muted)
-        }
-        .buttonStyle(.plain)
-    }
-
     private func sheetCell(_ label: String, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(label).foregroundStyle(Sheet.muted)
@@ -596,11 +613,13 @@ struct ShotListView: View {
                 }
                 .scrollIndicators(.hidden)
             }
-            .confirmationDialog("Delete \(shot.number)?", isPresented: $confirmDelete, titleVisibility: .visible) {
+            .confirmationDialog("Delete shot \(shot.number)?", isPresented: $confirmDelete, titleVisibility: .visible) {
                 Button("Delete \(shot.number)", role: .destructive) {
                     store.deleteShot(shot.id)
                     selectedID = nil
                 }
+            } message: {
+                Text("Its still goes too. This can't be undone.")
             }
         } else {
             VStack(spacing: Space.m) {
@@ -613,14 +632,13 @@ struct ShotListView: View {
         }
     }
 
-    /// The still with a trash icon at its side, and the frame lines right under it.
+    /// The still, with the frame lines right under it.
     private func picture(_ shot: Shot, width: CGFloat) -> some View {
-        let side: CGFloat = 36
-        return VStack(alignment: .leading, spacing: Space.s) {
+        VStack(alignment: .leading, spacing: Space.s) {
             HStack(alignment: .top, spacing: Space.xs) {
                 ShotThumb(shot: shot)
                     .aspectRatio(shot.aspect.value, contentMode: .fit)
-                    .frame(maxWidth: max(120, width - side - Space.xs), maxHeight: 180, alignment: .topLeading)
+                    .frame(maxWidth: width, maxHeight: 180, alignment: .topLeading)
                     // A tap anywhere on the picture opens it full screen; the corner icon says so.
                     .overlay(alignment: .bottomTrailing) {
                         Button { enlarged = shot } label: {
@@ -639,36 +657,20 @@ struct ShotListView: View {
                     .onTapGesture { enlarged = shot }
                     .accessibilityAddTraits(.isButton)
                     .accessibilityHint("tap to see it full screen")
-                // Holding a row in the list deletes too; this is the visible way.
-                Button { confirmDelete = true } label: {
-                    Image(systemName: "trash")
-                        .font(.system(size: 13))
-                        .foregroundStyle(Sheet.muted)
-                        .frame(width: side, height: side)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("delete shot \(shot.number)")
             }
 
-            // Frame lines can be changed after the shot; "full" shows the whole frame.
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 4) {
-                    Text("Frame lines")
-                    Image(systemName: "pencil").font(.system(size: 9)).accessibilityHidden(true)
-                }
-                .font(.osDataSmall).foregroundStyle(Sheet.muted)
-                FadingHScroll {
-                    HStack(spacing: Space.xxs) {
-                        ForEach([AspectRatio.full(shot.stillAspect ?? AspectRatio.viewfinderValue)] + store.aspectStrip) { a in
-                            Chip(label: a.display, selected: a.label == shot.aspect.label, underline: true) {
-                                store.setShotAspect(shot.id, to: a)
-                            }
+            // Frame lines, changeable after the shot; "Full" shows the whole frame. Lined up
+            // with the picture's left edge.
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: Space.m) {
+                    ForEach([AspectRatio.full(shot.stillAspect ?? AspectRatio.viewfinderValue)] + store.aspectStrip) { a in
+                        Chip(label: a.display, selected: a.label == shot.aspect.label, underline: true) {
+                            store.setShotAspect(shot.id, to: a)
                         }
                     }
                 }
-                .fixedSize(horizontal: false, vertical: true)
             }
+            .accessibilityLabel("frame lines")
         }
         .frame(width: width, alignment: .leading)
     }
@@ -702,9 +704,29 @@ struct ShotListView: View {
                 }
                 .id("notes" + shot.id.uuidString)
             }
+            // Set apart and in red so it isn't hit by accident; it still asks first.
+            Button { confirmDelete = true } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "trash").font(.system(size: 11))
+                    Text("Delete shot")
+                }
+                .font(.osDataSmall)
+                .foregroundStyle(Self.warning)
+                .padding(.horizontal, 10)
+                .frame(height: 28)
+                .overlay(Capsule().strokeBorder(Self.warning.opacity(0.5), lineWidth: 1))
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .padding(.top, Space.xs)
+            .accessibilityLabel("delete shot \(shot.number)")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
+
+    /// The one red: things that can't be undone.
+    static let warning = Color(hex: 0xE5534B)
 
     static func shots(_ n: Int) -> String { n == 1 ? "1 shot" : "\(n) shots" }
 }
