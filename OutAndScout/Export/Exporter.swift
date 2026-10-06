@@ -206,7 +206,8 @@ enum Exporter {
 
     /// The day's sun path across the compass (N E S W along the bottom, height up the side),
     /// golden hour in orange, every other hour marked, and a tick for the way each shot faced.
-    static func sunPathChart(scene: ScoutScene, at loc: ShotLocation, on date: Date, y top: CGFloat) -> CGFloat {
+    /// With `suns`, each shot also gets an orange dot where the sun was for it (the Detailed PDF).
+    static func sunPathChart(scene: ScoutScene, at loc: ShotLocation, on date: Date, y top: CGFloat, suns: Bool = false) -> CGFloat {
         let day = SunCalculator.day(containing: date, latitude: loc.latitude, longitude: loc.longitude)
         let h: CGFloat = 96
         let w = page.width - pad * 2
@@ -272,6 +273,20 @@ enum Exporter {
             placed.append(x)
             let t = text(shot.number, font: mono(7))
             t.draw(at: CGPoint(x: x - t.size().width / 2, y: horizon + 7 + CGFloat(row) * 9))
+        }
+
+        // Where the sun was for each shot.
+        if suns {
+            var labelled: [CGPoint] = []
+            for shot in scene.shots where shot.sunElevation > minEl {
+                let p = point(shot.sunAzimuth, shot.sunElevation)
+                sun.setFill()
+                UIBezierPath(ovalIn: CGRect(x: p.x - 3, y: p.y - 3, width: 6, height: 6)).fill()
+                let row = labelled.filter { abs($0.x - p.x) < 16 && abs($0.y - p.y) < 10 }.count
+                labelled.append(p)
+                let t = text(shot.number, font: mono(7), color: sun)
+                t.draw(at: CGPoint(x: p.x + 5, y: p.y - 13 - CGFloat(row) * 9))
+            }
         }
         return plot.maxY + 14
     }

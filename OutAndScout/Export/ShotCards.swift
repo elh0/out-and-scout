@@ -44,38 +44,123 @@ extension Exporter {
     // MARK: Detailed: cover, then two shot cards a page
 
     static func detailedPDF(project: Project, scenes: [ScoutScene], options: Options) -> Data {
-        let shots: [(shot: Shot, scene: ScoutScene, index: Int)] = scenes.enumerated().flatMap { i, sc in
-            sc.shots.map { (shot: $0, scene: sc, index: i + 1) }
-        }
-        let cardPages = max(1, Int(ceil(Double(shots.count) / 2)))
-        let total = 1 + cardPages
+        // Each scene opens with its day (sun times, the sun path with every shot on it, the
+        // shots in order), then its cards two a page.
+        let filled = scenes.enumerated().filter { !$0.element.shots.isEmpty }
         var firstPage: [UUID: Int] = [:]
-        for (n, item) in shots.enumerated() where firstPage[item.scene.id] == nil {
-            firstPage[item.scene.id] = 2 + n / 2
+        var next = 2
+        for (_, sc) in filled {
+            firstPage[sc.id] = next
+            next += 1 + Int(ceil(Double(sc.shots.count) / 2))
         }
+        let total = max(2, next - 1)
+        let cardPad: CGFloat = 36
+        let cardH = (page.height - cardPad * 2 - 24 - 24) / 2
         let renderer = UIGraphicsPDFRenderer(bounds: page)
-        return renderer.pdfData { ctx in
-            drawCover(ctx, project: project, scenes: scenes, firstPage: firstPage, total: total, options: options)
-            let cardPad: CGFloat = 36
-            let cardH = (page.height - cardPad * 2 - 24 - 24) / 2
-            for p in 0..<cardPages {
-                ctx.beginPage()
-                wordmark(at: CGPoint(x: cardPad, y: cardPad), size: 10)
-                let k = caps("\(project.name) · shots")
-                k.draw(at: CGPoint(x: page.width - cardPad - k.size().width, y: cardPad + 1))
-                for (j, item) in shots.dropFirst(p * 2).prefix(2).enumerated() {
-                    card(item.shot, scene: item.scene, sceneIndex: item.index, kit: options.kit,
-                         in: CGRect(x: cardPad, y: cardPad + 24 + CGFloat(j) * cardH, width: page.width - cardPad * 2, height: cardH), ctx: ctx)
-                }
-                if shots.isEmpty {
-                    text("No shots yet.", font: mono(9), color: grey).draw(at: CGPoint(x: cardPad, y: cardPad + 40))
-                }
-                let fy = page.height - cardPad - 8
+
+        func pageFooter(_ n: Int, legend: Bool) {
+            let fy = page.height - cardPad - 8
+            if legend {
                 text("B backlit · ¾B · S side · ¾F · F front lit · orange: golden hour and shot time · black: best time",
                      font: mono(6.75), color: grey).draw(at: CGPoint(x: cardPad, y: fy))
-                let n = text("\(p + 2) / \(total)", font: mono(6.75), color: grey)
-                n.draw(at: CGPoint(x: page.width - cardPad - n.size().width, y: fy))
             }
+            let t = text("\(n) / \(total)", font: mono(6.75), color: grey)
+            t.draw(at: CGPoint(x: page.width - cardPad - t.size().width, y: fy))
+        }
+
+        return renderer.pdfData { ctx in
+            drawCover(ctx, project: project, scenes: scenes, firstPage: firstPage, total: total, options: options)
+            if filled.isEmpty {
+                ctx.beginPage()
+                wordmark(at: CGPoint(x: cardPad, y: cardPad), size: 10)
+                text("No shots yet.", font: mono(9), color: grey).draw(at: CGPoint(x: cardPad, y: cardPad + 40))
+                pageFooter(2, legend: false)
+                return
+            }
+            var pageNo = 2
+            for (i, scene) in filled {
+                ctx.beginPage()
+                sceneDay(scene, index: i + 1, project: project, start: pageNo, ctx: ctx)
+                pageFooter(pageNo, legend: false)
+                pageNo += 1
+                let pages = Int(ceil(Double(scene.shots.count) / 2))
+                for p in 0..<pages {
+                    ctx.beginPage()
+                    wordmark(at: CGPoint(x: cardPad, y: cardPad), size: 10)
+                    let k = caps("\(project.name) · \(scene.name)")
+                    k.draw(at: CGPoint(x: page.width - cardPad - k.size().width, y: cardPad + 1))
+                    for (j, shot) in scene.shots.dropFirst(p * 2).prefix(2).enumerated() {
+                        card(shot, scene: scene, sceneIndex: i + 1, kit: options.kit,
+                             in: CGRect(x: cardPad, y: cardPad + 24 + CGFloat(j) * cardH, width: page.width - cardPad * 2, height: cardH), ctx: ctx)
+                    }
+                    pageFooter(pageNo, legend: true)
+                    pageNo += 1
+                }
+            }
+        }
+    }
+
+    /// A scene's opening page: name and place, the sun times, the sun path with each shot's
+    /// sun and heading on it, then the shots in order with their time and light read.
+    private static func sceneDay(_ scene: ScoutScene, index: Int, project: Project, start: Int, ctx: UIGraphicsPDFRendererContext) {
+        wordmark(at: CGPoint(x: pad, y: pad), size: 10)
+        let k = caps("\(project.name) · scene \(String(format: "%02d", index))")
+        k.draw(at: CGPoint(x: page.width - pad - k.size().width, y: pad + 1))
+        var y = pad + 40
+        text(scene.name, font: mono(21), kern: -0.4)
+            .draw(with: CGRect(x: pad, y: y, width: page.width - pad * 2, height: 28), options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], context: nil)
+        y += 30
+        let loc = place(of: scene)
+        let date = recceDate([scene])
+        let sub = [scene.note.isEmpty ? Format.shortDate(date) : scene.note, loc?.display, ShotListView.shots(scene.shots.count)]
+            .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
+        text(sub, font: mono(8.25), color: grey)
+            .draw(with: CGRect(x: pad, y: y, width: page.width - pad * 2, height: 12), options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], context: nil)
+        y += 14
+        if let url = loc?.mapURL {
+            let link = text("Open in Maps ↗", font: mono(8.25))
+            let rect = CGRect(origin: CGPoint(x: pad, y: y), size: link.size())
+            link.draw(at: rect.origin)
+            ink.setFill()
+            UIRectFill(CGRect(x: rect.minX, y: rect.maxY, width: rect.width, height: 0.5))
+            ctx.setURL(url, for: rect.insetBy(dx: -4, dy: -6))
+        }
+        y += 22
+
+        guard let loc else {
+            text("No location saved, so no sun path for this scene.", font: mono(8.25), color: grey).draw(at: CGPoint(x: pad, y: y))
+            return
+        }
+        let t = sunTimes(at: loc, on: date)
+        y = grid([("Sunrise", t.rise, false), ("Golden hour", t.golden, true), ("Sunset", t.set, false), ("Blue hour", t.blue, false)], y: y) + 18
+        y = sunPathChart(scene: scene, at: loc, on: date, y: y, suns: true) + 6
+        text("Orange: golden hour, and where the sun was for each shot. Ticks on the horizon: the way each shot faced.",
+             font: mono(6.75), color: grey).draw(at: CGPoint(x: pad, y: y))
+        y += 24
+
+        // The shots in order.
+        let cols: [CGFloat] = [pad, pad + 40, page.width - pad - 230, page.width - pad - 182, page.width - pad - 64]
+        for (i, h) in ["Shot", "Caption", "Time", "Light read", "Page"].enumerated() {
+            caps(h).draw(at: CGPoint(x: cols[i], y: y))
+        }
+        y += 12
+        let bottom = page.height - 36 - 24
+        for (n, shot) in scene.shots.enumerated() {
+            if y + 18 > bottom {
+                text("+ \(scene.shots.count - n) more on the cards", font: mono(7.5), color: grey).draw(at: CGPoint(x: pad, y: y + 4))
+                break
+            }
+            hair.setFill()
+            UIRectFill(CGRect(x: pad, y: y, width: page.width - pad * 2, height: 0.5))
+            let ty = y + 4
+            text(shot.number, font: mono(8.25)).draw(at: CGPoint(x: cols[0], y: ty))
+            text(shot.caption.isEmpty ? "Untitled" : shot.caption, font: mono(8.25))
+                .draw(with: CGRect(x: cols[1], y: ty, width: cols[2] - cols[1] - 10, height: 11), options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], context: nil)
+            text(Format.time(shot.plannedTime), font: mono(8.25), color: shot.isGolden ? sun : ink).draw(at: CGPoint(x: cols[2], y: ty))
+            text(shot.lightRead ?? (shot.bearing == nil ? "no heading" : "sun down"), font: mono(8.25), color: shot.lightRead == nil ? grey : ink)
+                .draw(with: CGRect(x: cols[3], y: ty, width: cols[4] - cols[3] - 10, height: 11), options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], context: nil)
+            text("\(start + 1 + n / 2)", font: mono(8.25), color: grey).draw(at: CGPoint(x: cols[4], y: ty))
+            y += 18
         }
     }
 
@@ -88,10 +173,23 @@ extension Exporter {
         let id = text(shot.number, font: mono(18), kern: -0.36)
         id.draw(at: CGPoint(x: r.minX, y: y))
         let where_ = text("\(String(format: "%02d", sceneIndex)) · \(scene.name)", font: mono(8.25), color: grey)
-        where_.draw(at: CGPoint(x: r.maxX - where_.size().width, y: y + 7))
+        var right = r.maxX
+        // A tappable link to the spot, as on the Summary.
+        if let url = (shot.location ?? place(of: scene))?.mapURL {
+            let link = text("Open in Maps ↗", font: mono(8.25))
+            let lw = link.size().width
+            let rect = CGRect(x: right - lw, y: y + 7, width: lw, height: link.size().height)
+            link.draw(at: rect.origin)
+            ink.setFill()
+            UIRectFill(CGRect(x: rect.minX, y: rect.maxY, width: lw, height: 0.5))
+            ctx.setURL(url, for: rect.insetBy(dx: -4, dy: -6))
+            right -= lw + 14
+        }
+        where_.draw(at: CGPoint(x: right - where_.size().width, y: y + 7))
+        right -= where_.size().width
         let capX = r.minX + id.size().width + 10
         text(shot.caption.isEmpty ? "Untitled" : shot.caption, font: mono(9))
-            .draw(with: CGRect(x: capX, y: y + 6, width: r.maxX - where_.size().width - 12 - capX, height: 12),
+            .draw(with: CGRect(x: capX, y: y + 6, width: right - 12 - capX, height: 12),
                   options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], context: nil)
         y += 30
 
