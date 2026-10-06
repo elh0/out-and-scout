@@ -230,11 +230,10 @@ struct ShotListView: View {
                     .padding(.top, Space.m)
                 Spacer()
             } else {
+                // The day's sun stays put above the shots as they scroll.
+                SunPathStrip(shots: visible.map(\.shot), selected: selected?.shot, height: 40) { selectedID = $0.id }
                 ScrollView {
                     LazyVStack(spacing: 0) {
-                        // The day's sun, scrolling away with the list when there are many shots.
-                        SunPathStrip(shots: visible.map(\.shot), selected: selected?.shot, height: 48) { selectedID = $0.id }
-                            .padding(.bottom, Space.s)
                         ForEach(visible) { item in
                             ShotRow(shot: item.shot, sceneName: sceneFilter == nil ? item.scene.name : nil, selected: item.shot.id == selected?.shot.id)
                                 .onTapGesture { selectedID = item.shot.id }
