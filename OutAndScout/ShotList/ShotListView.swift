@@ -235,6 +235,10 @@ struct ShotListView: View {
                         ForEach(visible) { item in
                             ShotRow(shot: item.shot, sceneName: sceneFilter == nil ? item.scene.name : nil, selected: item.shot.id == selected?.shot.id)
                                 .onTapGesture { selectedID = item.shot.id }
+                                .swipeToDelete {
+                                    selectedID = item.shot.id
+                                    confirmDelete = true
+                                }
                                 // Press and hold a shot to delete it; it still asks first.
                                 .contextMenu {
                                     Button("Delete \(item.shot.number)", systemImage: "trash", role: .destructive) {
@@ -325,6 +329,10 @@ struct ShotListView: View {
                     ForEach(s.shots) { shot in
                         PortraitShotRow(shot: shot)
                             .onTapGesture { sheetID = shot.id }
+                            .swipeToDelete {
+                                selectedID = shot.id
+                                confirmDelete = true
+                            }
                             // Press and hold a shot to delete it; it still asks first.
                             .contextMenu {
                                 Button("Delete \(shot.number)", systemImage: "trash", role: .destructive) {

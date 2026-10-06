@@ -177,6 +177,8 @@ struct CompassTape: View {
 
 struct LeftRail: View {
     @Environment(ScoutStore.self) private var store
+    /// The scene the "delete scene" dialog is asking about.
+    @State private var deletingScene: ScoutScene?
 
     var body: some View {
         // HUD D: this project's scenes on top (tap to switch, + Scene to add one),
@@ -203,6 +205,8 @@ struct LeftRail: View {
                         }
                         .buttonStyle(.plain)
                         .accessibilityAddTraits(current ? [.isSelected] : [])
+                        // A project always keeps at least one scene.
+                        .swipeToDelete(enabled: store.currentProject.scenes.count > 1) { deletingScene = scene }
                     }
                     Button { store.requestNewScene() } label: {
                         Text("+ Scene")
@@ -227,6 +231,19 @@ struct LeftRail: View {
         }
         .padding(.top, 2)
         .padding(.bottom, Space.xs)
+        .confirmationDialog(
+            "Delete \"\(deletingScene?.name ?? "")\"?",
+            isPresented: Binding(get: { deletingScene != nil }, set: { if !$0 { deletingScene = nil } }),
+            titleVisibility: .visible,
+            presenting: deletingScene
+        ) { scene in
+            Button("Delete \(scene.name)", role: .destructive) {
+                store.deleteScene(scene.id)
+                deletingScene = nil
+            }
+        } message: { scene in
+            Text("Its \(ShotListView.shots(scene.shots.count)) go too, stills included. This can't be undone.")
+        }
     }
 }
 

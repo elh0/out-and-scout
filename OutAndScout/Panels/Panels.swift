@@ -215,6 +215,7 @@ struct ProjectsPanel: View {
             store.select(project: project.id)
             store.panel = nil
         }
+        .swipeToDelete(enabled: !editing) { deleting = project }
         .accessibilityAddTraits(isCurrent ? [.isButton, .isSelected] : .isButton)
         .accessibilityHint("opens this project")
     }
@@ -249,6 +250,8 @@ struct ProjectsPanel: View {
             store.select(project: project.id, scene: scene.id)
             store.panel = nil
         }
+        // A project always keeps at least one scene.
+        .swipeToDelete(enabled: project.scenes.count > 1) { deletingScene = scene }
         .contextMenu {
             Button("Rename Scene", systemImage: "pencil") {
                 store.rename = RenameRequest(title: "Rename Scene", text: scene.name) { [store] in
