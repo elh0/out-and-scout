@@ -60,7 +60,6 @@ struct ExportPanel: View {
                         OrderList(
                             heading: "Shots",
                             renameTitle: "Edit Caption",
-                            tapHint: "Tap to edit",
                             rows: thisScene.shots.map {
                                 .init(id: $0.id, number: $0.number, name: $0.caption, detail: "\(Format.mm($0.lensMM))mm")
                             },
@@ -118,10 +117,12 @@ struct ExportPanel: View {
 
                 // Tap the file name to rename the export.
                 if format != .photos { HStack(spacing: 0) {
-                    EditableName(text: customName ?? defaultName, font: .osData, color: Sheet.muted, title: "File Name", pencil: true) {
+                    EditableName(text: customName ?? defaultName, font: .osData, color: Sheet.muted, title: "File Name") {
                         customName = Exporter.cleanName($0)
                     }
-                    Text(".\(ext)").font(.osData).foregroundStyle(Sheet.muted).padding(.leading, -5)
+                    Text(".\(ext)").font(.osData).foregroundStyle(Sheet.muted)
+                    Image(systemName: "pencil").font(.system(size: 10)).foregroundStyle(Sheet.muted)
+                        .padding(.leading, 5).accessibilityHidden(true)
                 }
                 .frame(maxWidth: .infinity) }
 
@@ -250,8 +251,6 @@ struct OrderList: View {
 
     let heading: String
     let renameTitle: String
-    /// "Tap to rename" for scenes; captions say "Tap to edit".
-    var tapHint = "Tap to rename"
     let rows: [Row]
     let move: (IndexSet, Int) -> Void
     let rename: (UUID, String) -> Void
@@ -264,7 +263,7 @@ struct OrderList: View {
             HStack {
                 Text(heading)
                 Spacer()
-                Text("\(tapHint) · drag to reorder")
+                Text("Drag to reorder")
             }
             .font(.osDataSmall)
             .foregroundStyle(Sheet.muted)

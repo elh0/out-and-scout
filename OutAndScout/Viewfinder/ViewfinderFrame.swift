@@ -87,7 +87,9 @@ struct ViewfinderFrame: View {
                     .font(.osNumSmall)
                     .foregroundStyle(Palette.paper.opacity(0.7))
                     .fixedSize()
-                    .offset(x: frame.minX + Space.xs, y: frame.maxY - 20)
+                    // E2: kept inside the open space, so the ratio row never covers it.
+                    .offset(x: fullBleed ? max(frame.minX + Space.xs, clear.leading) : frame.minX + Space.xs,
+                            y: fullBleed ? min(frame.maxY - 20, size.height - clear.bottom - 16) : frame.maxY - 20)
 
                 // Portrait board: the sun's height in the frame's top-right corner.
                 if portrait, sun.elevation > 0 {
