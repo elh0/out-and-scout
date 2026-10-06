@@ -18,6 +18,8 @@ struct EditableName: View {
     var fillsWidth = false
     /// A small pencil after the words, like iOS, so it reads as editable.
     var pencil = false
+    /// Bigger for the large titles.
+    var pencilSize: CGFloat = 10
     let onRename: (String) -> Void
 
     var body: some View {
@@ -28,7 +30,7 @@ struct EditableName: View {
                 .lineLimit(lineLimit)
             if pencil {
                 Image(systemName: "pencil")
-                    .font(.system(size: 10))
+                    .font(.system(size: pencilSize))
                     .foregroundStyle(Sheet.muted)
                     .accessibilityHidden(true)
             }
