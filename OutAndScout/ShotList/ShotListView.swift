@@ -514,7 +514,21 @@ struct ShotListView: View {
                     ShotThumb(shot: shot)
                         .aspectRatio(shot.aspect.value, contentMode: .fit)
                         .frame(maxWidth: 300, maxHeight: 130)
-                        // Like Photos: no badge, a tap on the picture opens it full screen.
+                        // A tap anywhere on the picture opens it full screen; the corner icon says so.
+                        .overlay(alignment: .bottomTrailing) {
+                            Button { enlarged = shot } label: {
+                                Image(systemName: "arrow.up.left.and.arrow.down.right")
+                                    .font(.system(size: 10))
+                                    .foregroundStyle(Sheet.text)
+                                    .frame(width: 24, height: 24)
+                                    .background(Color.black.opacity(0.45))
+                                    .padding(4)
+                                    .frame(width: 44, height: 44, alignment: .bottomTrailing)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("view full screen")
+                        }
                         .onTapGesture { enlarged = shot }
                         .accessibilityAddTraits(.isButton)
                         .accessibilityHint("tap to see it full screen")
