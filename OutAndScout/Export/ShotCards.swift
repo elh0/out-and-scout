@@ -452,8 +452,6 @@ extension Exporter {
 
         // The light's names under the hours, each centred on its stretch with its times, so
         // every band is named and nothing spills out of its colour. Two rows if they'd touch.
-        let amBlue = day.blueWindows.first { $0.upperBound <= rise.addingTimeInterval(3600) }
-        let pmBlue = day.blueWindows.last { $0.lowerBound >= set.addingTimeInterval(-3600) }
         let amGold = day.goldenWindows.first { $0.lowerBound <= rise.addingTimeInterval(3600) }
         let pmGold = day.goldenWindows.last { $0.upperBound >= set.addingTimeInterval(-3600) }
         let blueInk = UIColor(red: 0.30, green: 0.40, blue: 0.70, alpha: 1)
