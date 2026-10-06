@@ -110,11 +110,6 @@ struct ProjectsPanel: View {
                         Rule()
                         ForEach(others) { project in
                             projectRow(project)
-                            if expanded == project.id {
-                                ForEach(project.scenes) { scene in
-                                    sceneRow(project: project, scene: scene, indent: true)
-                                }
-                            }
                         }
                     }
 
@@ -194,23 +189,34 @@ struct ProjectsPanel: View {
             .lineLimit(1)
     }
 
-    // Another project: tap the name to rename it, the rest of the row to show its scenes.
+    // Another project: tap anywhere on the row to open it (it moves to the top with its
+    // scenes). Rename and delete are in the press-and-hold menu, so a tap never renames.
     private func projectRow(_ project: Project) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: Space.xs) {
-            EditableName(text: project.name, font: .osRow, title: "Rename Project") { store.renameProject(project.id, to: $0) }
+            Text(project.name).font(.osRow).foregroundStyle(Sheet.text).lineLimit(1)
             Spacer()
             Text("\(project.scenes.count)").font(.osNum).foregroundStyle(Sheet.muted)
+            Image(systemName: "chevron.right")
+                .font(.system(size: 9))
+                .foregroundStyle(Sheet.muted)
+                .accessibilityHidden(true)
         }
-        .frame(minHeight: 40)
+        .frame(minHeight: 44)
         .overlay(alignment: .bottom) { Rule() }
         .contentShape(Rectangle())
         .onTapGesture {
-            withAnimation(.snappy(duration: 0.2)) { expanded = expanded == project.id ? nil : project.id }
+            withAnimation(.snappy(duration: 0.2)) { store.select(project: project.id) }
         }
-        // Press and hold for delete; it still asks before anything goes.
         .contextMenu {
+            Button("Rename Project", systemImage: "pencil") {
+                store.rename = RenameRequest(title: "Rename Project", text: project.name) { [store] in
+                    store.renameProject(project.id, to: $0)
+                }
+            }
             Button("Delete Project", systemImage: "trash", role: .destructive) { deleting = project }
         }
+        .accessibilityAddTraits(.isButton)
+        .accessibilityHint("opens this project")
     }
 
     // E: a ruled row; the open scene bright, the rest grey, the shot count in mono.
