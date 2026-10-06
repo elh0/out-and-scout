@@ -150,57 +150,45 @@ struct ViewfinderView: View {
     /// with soft shade at the top, bottom and right edges so the type stays readable.
     /// Taps that miss a control fall through to the viewfinder (focus, pinch, AE/AF lock).
     private func landscapeLayout(sun: SunPosition, planned: Date) -> some View {
-        ZStack {
-            // The image runs edge to edge, but the ratio lines sit in the clear space between
-            // the controls, so a frame line never runs through a button or readout.
-            GeometryReader { geo in
-                let safe = geo.safeAreaInsets
-                let clear = EdgeInsets(
-                    top: safe.top + Space.xs + 44 + Space.xxs,
-                    leading: safe.leading + Space.s + 48 + Space.s + Space.xxs,
-                    bottom: safe.bottom + Space.xs + 56 + Space.xxs,
-                    trailing: safe.trailing + Space.m + 104 + Space.s + Space.xxs
-                )
-                ViewfinderFrame(sun: sun, sunDay: sunDay, planned: planned, frameFraction: $frameFraction,
-                                fullBleed: true, clear: clear)
-                    .ignoresSafeArea()
-            }
+        // HUD D, "Framed" (Elliot, 6 Oct 2026): the picture lives in one fixed window, the
+        // ratio frame always fitted whole inside it and everything outside the frame dark,
+        // so you know exactly what's in shot. The controls sit on ink around the window,
+        // never over the picture.
+        VStack(spacing: 0) {
+            TopBar(
+                heading: motion.heading ?? location.heading,
+                headingAccuracy: location.headingAccuracy,
+                sunAzimuth: sun.azimuth,
+                planned: planned
+            )
+            .frame(height: 44)
+            .padding(.horizontal, Space.m)
 
-            EdgeShades()
-                .ignoresSafeArea()
+            HStack(spacing: Space.s) {
+                LeftRail()
+                    .frame(width: 52)
+                    .padding(.leading, Space.s)
 
-            VStack(spacing: 0) {
-                TopBar(
-                    heading: motion.heading ?? location.heading,
-                    headingAccuracy: location.headingAccuracy,
-                    sunAzimuth: sun.azimuth,
-                    planned: planned
-                )
-                .frame(height: 44)
-                .padding(.horizontal, Space.m)
+                VStack(spacing: 0) {
+                    ViewfinderFrame(sun: sun, sunDay: sunDay, planned: planned, frameFraction: $frameFraction)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .clipped()
+                        // The window's edge: a hairline, square.
+                        .overlay(Rectangle().strokeBorder(Sheet.rule, lineWidth: 1))
 
-                HStack(spacing: Space.s) {
-                    LeftRail()
-                        .frame(width: 48)
-                        .padding(.leading, Space.s)
-
-                    VStack(spacing: 0) {
-                        Spacer(minLength: 0)
-                        BottomBar(sunDay: sunDay, planned: planned, sun: sun)
-                            .frame(height: 56)
-                    }
-
-                    RightRail(capturing: capturing) {
-                        Task { await pin() }
-                    }
-                    .frame(width: 104)
-                    .padding(.trailing, Space.m)
+                    BottomBar(sunDay: sunDay, planned: planned, sun: sun)
+                        .frame(height: 52)
                 }
+
+                RightRail(capturing: capturing) {
+                    Task { await pin() }
+                }
+                .frame(width: 104)
+                .padding(.trailing, Space.m)
             }
-            .padding(.vertical, Space.xs)
-            // Lifts type off a bright scene, like the prototype's text shadow.
-            .shadow(color: .black.opacity(0.55), radius: 1.5, y: 1)
         }
+        .padding(.vertical, Space.xs)
+        .background(Sheet.bg.ignoresSafeArea())
         // The keyboard slides over the viewfinder rather than shoving it off the top.
         .ignoresSafeArea(.keyboard)
     }
@@ -443,24 +431,5 @@ private struct SceneChangeChip: View {
         .padding(.trailing, 4)
         .frame(height: 40)
         .background(Palette.paper, in: Capsule())
-    }
-}
-
-/// Soft black shade along the top, bottom and right edges of the full-screen viewfinder, so
-/// the floating controls read over a bright scene. Never takes a touch.
-private struct EdgeShades: View {
-    var body: some View {
-        ZStack {
-            LinearGradient(colors: [.black.opacity(0.5), .clear], startPoint: .top, endPoint: .bottom)
-                .frame(height: 96)
-                .frame(maxHeight: .infinity, alignment: .top)
-            LinearGradient(colors: [.black.opacity(0.55), .clear], startPoint: .bottom, endPoint: .top)
-                .frame(height: 110)
-                .frame(maxHeight: .infinity, alignment: .bottom)
-            LinearGradient(colors: [.black.opacity(0.35), .clear], startPoint: .trailing, endPoint: .leading)
-                .frame(width: 200)
-                .frame(maxWidth: .infinity, alignment: .trailing)
-        }
-        .allowsHitTesting(false)
     }
 }

@@ -49,43 +49,30 @@ struct TopBar: View {
     var body: some View {
         ZStack {
             HStack(spacing: Space.xs) {
-                // Tap a name to rename it in the floating name bar; the chevron opens Projects.
-                HStack(spacing: Space.xs) {
-                    // The scene name wins the space; the project name gives way first.
-                    Button { store.startRenamingCurrentProject() } label: {
-                        Text("\(store.currentProject.name) /")
-                            .font(.osData)
-                            .foregroundStyle(Ink.muted)
+                // The way back to your projects: "Projects / project / scene", one tap opens
+                // the Projects panel. Renaming lives there (Edit) and on the big titles.
+                Button { store.panel = .projects } label: {
+                    HStack(alignment: .firstTextBaseline, spacing: Space.xs) {
+                        Text("Projects").foregroundStyle(Ink.muted)
+                        Text("/").foregroundStyle(Ink.muted)
+                        Text(store.currentProject.name).foregroundStyle(Palette.paper)
                             .lineLimit(1)
-                            .frame(minHeight: 44)
-                            .contentShape(Rectangle())
-                    }
-                    .frame(maxWidth: 84, alignment: .leading)
-                    .buttonStyle(.plain)
-                    .accessibilityHint("tap to rename the project")
-                    Button { store.startRenamingCurrentScene() } label: {
-                        Text(store.currentScene.name)
-                            .font(.osRow)
-                            .foregroundStyle(Palette.paper)
+                            .frame(maxWidth: 90, alignment: .leading)
+                        Text("/").foregroundStyle(Ink.muted)
+                        Text(store.currentScene.name).foregroundStyle(Palette.paper)
+                            .underline(color: Ink.muted)
                             .lineLimit(1)
-                            .frame(minHeight: 44)
-                            .contentShape(Rectangle())
+                            .layoutPriority(1)
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityHint("tap to rename the scene")
-                    .layoutPriority(1)
-                    Button { store.panel = .projects } label: {
-                        Image(systemName: "chevron.down")
-                            .font(.system(size: 9, weight: .semibold))
-                            .foregroundStyle(Ink.muted)
-                            .frame(width: 24, height: 44)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("projects and scenes")
+                    .font(.osData)
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Projects, \(store.currentProject.name), \(store.currentScene.name)")
+                .accessibilityHint("opens your projects")
                 // Long names truncate rather than run under the compass.
-                .frame(maxWidth: 210, alignment: .leading)
+                .frame(maxWidth: 260, alignment: .leading)
 
                 NightPill(height: 26, action: { store.requestNewScene() }) {
                     Image(systemName: "plus").font(.system(size: 9, weight: .semibold))
@@ -183,7 +170,7 @@ struct LeftRail: View {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            VStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 4) {
                 RailToggle(symbol: "sun.horizon", label: "Sun Path", on: store.overlays.sunPath) { store.toggle(\.sunPath) }
                 RailToggle(symbol: "grid", label: "Grid", on: store.overlays.grid) { store.toggle(\.grid) }
                 RailToggle(symbol: "level", label: "Level", on: store.overlays.level) { store.toggle(\.level) }
@@ -197,7 +184,7 @@ struct LeftRail: View {
     }
 }
 
-/// A 40pt round toggle with a 9pt label under it. Filled paper when on.
+/// A rail toggle: one word, lit and underlined when on.
 struct RailToggle: View {
     let symbol: String
     let label: String
@@ -205,22 +192,16 @@ struct RailToggle: View {
     let action: () -> Void
 
     var body: some View {
+        // HUD D: a word, bright and underlined when on, grey when off. No icons.
         Button(action: action) {
-            VStack(spacing: 4) {
-                Image(systemName: symbol)
-                    .font(.system(size: 15, weight: .regular))
-                    .foregroundStyle(on ? Palette.ink : Palette.paper.opacity(0.8))
-                    .frame(width: 40, height: 40)
-                    .background(on ? Palette.paper : .clear, in: Circle())
-                    .overlay(Circle().strokeBorder(on ? .clear : Palette.nightRule, lineWidth: 1))
-                Text(label)
-                    .font(.osTiny)
-                    .foregroundStyle(Ink.muted)
-                    .lineLimit(1)
-                    .fixedSize()
-            }
-            .frame(minWidth: 44)
-            .contentShape(Rectangle())
+            Text(label)
+                .font(.osData)
+                .foregroundStyle(on ? Palette.paper : Ink.muted)
+                .underline(on, color: Palette.paper)
+                .lineLimit(1)
+                .fixedSize()
+                .frame(minWidth: 44, minHeight: 36, alignment: .leading)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)

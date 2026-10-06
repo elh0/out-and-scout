@@ -59,20 +59,14 @@ struct LayoutSwitch: View {
         let symbol = mode.portrait ? "rectangle.landscape.rotate" : "rectangle.portrait.rotate"
         Button { mode.set(portrait: !mode.portrait) } label: {
             if vertical {
-                VStack(spacing: 4) {
-                    Image(systemName: symbol)
-                        .font(.system(size: 15))
-                        .foregroundStyle(Palette.paper.opacity(0.8))
-                        .frame(width: 40, height: 40)
-                        .overlay(Circle().strokeBorder(Palette.nightRule, lineWidth: 1))
-                    Text(target)
-                        .font(.osTiny)
-                        .foregroundStyle(Palette.nightMuted)
-                        .lineLimit(1)
-                        .fixedSize()
-                }
-                .frame(minWidth: 44)
-                .contentShape(Rectangle())
+                // HUD D rail: a grey word like the toggles above it.
+                Text(target)
+                    .font(.osData)
+                    .foregroundStyle(Palette.nightMuted)
+                    .lineLimit(1)
+                    .fixedSize()
+                    .frame(minWidth: 44, minHeight: 36, alignment: .leading)
+                    .contentShape(Rectangle())
             } else {
                 HStack(spacing: 6) {
                     Image(systemName: symbol).font(.system(size: 11))

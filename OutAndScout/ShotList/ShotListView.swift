@@ -187,9 +187,9 @@ struct ShotListView: View {
                     }
                 }
                 if let s = sceneFilter.flatMap(scene(for:)) {
-                    EditableName(text: s.name, font: Fonts.sans(22, .regular), title: "Rename Scene", pencil: true, pencilSize: 14, inPlace: true) { store.renameScene(s.id, to: $0) }
+                    EditableName(text: s.name, font: Fonts.mono(22), title: "Rename Scene", pencil: true, pencilSize: 14, inPlace: true) { store.renameScene(s.id, to: $0) }
                 } else {
-                    Text("All scenes").font(Fonts.sans(22, .regular)).lineLimit(1)
+                    Text("All scenes").font(Fonts.mono(22)).lineLimit(1)
                 }
                 Text(subtitle).font(.osSupport).foregroundStyle(Sheet.muted)
             }
@@ -272,7 +272,7 @@ struct ShotListView: View {
                     Spacer()
                     Text(Format.time(Date())).font(.osNum).foregroundStyle(Sheet.muted)
                 }
-                EditableName(text: s.name, font: Fonts.sans(22, .regular), title: "Rename Scene", pencil: true, pencilSize: 14, inPlace: true) { store.renameScene(s.id, to: $0) }
+                EditableName(text: s.name, font: Fonts.mono(22), title: "Rename Scene", pencil: true, pencilSize: 14, inPlace: true) { store.renameScene(s.id, to: $0) }
                 Text([s.note, Self.shots(s.shots.count)].filter { !$0.isEmpty }.joined(separator: " · "))
                     .font(.osData).foregroundStyle(Sheet.muted).lineLimit(1)
             }
@@ -425,7 +425,7 @@ struct ShotListView: View {
                         .accessibilityHint("tap to see it full screen")
 
                     Text(shot.caption.isEmpty ? "Untitled" : shot.caption)
-                        .font(Fonts.sans(15, .regular))
+                        .font(Fonts.mono(15))
                         .foregroundStyle(shot.caption.isEmpty ? Sheet.muted : Sheet.text)
                         .lineLimit(3)
 
@@ -680,7 +680,7 @@ struct PortraitShotRow: View {
             VStack(alignment: .leading, spacing: 3) {
                 (Text(shot.number).font(.osNum).foregroundStyle(Sheet.muted)
                     + Text(" " + (shot.caption.isEmpty ? "Untitled" : shot.caption)))
-                    .font(Fonts.sans(13, .regular))
+                    .font(Fonts.mono(13))
                     .lineLimit(1)
                 Text(["\(Format.mm(shot.lensMM))mm", Format.time(shot.plannedTime), shot.light.label, shot.sunSide].compactMap { $0 }.joined(separator: " · "))
                     .font(.osData)

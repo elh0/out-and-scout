@@ -74,22 +74,22 @@ enum ButtonHeight {
 }
 
 extension Font {
-    // E2 type: Geist 400 for words, Geist Mono only for numbers (lens, times, shot IDs,
-    // degrees), so readouts hold still as they change. Small sizes, one weight.
+    // Type (Elliot, 6 Oct 2026): Geist Mono everywhere in the app, one weight, small sizes.
+    // Only the "Out & Sc●out" wordmark stays in Geist. The osNum names are kept for numbers.
     /// 13, a panel or scene title.
-    static let osTitle = Fonts.sans(13, .regular)
+    static let osTitle = Fonts.mono(13)
     /// 12, button labels like "Export list".
-    static let osAction = Fonts.sans(12, .regular)
+    static let osAction = Fonts.mono(12)
     /// 12, a shot row title or caption.
-    static let osRow = Fonts.sans(12, .regular)
+    static let osRow = Fonts.mono(12)
     /// 11, supporting text.
-    static let osSupport = Fonts.sans(11, .regular)
-    /// 11, labels and readouts made of words.
-    static let osData = Fonts.sans(11, .regular)
+    static let osSupport = Fonts.mono(11)
+    /// 11, labels and readouts.
+    static let osData = Fonts.mono(11)
     /// 10, small labels (e.g. "Next").
-    static let osDataSmall = Fonts.sans(10, .regular)
+    static let osDataSmall = Fonts.mono(10)
     /// 9, rail labels.
-    static let osTiny = Fonts.sans(9, .regular)
+    static let osTiny = Fonts.mono(9)
     /// 11, numbers: "40mm · 08:02", shot IDs, counts.
     static let osNum = Fonts.mono(11)
     /// 10, small numbers.

@@ -53,6 +53,8 @@ struct PanelHeader: View {
 struct ProjectsPanel: View {
     @Environment(ScoutStore.self) private var store
     @State private var expanded: UUID?
+    /// Edit shows Rename and Delete on each row; otherwise a tap just opens.
+    @State private var editing = false
     @State private var confirmDeleteAll = false
     /// The project the "delete project" dialog is asking about.
     @State private var deleting: Project?
@@ -64,11 +66,22 @@ struct ProjectsPanel: View {
             // The name, as on the opening, heading the place your projects live.
             Wordmark(size: 15)
                 .padding(.bottom, Space.xs)
-            PanelHeader(
-                title: "Projects",
-                sub: store.projects.count == 1 ? "1 project" : "\(store.projects.count) projects",
-                action: ("Done", { store.panel = nil })
-            )
+            // Like the prototype: a tap opens a project or scene; renaming and deleting only
+            // happen after Edit, so a stray tap never starts a rename.
+            HStack(alignment: .firstTextBaseline, spacing: Space.l) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Caps(text: "Projects")
+                    Text(store.projects.count == 1 ? "1 project" : "\(store.projects.count) projects")
+                        .font(.osData).foregroundStyle(Sheet.muted).lineLimit(1)
+                }
+                Spacer()
+                Button(editing ? "Stop editing" : "Edit") {
+                    withAnimation(.snappy(duration: 0.2)) { editing.toggle() }
+                }
+                .buttonStyle(PillButtonStyle(kind: .text))
+                Button("Done") { store.panel = nil }
+                    .buttonStyle(PillButtonStyle(kind: .text))
+            }
             Rule()
 
             // E: the open project on top with all its scenes, then the others. Everything,
@@ -78,7 +91,7 @@ struct ProjectsPanel: View {
                 VStack(alignment: .leading, spacing: 0) {
                     let current = store.currentProject
                     VStack(alignment: .leading, spacing: 4) {
-                        EditableName(text: current.name, font: Fonts.sans(20, .regular), title: "Rename Project", pencil: true, pencilSize: 13, inPlace: true) {
+                        EditableName(text: current.name, font: Fonts.mono(20), title: "Rename Project", pencil: true, pencilSize: 13, inPlace: true) {
                             store.renameProject(current.id, to: $0)
                         }
                         summary(current)
@@ -198,46 +211,80 @@ struct ProjectsPanel: View {
         HStack(alignment: .firstTextBaseline, spacing: Space.xs) {
             Text(project.name).font(.osRow).foregroundStyle(Sheet.text).lineLimit(1)
             Spacer()
-            Text("\(project.scenes.count)").font(.osNum).foregroundStyle(Sheet.muted)
-            Image(systemName: "chevron.right")
-                .font(.system(size: 9))
-                .foregroundStyle(Sheet.muted)
-                .accessibilityHidden(true)
+            if editing {
+                editButtons(rename: { renameProject(project) }, delete: { deleting = project })
+            } else {
+                Text("\(project.scenes.count)").font(.osNum).foregroundStyle(Sheet.muted)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 9))
+                    .foregroundStyle(Sheet.muted)
+                    .accessibilityHidden(true)
+            }
         }
         .frame(minHeight: 44)
         .overlay(alignment: .bottom) { Rule() }
         .contentShape(Rectangle())
         .onTapGesture {
+            guard !editing else { return }
             withAnimation(.snappy(duration: 0.2)) { store.select(project: project.id) }
         }
         .contextMenu {
-            Button("Rename Project", systemImage: "pencil") {
-                store.rename = RenameRequest(title: "Rename Project", text: project.name) { [store] in
-                    store.renameProject(project.id, to: $0)
-                }
-            }
+            Button("Rename Project", systemImage: "pencil") { renameProject(project) }
             Button("Delete Project", systemImage: "trash", role: .destructive) { deleting = project }
         }
         .accessibilityAddTraits(.isButton)
         .accessibilityHint("opens this project")
     }
 
+    private func renameProject(_ project: Project) {
+        store.rename = RenameRequest(title: "Rename Project", text: project.name) { [store] in
+            store.renameProject(project.id, to: $0)
+        }
+    }
+
+    /// Edit mode's two words on a row: Rename, and Delete in the sun's orange.
+    private func editButtons(rename: @escaping () -> Void, delete: (() -> Void)?) -> some View {
+        HStack(spacing: Space.m) {
+            Button("Rename", action: rename)
+                .font(.osData).foregroundStyle(Sheet.text).buttonStyle(.plain)
+                .frame(minHeight: 40)
+            if let delete {
+                Button("Delete", action: delete)
+                    .font(.osData).foregroundStyle(Palette.sun).buttonStyle(.plain)
+                    .frame(minHeight: 40)
+            }
+        }
+    }
+
     // E: a ruled row; the open scene bright, the rest grey, the shot count in mono.
     private func sceneRow(project: Project, scene: ScoutScene, indent: Bool) -> some View {
         let current = scene.id == store.currentSceneID
         return HStack(alignment: .firstTextBaseline, spacing: Space.xs) {
-            EditableName(text: scene.name, font: .osRow, color: current ? Sheet.text : Sheet.muted, title: "Rename Scene") { store.renameScene(scene.id, to: $0) }
-            if !scene.note.isEmpty {
+            Text(scene.name).font(.osRow).foregroundStyle(current ? Sheet.text : Sheet.muted).lineLimit(1)
+            if !scene.note.isEmpty, !editing {
                 Text(scene.note).font(.osData).foregroundStyle(Sheet.muted).lineLimit(1)
             }
             Spacer()
-            Text("\(scene.shots.count)").font(.osNum).foregroundStyle(Sheet.muted)
+            if editing {
+                editButtons(
+                    rename: {
+                        store.rename = RenameRequest(title: "Rename Scene", text: scene.name) { [store] in
+                            store.renameScene(scene.id, to: $0)
+                        }
+                    },
+                    // A project always keeps at least one scene.
+                    delete: project.scenes.count > 1 ? { deletingScene = scene } : nil
+                )
+            } else {
+                Text("\(scene.shots.count)").font(.osNum).foregroundStyle(Sheet.muted)
+            }
         }
         .padding(.leading, indent ? Space.m : 0)
         .frame(minHeight: 40)
         .overlay(alignment: .bottom) { Rule() }
         .contentShape(Rectangle())
         .onTapGesture {
+            guard !editing else { return }
             store.select(project: project.id, scene: scene.id)
             store.panel = nil
         }
