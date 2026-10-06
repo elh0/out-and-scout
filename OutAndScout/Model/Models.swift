@@ -44,6 +44,8 @@ struct Shot: Identifiable, Codable, Hashable {
     var photoFile: String?
     /// Shape of the saved still (the sensor mode's shape when it was taken).
     var stillAspect: Double? = nil
+    /// Crew notes: access, power, practicals, sound. Printed on the Detailed card.
+    var notes: String? = nil
 
     var isGolden: Bool { light == .goldenHour }
 
@@ -80,6 +82,11 @@ struct ShotLocation: Codable, Hashable {
         let coords = String(format: "%.4f°%@ %.4f°%@", abs(latitude), ns, abs(longitude), ew)
         if let label { return "\(label) · \(coords)" }
         return coords
+    }
+
+    /// Directions to the spot, for the QR code on the Detailed card.
+    var directionsURL: URL? {
+        URL(string: String(format: "https://www.google.com/maps/dir/?api=1&destination=%.6f,%.6f", latitude, longitude))
     }
 
     /// Opens on any phone or computer, so it suits a crew shot list.

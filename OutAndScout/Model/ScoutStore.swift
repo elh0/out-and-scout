@@ -387,6 +387,18 @@ final class ScoutStore {
         return nil
     }
 
+    func setNotes(_ id: UUID, to notes: String) {
+        let trimmed = notes.trimmingCharacters(in: .whitespacesAndNewlines)
+        for p in projects.indices {
+            for s in projects[p].scenes.indices {
+                if let i = projects[p].scenes[s].shots.firstIndex(where: { $0.id == id }) {
+                    projects[p].scenes[s].shots[i].notes = trimmed.isEmpty ? nil : trimmed
+                }
+            }
+        }
+        save()
+    }
+
     func setCaption(_ id: UUID, to caption: String) {
         let trimmed = caption.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }

@@ -453,6 +453,11 @@ struct ShotListView: View {
                         .foregroundStyle(shot.caption.isEmpty ? Sheet.muted : Sheet.text)
                         .lineLimit(3)
 
+                    EditableName(text: shot.notes ?? "", font: .osData, color: Sheet.text, lineLimit: 2,
+                                 emptyLabel: "Notes: access, power, practicals, sound", title: "Notes", pencil: true) {
+                        store.setNotes(id, to: $0)
+                    }
+
                     HStack(alignment: .top, spacing: Space.xs) {
                         sheetCell("Lens", "\(Format.mm(shot.lensMM))mm")
                         sheetCell("Time", Format.time(shot.plannedTime))
@@ -575,6 +580,12 @@ struct ShotListView: View {
                         if let loc = shot.location {
                             Text(loc.display).font(.osData).foregroundStyle(Sheet.muted).lineLimit(2)
                         }
+                        // Printed on the Detailed PDF's card.
+                        EditableName(text: shot.notes ?? "", font: .osData, color: Sheet.text, lineLimit: 2,
+                                     emptyLabel: "Notes: access, power, practicals, sound", title: "Notes", pencil: true) {
+                            store.setNotes(shot.id, to: $0)
+                        }
+                        .id("notes" + shot.id.uuidString)
                     }
                 }
 

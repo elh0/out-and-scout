@@ -1,3 +1,4 @@
+import CoreImage
 import SwiftUI
 import UIKit
 
@@ -139,8 +140,8 @@ extension Exporter {
         y += 24
 
         // The shots in order.
-        let cols: [CGFloat] = [pad, pad + 40, page.width - pad - 230, page.width - pad - 182, page.width - pad - 64]
-        for (i, h) in ["Shot", "Caption", "Time", "Light read", "Page"].enumerated() {
+        let cols: [CGFloat] = [pad, pad + 40, page.width - pad - 262, page.width - pad - 214, page.width - pad - 104, page.width - pad - 26]
+        for (i, h) in ["Shot", "Caption", "Time", "Light read", "Sun", "Page"].enumerated() {
             caps(h).draw(at: CGPoint(x: cols[i], y: y))
         }
         y += 12
@@ -159,7 +160,9 @@ extension Exporter {
             text(Format.time(shot.plannedTime), font: mono(8.25), color: shot.isGolden ? sun : ink).draw(at: CGPoint(x: cols[2], y: ty))
             text(shot.lightRead ?? (shot.bearing == nil ? "no heading" : "sun down"), font: mono(8.25), color: shot.lightRead == nil ? grey : ink)
                 .draw(with: CGRect(x: cols[3], y: ty, width: cols[4] - cols[3] - 10, height: 11), options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], context: nil)
-            text("\(start + 1 + n / 2)", font: mono(8.25), color: grey).draw(at: CGPoint(x: cols[4], y: ty))
+            text(shot.sunElevation > -1 ? "\(Int(shot.sunAzimuth.rounded()))° · \(Int(shot.sunElevation.rounded()))° up" : "down",
+                 font: mono(8.25), color: grey).draw(at: CGPoint(x: cols[4], y: ty))
+            text("\(start + 1 + n / 2)", font: mono(8.25), color: grey).draw(at: CGPoint(x: cols[5], y: ty))
             y += 18
         }
     }
@@ -300,6 +303,42 @@ extension Exporter {
         } else {
             text("–", font: mono(7.5), color: grey).draw(at: CGPoint(x: r.minX, y: y + 12))
         }
+        y += 44
+
+        // Notes, and a QR code that opens directions to the spot.
+        let qr: CGFloat = 38
+        let qrImage = loc?.directionsURL.flatMap { qrCode($0.absoluteString) }
+        let notesW = r.width - (qrImage == nil ? 0 : qr + 12)
+        caps("Notes").draw(at: CGPoint(x: r.minX, y: y))
+        if let notes = shot.notes, !notes.isEmpty {
+            text(notes, font: mono(7.5)).draw(with: CGRect(x: r.minX, y: y + 10, width: notesW, height: 22),
+                                              options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], context: nil)
+        } else {
+            // Blank ruled lines to write on.
+            hair.setFill()
+            UIRectFill(CGRect(x: r.minX, y: y + 20, width: notesW, height: 0.5))
+            UIRectFill(CGRect(x: r.minX, y: y + 33, width: notesW, height: 0.5))
+        }
+        if let qrImage, let url = loc?.directionsURL {
+            let box = CGRect(x: r.maxX - qr, y: y - 2, width: qr, height: qr)
+            ctx.cgContext.saveGState()
+            ctx.cgContext.interpolationQuality = .none
+            qrImage.draw(in: box)
+            ctx.cgContext.restoreGState()
+            ctx.setURL(url, for: box)
+            let d = caps("Directions", size: 5.5)
+            d.draw(at: CGPoint(x: box.minX - d.size().width - 5, y: box.maxY - d.size().height))
+        }
+    }
+
+    /// A crisp black-on-white QR code for a link.
+    private static func qrCode(_ s: String) -> UIImage? {
+        guard let f = CIFilter(name: "CIQRCodeGenerator") else { return nil }
+        f.setValue(Data(s.utf8), forKey: "inputMessage")
+        f.setValue("M", forKey: "inputCorrectionLevel")
+        guard let out = f.outputImage?.transformed(by: CGAffineTransform(scaleX: 8, y: 8)),
+              let cg = CIContext().createCGImage(out, from: out.extent) else { return nil }
+        return UIImage(cgImage: cg)
     }
 
     /// Top-down: the camera in the middle facing up, its field of view, the sun on the ring,
