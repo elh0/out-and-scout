@@ -46,11 +46,40 @@ struct ExportPanel: View {
                         action: ("Done", { store.showingExport = false })
                     )
 
+                    // What to send comes first, one ruled row per kind, so the three PDFs are
+                    // plain to see (Elliot, 6 Oct 2026). Then which scenes, then the order.
+                    VStack(alignment: .leading, spacing: 0) {
+                        Caps(text: "What to send").foregroundStyle(Sheet.muted)
+                            .padding(.bottom, 6)
+                        Rule()
+                        ForEach(Exporter.Tier.allCases, id: \.self) { t in
+                            kindRow(selected: format == .pdf && options.tier == t, t.label, "PDF", tierNote(t)) {
+                                format = .pdf
+                                options.tier = t
+                            }
+                        }
+                        kindRow(selected: format == .csv, "Spreadsheet", "CSV", "For the AD and the schedule") { format = .csv }
+                        kindRow(selected: format == .photos, "Camera roll", nil, "The stills, saved to Photos") { format = .photos }
+                        // The live link needs outandscout.com/s/<project> to exist first.
+                        kindRow(selected: false, "Live link", nil, "Soon") {}
+                            .opacity(0.45)
+                            .disabled(true)
+                    }
+
+                    if format == .csv || (format == .pdf && options.tier == .summary) {
+                        HStack(spacing: Space.l) {
+                            includeChip("Frames", on: options.frames) { options.frames.toggle() }
+                                .disabled(format == .csv)
+                            includeChip("Sun Times", on: options.sunTimes) { options.sunTimes.toggle() }
+                        }
+                    }
+
                     // E: two words, the picked one underlined.
                     HStack(spacing: Space.l) {
                         Chip(label: "This scene", selected: !allScenes, underline: true) { allScenes = false }
                         Chip(label: "All scenes", selected: allScenes, underline: true) { allScenes = true }
                     }
+                    .padding(.top, 4)
 
                     if allScenes && project.scenes.count > 1 {
                         SceneOrder(scenes: project.scenes) { store.moveScenes(from: $0, to: $1) }
@@ -66,43 +95,6 @@ struct ExportPanel: View {
                             move: { store.moveShots(in: thisScene.id, from: $0, to: $1) },
                             rename: { store.setCaption($0, to: $1) }
                         )
-                    }
-
-                    // E: ruled rows, a dot for the picked format.
-                    VStack(spacing: 0) {
-                        Rule()
-                        formatRow(.pdf, "PDF", "Shot cards, a list, or just the frames")
-                        formatRow(.csv, "CSV", "For the AD and the schedule")
-                        formatRow(.photos, "Photos", "Stills to your camera roll")
-                        // The live link needs outandscout.com/s/<project> to exist first.
-                        formatRow(.link, "Live link", "Soon")
-                            .opacity(0.45)
-                            .disabled(true)
-                    }
-
-                    Text("\(target?.name ?? "\(project.name), all scenes") · \(ShotListView.shots(shots))")
-                        .font(.osData)
-                        .foregroundStyle(Sheet.muted)
-
-                    // The PDF's three kinds (Elliot, 6 Oct 2026): Detailed shot cards with the
-                    // light read, the Summary list, or Photos only.
-                    if format == .pdf {
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack(spacing: Space.l) {
-                                ForEach(Exporter.Tier.allCases, id: \.self) { t in
-                                    Chip(label: t.label, selected: options.tier == t, underline: true) { options.tier = t }
-                                }
-                            }
-                            Text(tierNote(options.tier)).font(.osData).foregroundStyle(Sheet.muted)
-                        }
-                    }
-
-                    if format == .csv || (format == .pdf && options.tier == .summary) {
-                        HStack(spacing: Space.l) {
-                            includeChip("Frames", on: options.frames) { options.frames.toggle() }
-                                .disabled(format == .csv)
-                            includeChip("Sun Times", on: options.sunTimes) { options.sunTimes.toggle() }
-                        }
                     }
 
                 }
@@ -124,7 +116,7 @@ struct ExportPanel: View {
                 // E: the one outlined button.
                 Button(busy ? "Preparing…" : format == .photos
                        ? "Save \(shots == 1 ? "1 still" : "\(shots) stills") to Photos"
-                       : "\(target == nil ? "Export all scenes" : "Export scene") · \(ext.uppercased())") {
+                       : "\(target == nil ? "Export all scenes" : "Export scene") · \(format == .pdf ? "\(options.tier.label) PDF" : ext.uppercased())") {
                     export(project: project, scene: target)
                 }
                 .buttonStyle(PillButtonStyle(kind: .outline))
@@ -177,33 +169,39 @@ struct ExportPanel: View {
         }
     }
 
-    private func tierNote(_ t: Exporter.Tier) -> String {
-        switch t {
-        case .detailed: return "Two shot cards a page: how the light falls, when to be there, the full camera spec"
-        case .summary: return "A cover with sun times, then a ruled row per shot"
-        case .photos: return "The frames two across, shot and scene under each"
-        }
-    }
-
-    /// v3c scope card: 50 high, radius 12; picked = 2px ink on white, else a 1px rule.
-    /// E format row: a dot (filled when picked), the name, a grey note, a rule under it.
-    private func formatRow(_ choice: Choice, _ label: String, _ sub: String?) -> some View {
-        Button { format = choice } label: {
+    /// A ruled row: a dot (filled when picked), the name with its file type, a grey line under.
+    private func kindRow(selected: Bool, _ label: String, _ type: String?, _ sub: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
             HStack(alignment: .firstTextBaseline, spacing: 12) {
                 Circle()
-                    .fill(format == choice ? Sheet.text : .clear)
+                    .fill(selected ? Sheet.text : .clear)
                     .overlay(Circle().strokeBorder(Sheet.text, lineWidth: 1))
                     .frame(width: 7, height: 7)
-                Text(label).font(.osRow).frame(width: 70, alignment: .leading)
-                if let sub { Text(sub).font(.osData).foregroundStyle(Sheet.muted).lineLimit(1) }
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text(label).font(.osRow)
+                            .underline(selected, color: Sheet.text)
+                        if let type { Text(type).font(.osDataSmall).foregroundStyle(Sheet.muted) }
+                    }
+                    Text(sub).font(.osData).foregroundStyle(Sheet.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
                 Spacer(minLength: 0)
             }
-            .frame(height: 40)
+            .padding(.vertical, 10)
             .overlay(alignment: .bottom) { Rule() }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityAddTraits(format == choice ? .isSelected : [])
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+
+    private func tierNote(_ t: Exporter.Tier) -> String {
+        switch t {
+        case .detailed: return "Two shot cards a page: the light, when to be there, the kit"
+        case .summary: return "A cover with sun times, then a row per shot"
+        case .photos: return "Just the frames, two across"
+        }
     }
 
     /// E include toggle: the word, underlined when it's in the export.
