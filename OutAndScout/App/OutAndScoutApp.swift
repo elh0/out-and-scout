@@ -129,9 +129,9 @@ struct RootView: View {
             }
         }
         .task {
-            // At least 0.9 s so the sun finishes rising; at most 2.5 s, camera or not.
-            try? await Task.sleep(for: .milliseconds(900))
-            for _ in 0..<16 where camera.status == .idle {
+            // About 1.7 s so the sun settles; at most 2.5 s, camera or not.
+            try? await Task.sleep(for: .milliseconds(1700))
+            for _ in 0..<8 where camera.status == .idle {
                 try? await Task.sleep(for: .milliseconds(100))
             }
             withAnimation(.easeOut(duration: 0.35)) { opening = false }

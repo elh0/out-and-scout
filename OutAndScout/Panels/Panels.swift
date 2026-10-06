@@ -61,6 +61,9 @@ struct ProjectsPanel: View {
 
     var body: some View {
         SidePanel(edge: .leading) {
+            // The name, as on the opening, heading the place your projects live.
+            Wordmark(size: 15)
+                .padding(.bottom, Space.xs)
             PanelHeader(
                 title: "Projects",
                 sub: store.projects.count == 1 ? "1 project" : "\(store.projects.count) projects",
