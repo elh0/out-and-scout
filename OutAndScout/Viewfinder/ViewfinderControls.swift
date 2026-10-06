@@ -41,8 +41,6 @@ private struct NightPill<Label: View>: View {
 
 struct TopBar: View {
     @Environment(ScoutStore.self) private var store
-    /// Shared with the viewfinder: Fit shows the whole sensor, Fill runs it edge to edge.
-    @AppStorage("previewFill") private var previewFill = false
     let heading: Double?
     let headingAccuracy: Double?
     let sunAzimuth: Double
@@ -101,14 +99,6 @@ struct TopBar: View {
                 CompassTape(heading: heading, accuracy: headingAccuracy, sunAzimuth: sunAzimuth)
                     .frame(width: 150, height: 26)
                 Spacer(minLength: Space.xs)
-
-                // Fit shows the whole picture (true to the Camera app's 0.5x); Fill runs it edge to edge.
-                NightPill(action: { previewFill.toggle() }) {
-                    Text(previewFill ? "Fill" : "Fit")
-                }
-                .fixedSize()
-                .accessibilityLabel(previewFill ? "picture fills the screen" : "whole picture shown")
-                .accessibilityHint("switch between the whole picture and edge to edge")
 
                 // Just the time: white for now, orange when the sun timeline is scrubbed.
                 // Tap to snap back to now.

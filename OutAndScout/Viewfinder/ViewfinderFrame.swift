@@ -23,10 +23,9 @@ struct ViewfinderFrame: View {
     /// fit inside it (that made wide lenses look tight); notices sit inside it.
     var clear = EdgeInsets()
 
-    /// E2: Fill stretches the picture edge to edge; Fit (the default) shows the whole
-    /// sensor like the Camera app, so 0.5x looks as wide as it does there.
-    @AppStorage("previewFill") private var previewFill = false
-    private var fits: Bool { fullBleed && !previewFill }
+    /// One view, no modes: landscape always shows the camera's whole picture, so what's
+    /// inside the frame lines is exactly what's in your frame. (Fit/Fill was confusing.)
+    private var fits: Bool { fullBleed }
 
     @State private var focusPoint: CGPoint?
     @State private var focusShownAt = Date.distantPast
@@ -61,7 +60,9 @@ struct ViewfinderFrame: View {
                     }
                     .scaleEffect(1 / shrink, anchor: anchor)
 
-                AspectMask(frame: frame, lines: !(fullBleed && store.aspect.isFull), shade: fullBleed ? 0.42 : nil,
+                // Corner ticks always mark the frame, Full included, and outside it goes dark
+                // enough that there's no doubt what's in shot.
+                AspectMask(frame: frame, lines: !(fullBleed && store.aspect.isFull && !fits), shade: fullBleed ? 0.55 : nil,
                            ticks: fullBleed)
 
                 if store.overlays.grid {
@@ -170,7 +171,6 @@ struct ViewfinderFrame: View {
                 syncLens(size: size, frame: frame)
             }
             .onChange(of: camera.status) { syncLens(size: size, frame: frame) }
-            .onChange(of: previewFill) { syncLens(size: size, frame: frameRect(size)) }
         }
     }
 

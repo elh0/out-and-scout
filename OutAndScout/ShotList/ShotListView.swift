@@ -514,20 +514,7 @@ struct ShotListView: View {
                     ShotThumb(shot: shot)
                         .aspectRatio(shot.aspect.value, contentMode: .fit)
                         .frame(maxWidth: 300, maxHeight: 130)
-                        // A pencil in the corner: tap it to reframe, the rest to see it big.
-                        .overlay(alignment: .bottomTrailing) {
-                            Button { reframe(shot) } label: {
-                                Image(systemName: "pencil")
-                                    .font(.system(size: 11))
-                                    .foregroundStyle(Sheet.text)
-                                    .frame(width: 26, height: 26)
-                                    .background(Sheet.bg.opacity(0.75))
-                                    .frame(width: 44, height: 44, alignment: .bottomTrailing)
-                                    .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel("reframe this shot")
-                        }
+                        // Like Photos: no badge, a tap on the picture opens it full screen.
                         .onTapGesture { enlarged = shot }
                         .accessibilityAddTraits(.isButton)
                         .accessibilityHint("tap to see it full screen")
