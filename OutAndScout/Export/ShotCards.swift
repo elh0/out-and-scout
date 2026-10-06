@@ -417,23 +417,30 @@ extension Exporter {
             UIRectFill(CGRect(x: gx0, y: plot.minY, width: gx1 - gx0, height: plot.height))
         }
 
-        // Horizon, with sunrise and sunset on it.
+        // The horizon, with a small tick where the sun rises and sets (times are listed below).
         let hy = y(0)
         rule.setFill()
         UIRectFill(CGRect(x: plot.minX, y: hy, width: plot.width, height: 0.75))
-        let r = text("sunrise \(Format.time(rise))", font: mono(6.75), color: grey)
-        r.draw(at: CGPoint(x: max(plot.minX, x(rise) - r.size().width / 2), y: hy + 3))
-        let st = text("sunset \(Format.time(set))", font: mono(6.75), color: grey)
-        st.draw(at: CGPoint(x: min(plot.maxX - st.size().width, x(set) - st.size().width / 2), y: hy + 3))
+        grey.setFill()
+        for t in [rise, set] { UIRectFill(CGRect(x: x(t) - 0.375, y: hy - 3, width: 0.75, height: 6)) }
 
-        // The sun's height.
+        // The sun's height as one smooth line: every 10 minutes, joined with curves through
+        // the midpoints, so it reads as an arc rather than a jagged trace.
+        let pts = samples.enumerated().filter { $0.offset % 5 == 0 || $0.offset == samples.count - 1 }
+            .map { CGPoint(x: x($0.element.time), y: y($0.element.position.elevation)) }
         let curve = UIBezierPath()
-        for (i, s) in samples.enumerated() {
-            let p = CGPoint(x: x(s.time), y: y(s.position.elevation))
-            if i == 0 { curve.move(to: p) } else { curve.addLine(to: p) }
+        if let first = pts.first {
+            curve.move(to: first)
+            for i in 1..<max(pts.count, 1) where i < pts.count {
+                let mid = CGPoint(x: (pts[i - 1].x + pts[i].x) / 2, y: (pts[i - 1].y + pts[i].y) / 2)
+                curve.addQuadCurve(to: mid, controlPoint: pts[i - 1])
+            }
+            if let last = pts.last { curve.addLine(to: last) }
         }
-        ink.withAlphaComponent(0.55).setStroke()
-        curve.lineWidth = 1
+        ink.withAlphaComponent(0.7).setStroke()
+        curve.lineWidth = 1.1
+        curve.lineCapStyle = .round
+        curve.lineJoinStyle = .round
         curve.stroke()
 
         // Hours along the bottom.
@@ -450,29 +457,30 @@ extension Exporter {
             t = t.addingTimeInterval(3600)
         }
 
-        // The light's names under the hours, each centred on its stretch with its times, so
-        // every band is named and nothing spills out of its colour. Two rows if they'd touch.
         let amGold = day.goldenWindows.first { $0.lowerBound <= rise.addingTimeInterval(3600) }
         let pmGold = day.goldenWindows.last { $0.upperBound >= set.addingTimeInterval(-3600) }
         let blueInk = UIColor(red: 0.30, green: 0.40, blue: 0.70, alpha: 1)
-        var phases: [(name: String, range: ClosedRange<Date>, color: UIColor)] = []
-        if let b = amBlue { phases.append(("Blue hour", b, blueInk)) }
-        if let g = amGold { phases.append(("Golden hour", g, sun)) }
-        let dayStart = amGold?.upperBound ?? rise, dayEnd = pmGold?.lowerBound ?? set
-        if dayEnd > dayStart { phases.append(("Daylight", dayStart...dayEnd, grey)) }
-        if let g = pmGold { phases.append(("Golden hour", g, sun)) }
-        if let b = pmBlue { phases.append(("Blue hour", b, blueInk)) }
-        var rowEnds: [CGFloat] = [-.infinity, -.infinity]
-        let phaseY = axisY + 12
-        for p in phases {
-            let l = NSMutableAttributedString(attributedString: caps(p.name, size: 5.5, color: p.color))
-            l.append(text(" " + Format.time(p.range.lowerBound) + "–" + Format.time(p.range.upperBound), font: mono(6), color: grey))
-            let lw = l.size().width
-            let cx = (x(max(p.range.lowerBound, from)) + x(min(p.range.upperBound, to))) / 2
-            let lx = min(max(cx - lw / 2, plot.minX), plot.maxX - lw)
-            let row = rowEnds.firstIndex { $0 + 6 < lx } ?? 1
-            rowEnds[row] = lx + lw
-            l.draw(at: CGPoint(x: lx, y: phaseY + CGFloat(row) * 10))
+        // Listed under the hours, left-aligned in two columns, morning then evening, each
+        // name lined up over the next: Blue hour / Sunrise / Golden hour, then Golden hour /
+        // Sunset / Blue hour.
+        let fmt = { (r: ClosedRange<Date>) in Format.time(r.lowerBound) + "–" + Format.time(r.upperBound) }
+        var morning: [(String, String, UIColor)] = []
+        if let b = amBlue { morning.append(("Blue hour", fmt(b), blueInk)) }
+        morning.append(("Sunrise", Format.time(rise), ink))
+        if let g = amGold { morning.append(("Golden hour", fmt(g), sun)) }
+        var evening: [(String, String, UIColor)] = []
+        if let g = pmGold { evening.append(("Golden hour", fmt(g), sun)) }
+        evening.append(("Sunset", Format.time(set), ink))
+        if let b = pmBlue { evening.append(("Blue hour", fmt(b), blueInk)) }
+        let listY = axisY + 14
+        let nameW: CGFloat = 52
+        for (col, rows) in [morning, evening].enumerated() {
+            let cx = plot.minX + CGFloat(col) * plot.width / 2
+            for (i, r) in rows.enumerated() {
+                let ry = listY + CGFloat(i) * 10
+                caps(r.0, size: 5.5, color: r.2).draw(at: CGPoint(x: cx, y: ry + 1))
+                text(r.1, font: mono(7), color: ink).draw(at: CGPoint(x: cx + nameW, y: ry))
+            }
         }
 
         // Shots at its planned time: a dot on the sun, and a label in a lane above the chart
@@ -513,7 +521,7 @@ extension Exporter {
             hair.setFill()
             UIRectFill(CGRect(x: px - 0.25, y: ly + 10, width: 0.5, height: max(0, topDot - ly - 12)))
         }
-        return axisY + 12 + 20
+        return axisY + 14 + 30
     }
 
     /// Seven days across the page: the day, the sky in words, high/low, rain and sun hours.
