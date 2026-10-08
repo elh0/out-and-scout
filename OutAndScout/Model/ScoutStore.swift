@@ -74,6 +74,24 @@ final class ScoutStore {
     private let fileURL: URL
 
     init(fileURL: URL = ScoutStore.defaultURL) {
+        #if DEBUG
+        // Simulator testing (-demoData YES): three sample recces, saved to a scratch file so
+        // real projects are never touched.
+        if UserDefaults.standard.bool(forKey: "demoData") {
+            self.fileURL = FileManager.default.temporaryDirectory.appendingPathComponent("demo-scout.json")
+            let demo = Self.demoProjects()
+            projects = demo
+            currentProjectID = demo[1].id
+            currentSceneID = demo[1].scenes[2].id
+            kit = .default
+            lensMM = 24
+            aspect = .scope
+            customAspects = []
+            overlays = Overlays()
+            locationChoice = nil
+            return
+        }
+        #endif
         self.fileURL = fileURL
         if let data = try? Data(contentsOf: fileURL),
            let snap = try? JSONDecoder.scout.decode(Snapshot.self, from: data),
@@ -110,6 +128,53 @@ final class ScoutStore {
         }
         fixOldLowercaseNames()
     }
+
+    #if DEBUG
+    /// The prototype's sample recces, with real London and Kent spots and headings.
+    static func demoProjects() -> [Project] {
+        let cal = Calendar.current
+        func at(_ h: Int, _ m: Int, daysAgo: Int = 0) -> Date {
+            let d = cal.date(byAdding: .day, value: -daysAgo, to: Date()) ?? Date()
+            return cal.date(bySettingHour: h, minute: m, second: 0, of: d) ?? d
+        }
+        func shot(_ n: String, _ cap: String, _ mm: Double, _ h: Int, _ m: Int, _ heading: Double,
+                  _ lat: Double, _ lon: Double, _ place: String, _ pc: String, aspect: AspectRatio = .hd, notes: String? = nil) -> Shot {
+            let t = at(h, m)
+            let sun = SunCalculator.position(at: t, latitude: lat, longitude: lon)
+            return Shot(number: n, caption: cap, lensMM: mm, aspect: aspect, cameraName: "ALEXA 35", lensSeries: "Primes",
+                        plannedTime: t, capturedAt: t, sunAzimuth: sun.azimuth, sunElevation: sun.elevation,
+                        light: LightPhase.from(elevation: sun.elevation, localHour: Double(h) + Double(m) / 60),
+                        bearing: heading, location: ShotLocation(latitude: lat, longitude: lon, label: place, postcode: pc),
+                        photoFile: nil, stillAspect: 16.0 / 9.0, notes: notes)
+        }
+        let cam = (51.4740, -0.0930, "Camberwell Church St", "SE5 8QZ")
+        let ken = (51.4880, -0.1080, "Kennington", "SE11 4AN")
+        let kno = (51.2690, 0.2050, "Knole Park, Sevenoaks", "TN15 0RP")
+        let first = Project(name: "First Recce", kind: "", scenes: [
+            ScoutScene(name: "Camberwell Church St", shots: [
+                shot("1A", "Medium wide, person by the plant", 32, 8, 2, 70, cam.0, cam.1, cam.2, cam.3, notes: "Bench is council owned. Quiet before 9."),
+                shot("1B", "Close, hands on the bench", 50, 8, 10, 100, cam.0, cam.1, cam.2, cam.3),
+                shot("1C", "Wide, the street behind her", 24, 8, 20, 250, cam.0, cam.1, cam.2, cam.3, aspect: .scope, notes: "Bus stop in frame, lose it on 32"),
+            ]),
+            ScoutScene(name: "Scene 6", shots: [
+                shot("2A", "Wide, street under the trees", 18, 11, 19, 165, ken.0, ken.1, ken.2, ken.3),
+                shot("2B", "Mid, lamppost in dappled shade", 40, 11, 23, 20, ken.0, ken.1, ken.2, ken.3),
+                shot("2C", "Mid, car door, kerb side", 32, 11, 30, 200, ken.0, ken.1, ken.2, ken.3),
+            ]),
+            ScoutScene(name: "Knole Park", shots: [
+                shot("3A", "Wide, lone tree on the ridge", 32, 15, 57, 65, kno.0, kno.1, kno.2, kno.3, notes: "Car park closes 18:00. Deer about."),
+                shot("3B", "Long lens, the two of them on the ridge", 85, 16, 5, 230, kno.0, kno.1, kno.2, kno.3, aspect: .scope),
+                shot("3C", "Wide, the tree at golden hour", 18, 18, 5, 260, kno.0, kno.1, kno.2, kno.3, aspect: .scope, notes: "Be set up by 17:30"),
+            ]),
+        ], createdAt: at(9, 0, daysAgo: 4))
+        let night = Project(name: "Night Shift", kind: "", scenes: [
+            ScoutScene(name: "Brick Lane", shots: [shot("1A", "Mid, lamp on the wall", 35, 18, 30, 250, 51.5216, -0.0717, "Brick Lane", "E1 6QL", aspect: .scope)]),
+            ScoutScene(name: "Arches"),
+        ], createdAt: at(9, 0, daysAgo: 6))
+        let second = Project(name: "Second Recce", kind: "", scenes: [ScoutScene(name: "Scene 1")], createdAt: at(9, 0))
+        return [second, first, night]
+    }
+    #endif
 
     // MARK: Lookups
 
