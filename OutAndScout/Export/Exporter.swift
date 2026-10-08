@@ -357,6 +357,21 @@ enum Exporter {
             y = grid([("Sunrise", t.rise, false), ("Golden hour", t.golden, true), ("Sunset", t.set, false), ("Blue hour", t.blue, false)], y: y) + 16
         }
 
+        // Detailed, round 4: the shoot day's weather and the plan in the order the light
+        // comes round, instead of the scene table (each scene's map is on its own page).
+        if options.tier == .detailed {
+            let stops = dayPlan(scenes, on: date)
+            if !stops.isEmpty {
+                y = shootDayWeather(scenes, on: date, y: y)
+                y = drawPlan(stops, firstPage: firstPage, y: y + 18)
+                let stamp = DateFormatter()
+                stamp.locale = Locale(identifier: "en_GB")
+                stamp.dateFormat = "d MMM yyyy, HH:mm"
+                footer(left: "Exported from Out & Scout · \(stamp.string(from: Date()))", page: 1, of: total)
+                return
+            }
+        }
+
         // Scene table: #, scene, location, light, shots.
         let cols: [CGFloat] = [pad, pad + 42, page.width - pad - 38 - 12 - 52 - 12 - 158, page.width - pad - 38 - 12 - 52, page.width - pad - 38]
         for (i, h) in ["#", "Scene", "Location", "Light", "Shots"].enumerated() {
