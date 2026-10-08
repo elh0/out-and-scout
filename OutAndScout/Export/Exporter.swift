@@ -363,7 +363,7 @@ enum Exporter {
             let stops = dayPlan(scenes, on: date)
             if !stops.isEmpty {
                 y = shootDayWeather(scenes, on: date, y: y)
-                y = drawPlan(stops, firstPage: firstPage, y: y + 18)
+                y = drawPlan(stops, firstPage: firstPage, kit: options.kit, y: y + 18)
                 let stamp = DateFormatter()
                 stamp.locale = Locale(identifier: "en_GB")
                 stamp.dateFormat = "d MMM yyyy, HH:mm"
