@@ -12,40 +12,45 @@ struct ShotListView: View {
     @State private var confirmDelete = false
     @State private var confirmDeleteAll = false
     @State private var deletingScene: ScoutScene?
+    @State private var sheetDeletingScene: ScoutScene?
     /// The shot shown full screen, for holding the phone up to a director.
     @State private var enlarged: Shot?
-    /// Upright: the shot open in the bottom sheet.
-    @State private var sheetID: UUID?
+    /// The shot opened in place in the list.
+    @State private var openID: UUID?
     @Environment(\.isPortrait) private var portrait
+    /// The two-week forecast for the scene in view.
+    @State private var showingWeather = false
 
     var body: some View {
         ZStack {
-            Palette.paper.ignoresSafeArea()
+            Sheet.bg.ignoresSafeArea()
 
-            if portrait {
-                portraitList
-                    .foregroundStyle(Palette.ink)
-                portraitSheet
-            } else {
-                HStack(spacing: 0) {
-                    listPane
-                        .frame(width: 300)
-                    Palette.rule.frame(width: 1).ignoresSafeArea()
-                    detailPane
-                        .frame(maxWidth: .infinity)
+            Group {
+                if portrait { portraitOutline } else { landscapeList }
+            }
+            .foregroundStyle(Sheet.text)
+            .confirmationDialog("Delete shot \(selected?.shot.number ?? "")?", isPresented: $confirmDelete, titleVisibility: .visible, presenting: selected?.shot) { shot in
+                Button("Delete \(shot.number)", role: .destructive) {
+                    store.deleteShot(shot.id)
+                    if openID == shot.id { openID = nil }
+                    selectedID = nil
                 }
-                .foregroundStyle(Palette.ink)
+            } message: { _ in
+                Text("Its still goes too. This can't be undone.")
             }
 
             ZStack {
                 if store.showingExport {
                     // v3c: rgba(17,17,17,0.45) behind the panel; tap it to close.
-                    Palette.ink.opacity(0.45).ignoresSafeArea()
+                    Color.black.opacity(0.55).ignoresSafeArea()
                         .onTapGesture { store.showingExport = false }
                         .transition(.opacity)
+                    // Round 4: a card centred over the list, just inside the screen's edges.
                     ExportPanel(scene: sceneFilter.flatMap(scene(for:)))
-                        .frame(maxWidth: .infinity, alignment: .trailing)
-                        .transition(.move(edge: .trailing))
+                        .frame(maxWidth: portrait ? .infinity : 1000, maxHeight: portrait ? .infinity : 720)
+                        .padding(.horizontal, portrait ? 12 : 18)
+                        .padding(.vertical, portrait ? 8 : 14)
+                        .transition(.opacity.combined(with: .scale(scale: 0.97)))
                 }
             }
             .animation(.snappy(duration: 0.28), value: store.showingExport)
@@ -57,22 +62,30 @@ struct ShotListView: View {
             }
         }
         .animation(.easeOut(duration: 0.2), value: enlarged?.id)
-        .animation(.snappy(duration: 0.25), value: sheetID)
         .sheet(isPresented: $reordering) {
             let project = store.currentProject
             VStack(alignment: .leading, spacing: 16) {
-                PanelHeader(title: "Order and Names", sub: "Tap a name to rename, drag to reorder. Exports follow this.", action: ("Done", { reordering = false }))
+                PanelHeader(title: "Edit Scenes", sub: "Tap a name to rename, drag to reorder. Exports follow this order.", action: ("Done", { reordering = false }))
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Project").font(.osDataSmall).foregroundStyle(Sheet.muted)
+                            EditableName(text: project.name, font: .osRow, emptyLabel: "Untitled", title: "Rename Project", fillsWidth: true, pencil: true) {
+                                store.renameProject(project.id, to: $0)
+                            }
+                            .frame(height: 40)
+                            .overlay(alignment: .bottom) { Rule() }
+                        }
                         if project.scenes.count > 1 {
-                            SceneOrder(scenes: project.scenes) { store.moveScenes(from: $0, to: $1) }
+                            SceneOrder(scenes: project.scenes, move: { store.moveScenes(from: $0, to: $1) }) { id in
+                                sheetDeletingScene = project.scenes.first { $0.id == id }
+                            }
                         }
                         let shown = sceneFilter.flatMap(scene(for:)) ?? store.currentScene
                         if !shown.shots.isEmpty {
                             OrderList(
                                 heading: "Shots in \(shown.name)",
                                 renameTitle: "Edit Caption",
-                                tapHint: "Tap to edit",
                                 rows: shown.shots.map {
                                     .init(id: $0.id, number: $0.number, name: $0.caption, detail: "\(Format.mm($0.lensMM))mm")
                                 },
@@ -80,14 +93,68 @@ struct ShotListView: View {
                                 rename: { store.setCaption($0, to: $1) }
                             )
                         }
+                        if !visible.isEmpty {
+                            // Clears every shot in view: this scene, or all scenes. Asks first.
+                            Button("Delete all \(Self.shots(visible.count)) in \(sceneFilter.flatMap(scene(for:))?.name ?? "All Scenes")") { confirmDeleteAll = true }
+                                .font(.osDataSmall)
+                                .foregroundStyle(Self.warning)
+                                .buttonStyle(.plain)
+                                .frame(minHeight: 44)
+                                .confirmationDialog(
+                                    "Delete \(visible.count == 1 ? "this shot" : "all \(visible.count) shots") in \(sceneFilter.flatMap(scene(for:))?.name ?? "All Scenes")?",
+                                    isPresented: $confirmDeleteAll,
+                                    titleVisibility: .visible
+                                ) {
+                                    Button("Delete \(Self.shots(visible.count))", role: .destructive) {
+                                        store.deleteShots(Set(visible.map(\.shot.id)))
+                                        selectedID = nil
+                                    }
+                                } message: {
+                                    Text("The stills go too. This can't be undone.")
+                                }
+                        }
                     }
                 }
             }
             .padding(.top, 18)
             .padding(.horizontal, 20)
-            .background(Palette.paper)
-            .foregroundStyle(Palette.ink)
+            .background(Sheet.bg)
+            .foregroundStyle(Sheet.text)
             .presentationDetents([.medium, .large])
+            .font(.osRow)
+            .renameBar()
+            // A dialog on the screen behind can't show over this sheet, so it has its own.
+            .confirmationDialog(
+                "Delete \"\(sheetDeletingScene?.name ?? "")\"?",
+                isPresented: Binding(get: { sheetDeletingScene != nil }, set: { if !$0 { sheetDeletingScene = nil } }),
+                titleVisibility: .visible,
+                presenting: sheetDeletingScene
+            ) { scene in
+                Button("Delete \(scene.name)", role: .destructive) {
+                    if sceneFilter == scene.id { sceneFilter = nil }
+                    store.deleteScene(scene.id)
+                    selectedID = nil
+                    sheetDeletingScene = nil
+                }
+            } message: { scene in
+                Text("Its \(Self.shots(scene.shots.count)) go too, stills included. This can't be undone.")
+            }
+        }
+        .sheet(isPresented: $showingWeather) {
+            let sc = sceneFilter.flatMap(scene(for:)) ?? store.currentScene
+            if let place = Exporter.place(of: sc) {
+                ForecastSheet(sceneName: sc.name, place: place, shots: sc.shots) { showingWeather = false }
+                    .presentationDetents([.medium, .large])
+            } else {
+                VStack(alignment: .leading, spacing: Space.s) {
+                    PanelHeader(title: "Weather · \(sc.name)", sub: "No location saved for this scene yet.", action: ("Done", { showingWeather = false }))
+                    Text("Pin a shot here first; its spot is used for the forecast.").font(.osRow).foregroundStyle(Sheet.muted)
+                    Spacer()
+                }
+                .padding(.top, 18).padding(.horizontal, 20)
+                .background(Sheet.bg).foregroundStyle(Sheet.text)
+                .presentationDetents([.medium])
+            }
         }
         .confirmationDialog(
             "Delete \"\(deletingScene?.name ?? "")\"?",
@@ -107,10 +174,7 @@ struct ShotListView: View {
         .onAppear {
             sceneFilter = store.currentSceneID
             selectedID = store.currentScene.shots.last?.id
-            #if DEBUG
-            // Screenshot testing: -openShot YES opens the latest shot's sheet when upright.
-            if UserDefaults.standard.bool(forKey: "openShot") { sheetID = selectedID }
-            #endif
+            openID = selectedID
         }
     }
 
@@ -137,486 +201,309 @@ struct ShotListView: View {
         visible.first { $0.shot.id == selectedID } ?? visible.first
     }
 
-    // MARK: List pane
+    // MARK: Outline look, round 4 (locked 8 Oct 2026)
 
-    private var listPane: some View {
-        VStack(alignment: .leading, spacing: Space.s) {
-            HStack {
-                Button { store.showingShotList = false } label: {
-                    Label("Viewfinder", systemImage: "chevron.left")
-                        .font(.osSupport)
-                        .frame(minHeight: 44)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                Spacer()
-                if !visible.isEmpty {
-                    // Clears every shot in view: this scene, or all scenes. Asks first.
-                    Button("Delete All") { confirmDeleteAll = true }
-                        .font(.osSupport)
-                        .foregroundStyle(Palette.graphite)
-                        .buttonStyle(.plain)
-                        .frame(minHeight: 44)
-                        .padding(.trailing, Space.s)
-                        .confirmationDialog(
-                            "Delete \(visible.count == 1 ? "this shot" : "all \(visible.count) shots") in \(sceneFilter.flatMap(scene(for:))?.name ?? "All Scenes")?",
-                            isPresented: $confirmDeleteAll,
-                            titleVisibility: .visible
-                        ) {
-                            Button("Delete \(Self.shots(visible.count))", role: .destructive) {
-                                store.deleteShots(Set(visible.map(\.shot.id)))
-                                selectedID = nil
-                            }
-                        } message: {
-                            Text("The stills go too. This can't be undone.")
-                        }
-                }
-                Button("Projects") {
-                    store.showingShotList = false
-                    store.panel = .projects
-                }
-                .font(.osSupport)
-                .buttonStyle(.plain)
-                .frame(minHeight: 44)
-            }
-
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 0) {
-                    Text("Shot List · ").font(.osData).foregroundStyle(Palette.graphite)
-                    EditableName(text: project.name, font: .osData, color: Palette.graphite, title: "Rename Project") {
+    /// Landscape: Projects, "PROJECT / SHOT LIST", Weather and Export along the top; the
+    /// scenes on the left with "← Camera" at the bottom; the day's arc with every shot on it,
+    /// then calm rows. Tap a row to open it in place, again to close.
+    private var landscapeList: some View {
+        VStack(spacing: 0) {
+            ZStack {
+                HStack(spacing: 4) {
+                    EditableName(text: project.name, font: Fonts.mono(11), color: Sheet.text, title: "Rename Project") {
                         store.renameProject(project.id, to: $0)
                     }
+                    Text("/ SHOT LIST").font(Fonts.mono(11)).tracking(0.6).foregroundStyle(Sheet.muted).fixedSize()
                 }
-                if let s = sceneFilter.flatMap(scene(for:)) {
-                    EditableName(text: s.name, font: .osTitle, title: "Rename Scene") { store.renameScene(s.id, to: $0) }
-                } else {
-                    Text("All Scenes").font(.osTitle).lineLimit(1)
-                }
-                Text(subtitle).font(.osSupport).foregroundStyle(Palette.graphite)
-            }
-
-            FadingHScroll {
-                HStack(spacing: Space.xxs) {
-                    let total = project.scenes.reduce(0) { $0 + $1.shots.count }
-                    Chip(label: "All Scenes · \(total)", selected: sceneFilter == nil, onDark: false, mono: false) {
-                        sceneFilter = nil
-                    }
-                    ForEach(project.scenes) { s in
-                        Chip(label: "\(s.name) · \(s.shots.count)", selected: sceneFilter == s.id, onDark: false, mono: false) {
-                            sceneFilter = s.id
-                            store.select(project: project.id, scene: s.id)
-                        }
-                        .contextMenu {
-                            // A project always keeps at least one scene.
-                            if project.scenes.count > 1 {
-                                Button("Rename or Reorder", systemImage: "arrow.left.arrow.right") { reordering = true }
-                                Button("Delete Scene", systemImage: "trash", role: .destructive) { deletingScene = s }
-                            }
-                        }
-                    }
-                    Chip(label: "+ Scene", onDark: false, mono: false) {
+                .padding(.horizontal, 190)
+                HStack(spacing: 8) {
+                    Button {
                         store.showingShotList = false
-                        store.requestNewScene()
+                        store.panel = .projects
+                    } label: {
+                        Text("Projects").font(Fonts.mono(11)).frame(minHeight: 44).contentShape(Rectangle())
                     }
+                    .buttonStyle(.plain)
+                    Spacer()
+                    OPill(label: "Weather", caps: true) { showingWeather = true }
+                    OPill(label: "Export", on: true, caps: true) { store.showingExport = true }
+                        .disabled(visible.isEmpty)
                 }
             }
-            if project.scenes.count > 1 || !store.currentScene.shots.isEmpty { sceneHint }
+            .frame(height: 44)
 
-            if visible.isEmpty {
-                Text("No shots in this scene yet. Pin one from the viewfinder and it lands here.")
-                    .font(.osSupport)
-                    .foregroundStyle(Palette.graphite)
-                    .padding(.top, Space.m)
-                Spacer()
-            } else {
-                ScrollView {
-                    LazyVStack(spacing: 0) {
-                        ForEach(visible) { item in
-                            ShotRow(shot: item.shot, sceneName: sceneFilter == nil ? item.scene.name : nil, selected: item.shot.id == selected?.shot.id)
-                                .onTapGesture { selectedID = item.shot.id }
-                                // Press and hold a shot to delete it; it still asks first.
-                                .contextMenu {
-                                    Button("Delete \(item.shot.number)", systemImage: "trash", role: .destructive) {
-                                        selectedID = item.shot.id
-                                        confirmDelete = true
-                                    }
-                                }
-                        }
+            HStack(alignment: .top, spacing: Space.m) {
+                sceneColumn
+                    .frame(width: 104)
+                VStack(alignment: .leading, spacing: 6) {
+                    ShotArc(shots: visible.map(\.shot), selected: openID) { openID = $0.id; selectedID = $0.id }
+                        .frame(height: 44)
+                    HStack {
+                        Text("\(Self.shots(visible.count))".uppercased())
+                        Spacer()
+                        Text("TAP A SHOT TO OPEN · AGAIN TO CLOSE")
                     }
+                    .font(Fonts.mono(9)).tracking(0.6).foregroundStyle(Sheet.muted)
+                    rows(wide: true)
                 }
             }
         }
         .padding(.horizontal, Space.l)
-        .padding(.top, Space.xs)
     }
 
-    private var subtitle: String {
-        if let s = sceneFilter.flatMap(scene(for:)) {
-            return [s.note, Self.shots(s.shots.count)].filter { !$0.isEmpty }.joined(separator: " · ")
-        }
-        let scenes = project.scenes.count == 1 ? "1 scene" : "\(project.scenes.count) scenes"
-        return "\(scenes) · \(Self.shots(visible.count))"
-    }
-
-    // MARK: Portrait (v3c Portrait board)
-
-    /// Header, scene tabs, the shots, and viewfinder / export along the bottom.
-    private var portraitList: some View {
-        let s = sceneFilter.flatMap(scene(for:)) ?? store.currentScene
-        return VStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    EditableName(text: project.name, font: .osData, color: Palette.graphite, title: "Rename Project") {
-                        store.renameProject(project.id, to: $0)
-                    }
-                    Spacer()
-                    Text(Format.time(Date())).font(.osData).foregroundStyle(Palette.graphite)
-                }
-                EditableName(text: s.name, font: Fonts.mono(20), title: "Rename Scene") { store.renameScene(s.id, to: $0) }
-                Text([s.note, Self.shots(s.shots.count)].filter { !$0.isEmpty }.joined(separator: " · "))
-                    .font(.osData).foregroundStyle(Palette.graphite).lineLimit(1)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, Space.l)
-            .padding(.top, 9)
-            .padding(.bottom, 12)
-
-            ScrollView(.horizontal) {
-                HStack(spacing: 6) {
+    /// SCENES: All, each scene with its count, Edit; "← Camera" at the bottom.
+    private var sceneColumn: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("SCENES").font(Fonts.mono(10)).tracking(0.6).foregroundStyle(Sheet.muted).padding(.bottom, 4)
+            ScrollView(showsIndicators: false) {
+                VStack(alignment: .leading, spacing: 0) {
+                    filterButton("All · \(project.scenes.reduce(0) { $0 + $1.shots.count })", on: sceneFilter == nil) { sceneFilter = nil }
                     ForEach(project.scenes) { sc in
-                        let on = sc.id == s.id
-                        Button {
+                        filterButton("\(sc.name) · \(sc.shots.count)", on: sceneFilter == sc.id) {
                             sceneFilter = sc.id
                             store.select(project: project.id, scene: sc.id)
-                        } label: {
-                            HStack(spacing: 4) {
-                                Text(sc.name)
-                                Text("\(sc.shots.count)").opacity(0.6)
-                            }
-                            .font(.osData)
-                            .foregroundStyle(on ? Palette.paper : Palette.ink)
-                            .padding(.horizontal, 12)
-                            .frame(height: 32)
-                            .background(on ? Palette.ink : .clear, in: Capsule())
-                            .overlay(Capsule().strokeBorder(on ? Palette.ink : Palette.rule, lineWidth: 1))
-                            .contentShape(Capsule())
                         }
-                        .buttonStyle(.plain)
                         .contextMenu {
-                            // A project always keeps at least one scene.
+                            Button("Edit Scenes", systemImage: "arrow.up.arrow.down") { reordering = true }
                             if project.scenes.count > 1 {
-                                Button("Rename or Reorder", systemImage: "arrow.left.arrow.right") { reordering = true }
                                 Button("Delete Scene", systemImage: "trash", role: .destructive) { deletingScene = sc }
                             }
                         }
                     }
-                }
-                .padding(.horizontal, Space.l)
-            }
-            .scrollIndicators(.hidden)
-            .padding(.bottom, project.scenes.count > 1 ? 6 : 12)
-
-            if project.scenes.count > 1 || !store.currentScene.shots.isEmpty { sceneHint.padding(.horizontal, Space.l).padding(.bottom, 10) }
-
-            Rule()
-            ScrollView {
-                LazyVStack(spacing: 0) {
-                    ForEach(s.shots) { shot in
-                        PortraitShotRow(shot: shot)
-                            .onTapGesture { sheetID = shot.id }
-                            // Press and hold a shot to delete it; it still asks first.
-                            .contextMenu {
-                                Button("Delete \(shot.number)", systemImage: "trash", role: .destructive) {
-                                    selectedID = shot.id
-                                    confirmDelete = true
-                                }
-                            }
+                    Button { reordering = true } label: {
+                        Text("Edit").font(Fonts.mono(10)).foregroundStyle(Sheet.muted)
+                            .underline(color: Sheet.rule)
+                            .frame(minHeight: 32).contentShape(Rectangle())
                     }
-                    if s.shots.isEmpty {
-                        Text("No shots in this scene yet.")
-                            .font(.osRow)
-                            .foregroundStyle(Palette.graphite)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding(.vertical, 24)
-                            .padding(.horizontal, Space.l)
-                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("edit scenes: rename, reorder, delete")
                 }
             }
-            .frame(maxHeight: .infinity)
-
-            Rule()
-            HStack(spacing: Space.xs) {
-                Button { store.showingShotList = false } label: {
-                    HStack(spacing: Space.xs) {
-                        Image(systemName: "camera.viewfinder").font(.system(size: 14))
-                        Text("Viewfinder")
-                    }
-                    .font(.osTitle)
-                    .foregroundStyle(Palette.ink)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 48)
-                    .overlay(Capsule().strokeBorder(Palette.ink, lineWidth: 1))
-                    .contentShape(Capsule())
-                }
-                .buttonStyle(.plain)
-                Button { store.showingExport = true } label: {
-                    Text("Export")
-                        .font(.osTitle)
-                        .foregroundStyle(Palette.paper)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 48)
-                        .background(Palette.ink, in: Capsule())
-                        .contentShape(Capsule())
-                }
-                .buttonStyle(.plain)
+            Spacer(minLength: Space.s)
+            Button { store.showingShotList = false } label: {
+                Text("← Camera").font(Fonts.mono(11)).underline(color: Sheet.text)
+                    .frame(minHeight: 44).contentShape(Rectangle())
             }
-            .padding(.horizontal, Space.l)
-            .padding(.top, 12)
+            .buttonStyle(.plain)
         }
-        .confirmationDialog(
-            "Delete \(selectedID.flatMap(store.shot)?.number ?? "")?",
-            isPresented: Binding(get: { confirmDelete && portrait }, set: { confirmDelete = $0 }),
-            titleVisibility: .visible
-        ) {
-            if let id = selectedID {
-                Button("Delete \(store.shot(id)?.number ?? "Shot")", role: .destructive) {
-                    store.deleteShot(id)
-                    selectedID = nil
-                    sheetID = nil
-                }
-            }
-        }
+        .padding(.bottom, Space.xs)
     }
 
-    /// The shot as a bottom sheet: still, caption, lens / time / light, edit and reframe.
-    @ViewBuilder private var portraitSheet: some View {
-        if let id = sheetID, let shot = store.shot(id) {
-            ZStack(alignment: .bottom) {
-                Palette.ink.opacity(0.4).ignoresSafeArea()
-                    .onTapGesture { sheetID = nil }
-                    .transition(.opacity)
-
-                VStack(alignment: .leading, spacing: 14) {
-                    // A visible way out, as well as tapping above or swiping down.
-                    HStack {
-                        Text("Shot \(shot.number)").font(.osRow)
-                        Spacer()
-                        Button("Done") { sheetID = nil }
-                            .buttonStyle(.plain)
-                            .font(.osRow)
-                            .frame(minWidth: 44, minHeight: 32, alignment: .trailing)
-                            .contentShape(Rectangle())
-                    }
-                    .padding(.bottom, -6)
-
-                    ShotThumb(shot: shot)
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 150)
-                        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                        .overlay(alignment: .bottomLeading) {
-                            Text("\(shot.number) · \(Format.mm(shot.lensMM))mm · \(Format.time(shot.plannedTime))")
-                                .font(.osDataSmall)
-                                .foregroundStyle(Palette.paper.opacity(0.8))
-                                .padding(.leading, 10)
-                                .padding(.bottom, 8)
-                        }
-                        .onTapGesture { enlarged = shot }
-                        .accessibilityAddTraits(.isButton)
-                        .accessibilityHint("tap to see it full screen")
-
-                    Text(shot.caption.isEmpty ? "Untitled" : shot.caption)
-                        .font(Fonts.mono(15))
-                        .foregroundStyle(shot.caption.isEmpty ? Palette.graphite : Palette.ink)
-                        .lineLimit(3)
-
-                    HStack(alignment: .top, spacing: Space.xs) {
-                        sheetCell("Lens", "\(Format.mm(shot.lensMM))mm")
-                        sheetCell("Time", Format.time(shot.plannedTime))
-                        sheetCell("Light", shot.light.label)
-                        if let side = shot.sunSide { sheetCell("Sun", side.replacingOccurrences(of: "Sun ", with: "").capitalized) }
-                    }
-
-                    HStack(spacing: Space.xs) {
-                        Button {
-                            store.rename = RenameRequest(title: "Edit Caption", text: shot.caption) { [store] in
-                                store.setCaption(id, to: $0)
-                            }
-                        } label: {
-                            Text("Edit Caption")
-                                .font(.osRow)
-                                .foregroundStyle(Palette.ink)
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 44)
-                                .overlay(Capsule().strokeBorder(Palette.rule, lineWidth: 1))
-                                .contentShape(Capsule())
-                        }
-                        .buttonStyle(.plain)
-                        Button {
-                            sheetID = nil
-                            reframe(shot)
-                        } label: {
-                            Text("Reframe")
-                                .font(.osRow)
-                                .foregroundStyle(Palette.paper)
-                                .frame(maxWidth: .infinity)
-                                .frame(height: 44)
-                                .background(Palette.ink, in: Capsule())
-                                .contentShape(Capsule())
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(.horizontal, Space.l)
-                .padding(.top, Space.l)
-                .padding(.bottom, Space.xs)
-                .background(
-                    UnevenRoundedRectangle(topLeadingRadius: 24, topTrailingRadius: 24, style: .continuous)
-                        .fill(Palette.paper)
-                        .ignoresSafeArea()
-                )
-                .foregroundStyle(Palette.ink)
-                .simultaneousGesture(
-                    DragGesture(minimumDistance: 20).onEnded { v in
-                        if v.translation.height > 80 { sheetID = nil }
-                    }
-                )
-                .transition(.move(edge: .bottom))
-            }
-        }
-    }
-
-    /// Tells people the scene chips can be held.
-    private var sceneHint: some View {
-        Button { reordering = true } label: {
-            Text("Hold a scene to delete it · tap here to rename or reorder")
-                .font(.osDataSmall)
-                .foregroundStyle(Palette.graphite)
+    private func filterButton(_ label: String, on: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(label)
+                .font(Fonts.mono(10))
+                .foregroundStyle(on ? Sheet.text : Sheet.muted)
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(on ? .isSelected : [])
     }
 
-    private func sheetCell(_ label: String, _ value: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(label).foregroundStyle(Palette.graphite)
-            Text(value).lineLimit(1).minimumScaleFactor(0.8)
-        }
-        .font(.osData)
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    // MARK: Detail pane
-
-    @ViewBuilder private var detailPane: some View {
-        if let item = selected {
-            let shot = item.shot
-            VStack(alignment: .leading, spacing: Space.s) {
-                HStack(alignment: .top, spacing: Space.l) {
-                    ShotThumb(shot: shot)
-                        .aspectRatio(shot.aspect.value, contentMode: .fit)
-                        .frame(maxWidth: 300, maxHeight: 130)
-                        .onTapGesture { enlarged = shot }
-                        .accessibilityAddTraits(.isButton)
-                        .accessibilityHint("tap to see it full screen")
-
-                    VStack(alignment: .leading, spacing: Space.xs) {
-                        Text("\(shot.number) · \(shot.aspect.display) · \(Format.mm(shot.lensMM))mm · \(Format.time(shot.plannedTime))")
-                            .font(.osData)
-                            .foregroundStyle(Palette.graphite)
-                        // Tap the caption to rewrite it; the export uses whatever's here.
-                        EditableName(text: shot.caption, font: .osTitle, lineLimit: 3, emptyLabel: "Untitled", title: "Edit Caption") {
-                            store.setCaption(shot.id, to: $0)
-                        }
-                        .id(shot.id)
-                        HStack(spacing: 0) {
-                            EditableName(text: item.scene.name, font: .osSupport, color: Palette.graphite, title: "Rename Scene") {
-                                store.renameScene(item.scene.id, to: $0)
-                            }
-                            Text(" · \(shot.cameraName)").font(.osSupport).foregroundStyle(Palette.graphite)
-                        }
-                        if let loc = shot.location {
-                            Text(loc.display).font(.osData).foregroundStyle(Palette.graphite).lineLimit(2)
+    /// Upright: Camera and Weather / Export on top, the project, scene pills, the arc, rows.
+    private var portraitOutline: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Button { store.showingShotList = false } label: {
+                    Text("← Camera").font(Fonts.mono(11)).frame(minHeight: 44).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                Spacer()
+                OPill(label: "Edit", caps: true) { reordering = true }
+                OPill(label: "Weather", caps: true) { showingWeather = true }
+                OPill(label: "Export", on: true, caps: true) { store.showingExport = true }
+                    .disabled(visible.isEmpty)
+            }
+            EditableName(text: project.name, font: .osSans(22), color: Sheet.text, title: "Rename Project", pencil: true) {
+                store.renameProject(project.id, to: $0)
+            }
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 6) {
+                    OPill(label: "All · \(project.scenes.reduce(0) { $0 + $1.shots.count })", on: sceneFilter == nil, size: .small) { sceneFilter = nil }
+                    ForEach(project.scenes) { sc in
+                        OPill(label: "\(sc.name) · \(sc.shots.count)", on: sceneFilter == sc.id, size: .small) {
+                            sceneFilter = sc.id
+                            store.select(project: project.id, scene: sc.id)
                         }
                     }
                 }
+            }
+            ShotArc(shots: visible.map(\.shot), selected: openID) { openID = $0.id; selectedID = $0.id }
+                .frame(height: 44)
+            rows(wide: false)
+        }
+        .padding(.horizontal, Space.l)
+    }
 
-                Rule()
-                HStack(spacing: 0) {
-                    readout("Lens", "\(Format.mm(shot.lensMM))mm")
-                    readout("Time", Format.time(shot.plannedTime))
-                    readout("Light", shot.light.label, golden: shot.isGolden)
-                    readout("Sun", "\(Int(shot.sunAzimuth.rounded()))° / \(Int(shot.sunElevation.rounded()))°")
-                }
-                Rule()
+    // MARK: Rows
 
-                // Frame lines can be changed after the shot; "full" shows the whole frame.
-                FadingHScroll {
-                    HStack(spacing: Space.xxs) {
-                        Text("Frame lines").font(.osDataSmall).foregroundStyle(Palette.graphite)
-                            .padding(.trailing, Space.xxs)
-                        ForEach([AspectRatio.full(shot.stillAspect ?? AspectRatio.viewfinderValue)] + store.aspectStrip) { a in
-                            Chip(label: a.display, selected: a.label == shot.aspect.label, onDark: false) {
-                                store.setShotAspect(shot.id, to: a)
-                            }
-                        }
+    private func rows(wide: Bool) -> some View {
+        ScrollViewReader { proxy in
+            ScrollView(showsIndicators: false) {
+                LazyVStack(spacing: 0) {
+                    if visible.isEmpty {
+                        Text("NO SHOTS YET. PRESS THE SHUTTER ON THE CAMERA.")
+                            .font(Fonts.mono(10)).tracking(0.6).foregroundStyle(Sheet.muted)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.vertical, 14)
                     }
-                }
-                .fixedSize(horizontal: false, vertical: true)
-
-                HStack(spacing: Space.xs) {
-                    Button("Delete") { confirmDelete = true }
-                        .buttonStyle(PillButtonStyle(kind: .secondary))
-                    Button("Reframe") { reframe(shot) }
-                        .buttonStyle(PillButtonStyle(kind: .secondary))
-                    Spacer()
-                    Button("Export List") { store.showingExport = true }
-                        .buttonStyle(PillButtonStyle(kind: .primary))
-                        .frame(maxWidth: 200)
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(Space.l)
-            .confirmationDialog("Delete \(shot.number)?", isPresented: $confirmDelete, titleVisibility: .visible) {
-                Button("Delete \(shot.number)", role: .destructive) {
-                    store.deleteShot(shot.id)
-                    selectedID = nil
+                    ForEach(visible) { item in
+                        row(item, wide: wide).id(item.id)
+                    }
+                    Color.clear.frame(height: 30)
                 }
             }
-        } else {
-            VStack(spacing: Space.m) {
-                Spacer()
-                Text("Pin a shot from the viewfinder to see it here.")
-                    .font(.osSupport)
-                    .foregroundStyle(Palette.graphite)
-                Spacer()
+            .mask(LinearGradient(stops: [.init(color: .black, location: 0), .init(color: .black, location: 0.9), .init(color: .clear, location: 1)], startPoint: .top, endPoint: .bottom))
+            .onChange(of: openID) {
+                if let id = openID { withAnimation(.snappy(duration: 0.25)) { proxy.scrollTo(id, anchor: .top) } }
             }
         }
     }
+
+    private func row(_ item: Item, wide: Bool) -> some View {
+        let shot = item.shot
+        let open = openID == shot.id
+        return HStack(alignment: .top, spacing: 14) {
+            ShotThumb(shot: shot)
+                .frame(width: open ? 128 : 52, height: open ? 72 : 30)
+                .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 4, style: .continuous).strokeBorder(open ? Sheet.text : Sheet.rule, lineWidth: 1))
+                .onTapGesture { if open { enlarged = shot } else { toggle(shot) } }
+                .accessibilityAddTraits(.isButton)
+                .accessibilityHint(open ? "see it full screen" : "open")
+            Text(shot.number).font(Fonts.mono(11)).foregroundStyle(Sheet.text).frame(width: 26, alignment: .leading).padding(.top, 3)
+
+            VStack(alignment: .leading, spacing: 3) {
+                if open {
+                    EditableName(text: shot.caption, font: .osSans(13), color: Sheet.text, lineLimit: 3, emptyLabel: "Untitled", title: "Edit Caption", pencil: true) {
+                        store.setCaption(shot.id, to: $0)
+                    }
+                    .id("cap" + shot.id.uuidString)
+                } else {
+                    Text(shot.caption.isEmpty ? "Untitled" : shot.caption).font(.osSans(13)).foregroundStyle(Sheet.text).lineLimit(1)
+                }
+                Text("\(item.scene.name) · \(Format.mm(shot.lensMM))mm".uppercased())
+                    .font(Fonts.mono(9)).tracking(0.6).foregroundStyle(Sheet.muted).lineLimit(1)
+                if !wide {
+                    Text("\(Format.time(shot.plannedTime)) · \(shortRead(shot))".uppercased())
+                        .font(Fonts.mono(9)).tracking(0.6).foregroundStyle(shot.isGolden ? Palette.sun : Sheet.muted)
+                }
+                if open { openDetails(item) }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            if wide {
+                Text(Format.time(shot.plannedTime)).font(Fonts.mono(10))
+                    .foregroundStyle(shot.isGolden ? Palette.sun : (open ? Sheet.text : Sheet.muted))
+                    .frame(width: 42, alignment: .leading).padding(.top, 3)
+                Text(shortRead(shot).uppercased()).font(Fonts.mono(10)).tracking(0.4).foregroundStyle(Sheet.text)
+                    .lineLimit(1).minimumScaleFactor(0.8)
+                    .frame(width: 124, alignment: .leading).padding(.top, 3)
+            }
+            Text(open ? "–" : "+").font(Fonts.mono(13)).foregroundStyle(Sheet.muted).frame(width: 14).padding(.top, 1)
+        }
+        .padding(.vertical, 9)
+        .overlay(alignment: .top) { Sheet.rule.frame(height: 1) }
+        .contentShape(Rectangle())
+        .onTapGesture { toggle(shot) }
+        .contextMenu {
+            Button("Delete \(shot.number)", systemImage: "trash", role: .destructive) {
+                selectedID = shot.id
+                confirmDelete = true
+            }
+        }
+        .animation(.snappy(duration: 0.22), value: open)
+    }
+
+    /// The opened shot: the light in words, its best time, notes, frame lines, Delete.
+    private func openDetails(_ item: Item) -> some View {
+        let shot = item.shot
+        return VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(longRead(shot)).font(.osSans(13)).foregroundStyle(Sheet.text)
+                if let best = bestTime(shot) {
+                    Text("BEST TIME · \(best)".uppercased()).font(Fonts.mono(9)).tracking(0.6).foregroundStyle(Sheet.text)
+                }
+            }
+            .padding(.top, 6)
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text("Notes").font(.osSans(12)).foregroundStyle(Sheet.muted)
+                EditableName(text: shot.notes ?? "", font: .osSans(12), color: Sheet.text, lineLimit: 4,
+                             emptyLabel: "Access, power, parking", title: "Notes", pencil: true) {
+                    store.setNotes(shot.id, to: $0)
+                }
+                .id("notes" + shot.id.uuidString)
+            }
+            // Frame lines can change after the shot; "Full" shows the whole frame.
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 5) {
+                    ForEach([AspectRatio.full(shot.stillAspect ?? AspectRatio.viewfinderValue)] + store.aspectStrip) { a in
+                        OPill(label: a.display, on: a.label == shot.aspect.label, size: .small) {
+                            store.setShotAspect(shot.id, to: a)
+                        }
+                    }
+                }
+            }
+            Button {
+                selectedID = shot.id
+                confirmDelete = true
+            } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "trash").font(.system(size: 11))
+                    Text("Delete shot")
+                }
+                .font(Fonts.mono(10))
+                .foregroundStyle(Self.warning)
+                .padding(.horizontal, 10)
+                .frame(height: 26)
+                .overlay(Capsule().strokeBorder(Self.warning.opacity(0.5), lineWidth: 1))
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("delete shot \(shot.number)")
+        }
+    }
+
+    private func toggle(_ shot: Shot) {
+        withAnimation(.snappy(duration: 0.22)) {
+            openID = openID == shot.id ? nil : shot.id
+            selectedID = shot.id
+        }
+    }
+
+    /// "Side lit · left", "Sun down", or the old light phase without a heading.
+    private func shortRead(_ s: Shot) -> String {
+        guard s.sunElevation > -1 else { return "Sun down" }
+        guard let b = s.bearing else { return s.light.label }
+        return LightClass.readShort(rel: LightRead.rel(sunAzimuth: s.sunAzimuth, heading: b))
+    }
+
+    private func longRead(_ s: Shot) -> String {
+        guard s.sunElevation > -1 else { return "Sun down at \(Format.time(s.plannedTime))" }
+        guard let b = s.bearing else { return s.light.label + ", no compass heading saved" }
+        return LightClass.readLong(rel: LightRead.rel(sunAzimuth: s.sunAzimuth, heading: b))
+    }
+
+    /// "17:58–18:38, golden hour, ¾ back"
+    private func bestTime(_ s: Shot) -> String? {
+        guard let b = s.bearing, let loc = s.location else { return nil }
+        let day = SunCalculator.day(containing: s.capturedAt, latitude: loc.latitude, longitude: loc.longitude)
+        guard let best = LightRead.best(day: day, heading: b) else { return nil }
+        return "\(Format.time(best.start))–\(Format.time(best.end)), \(best.why)"
+    }
+
+    /// The one red: things that can't be undone.
+    static let warning = Color(hex: 0xE5534B)
 
     static func shots(_ n: Int) -> String { n == 1 ? "1 shot" : "\(n) shots" }
-
-    private func readout(_ label: String, _ value: String, golden: Bool? = nil) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(label).font(.osDataSmall).foregroundStyle(Palette.graphite)
-            HStack(spacing: Space.xxs) {
-                if let golden { LightDot(golden: golden) }
-                Text(value).font(.osData).lineLimit(1).minimumScaleFactor(0.75)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    /// Back to the viewfinder with this shot's lens, aspect and time.
-    private func reframe(_ shot: Shot) {
-        // Snap to the nearest focal in the current kit, as switching kits does.
-        store.lensMM = store.focalLengths.min { abs($0 - shot.lensMM) < abs($1 - shot.lensMM) } ?? shot.lensMM
-        store.setAspect(shot.aspect)
-        let c = Calendar.current.dateComponents([.hour, .minute], from: shot.plannedTime)
-        store.plannedMinutes = Double((c.hour ?? 0) * 60 + (c.minute ?? 0))
-        store.showingShotList = false
-    }
 }
 
-/// Thumb, number, title, mono meta, light dot.
+/// E1 row: number, caption, lens and time on one ruled line. The picked row is bright,
+/// the rest grey; a golden-hour time is the one orange thing.
 struct ShotRow: View {
     let shot: Shot
     var sceneName: String?
@@ -624,26 +511,26 @@ struct ShotRow: View {
 
     var body: some View {
         HStack(spacing: Space.s) {
-            ShotThumb(shot: shot)
-                .frame(width: 64, height: 64 / max(shot.aspect.value, 1))
             Text(shot.number)
-                .font(.osData)
-                .foregroundStyle(Palette.graphite)
-                .frame(width: 28, alignment: .leading)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(shot.caption.isEmpty ? "Untitled" : shot.caption).font(.osRow).lineLimit(1)
-                Text(sceneName.map { "\($0) · \(shot.meta)" } ?? shot.meta)
-                    .font(.osData)
-                    .foregroundStyle(Palette.graphite)
-                    .lineLimit(1)
-            }
-            Spacer(minLength: 0)
-            LightDot(golden: shot.isGolden)
+                .font(.osNum)
+                .foregroundStyle(Sheet.muted)
+                .frame(width: 34, alignment: .leading)
+            (Text(sceneName.map { "\($0) · " } ?? "").foregroundStyle(Sheet.muted)
+                + Text(shot.caption.isEmpty ? "Untitled" : shot.caption))
+                .font(.osRow)
+                .foregroundStyle(selected ? Sheet.text : Sheet.muted)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Text("\(Format.mm(shot.lensMM))mm")
+                .font(.osNum)
+                .foregroundStyle(Sheet.muted)
+                .frame(width: 46, alignment: .trailing)
+            Text(Format.time(shot.plannedTime))
+                .font(.osNum)
+                .foregroundStyle(shot.isGolden ? Palette.sun : Sheet.muted)
+                .frame(width: 40, alignment: .trailing)
         }
-        .padding(.vertical, Space.xs)
-        .padding(.horizontal, Space.xs)
-        .frame(minHeight: 56)
-        .background(selected ? Palette.ink.opacity(0.05) : .clear, in: RoundedRectangle(cornerRadius: Radius.readout))
+        .frame(height: 34)
         .overlay(alignment: .bottom) { Rule() }
         .contentShape(Rectangle())
     }
@@ -658,13 +545,13 @@ struct PortraitShotRow: View {
             ShotThumb(shot: shot)
                 .frame(width: 72, height: 40)
             VStack(alignment: .leading, spacing: 3) {
-                (Text(shot.number).foregroundStyle(Palette.graphite)
+                (Text(shot.number).font(.osNum).foregroundStyle(Sheet.muted)
                     + Text(" " + (shot.caption.isEmpty ? "Untitled" : shot.caption)))
                     .font(Fonts.mono(13))
                     .lineLimit(1)
-                Text(["\(Format.mm(shot.lensMM))mm", Format.time(shot.plannedTime), shot.light.label, shot.sunSide].compactMap { $0 }.joined(separator: " · "))
+                Text(["\(Format.mm(shot.lensMM))mm", Format.time(shot.plannedTime), shot.light.label, shot.lightRead ?? shot.sunSide].compactMap { $0 }.joined(separator: " · "))
                     .font(.osData)
-                    .foregroundStyle(Palette.graphite)
+                    .foregroundStyle(Sheet.muted)
                     .lineLimit(1)
             }
             Spacer(minLength: 0)
@@ -701,7 +588,7 @@ struct ShotViewer: View {
                 Spacer()
                 Text("\(shot.number) · \(shot.caption.isEmpty ? "Untitled" : shot.caption) · \(Format.mm(shot.lensMM))mm · \(shot.aspect.display)")
                     .font(.osData)
-                    .foregroundStyle(Palette.paper)
+                    .foregroundStyle(Sheet.text)
                     .padding(.horizontal, Space.xs)
                     .padding(.vertical, Space.xxs + 1)
                     .background(Palette.hud, in: RoundedRectangle(cornerRadius: Radius.readout))
@@ -714,7 +601,7 @@ struct ShotViewer: View {
         .overlay(alignment: .topTrailing) {
             Image(systemName: "xmark")
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(Palette.paper)
+                .foregroundStyle(Sheet.text)
                 .frame(width: 36, height: 36)
                 .background(Palette.hud, in: Circle())
                 .padding(Space.s)
@@ -736,7 +623,7 @@ struct ShotViewer: View {
             } label: {
                 Label("Save to Photos", systemImage: "square.and.arrow.down")
                     .font(.osData)
-                    .foregroundStyle(Palette.paper)
+                    .foregroundStyle(Sheet.text)
                     .padding(.horizontal, 12)
                     .frame(height: 36)
                     .background(Palette.hud, in: Capsule())

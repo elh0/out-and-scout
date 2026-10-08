@@ -113,6 +113,10 @@ struct RootView: View {
     @Environment(CameraController.self) private var camera
     @Environment(LocationService.self) private var location
     @Environment(MotionService.self) private var motion
+    /// The opening mark, shown until the camera is running (at least long enough to see).
+    @State private var opening = true
+    /// The start screen (Continue / New project), shown once per launch after the opening.
+    @State private var starting = true
 
     var body: some View {
         // The switch decides which way the screen may turn (never the gyro); the layout then
@@ -120,6 +124,36 @@ struct RootView: View {
         GeometryReader { geo in
             let portrait = geo.size.height > geo.size.width
             content(portrait: portrait).environment(\.isPortrait, portrait)
+        }
+        // Geist Mono is the app's default, so any text without its own font (a field, a
+        // label, a menu row) never falls back to SF Pro.
+        .font(.osRow)
+        .overlay {
+            ZStack {
+                if starting {
+                    StartScreen { withAnimation(.easeOut(duration: 0.3)) { starting = false } }
+                        .transition(.opacity)
+                }
+                if opening {
+                    LaunchMark().transition(.opacity)
+                }
+            }
+            .font(.osRow)
+        }
+        .onAppear {
+            #if DEBUG
+            // Screenshot testing: -noStart YES, or any -openPanel, skips the start screen.
+            let d = UserDefaults.standard
+            if d.bool(forKey: "noStart") || d.string(forKey: "openPanel") != nil { starting = false }
+            #endif
+        }
+        .task {
+            // About 2.6 s so the sun settles; at most 3.4 s, camera or not.
+            try? await Task.sleep(for: .milliseconds(2600))
+            for _ in 0..<8 where camera.status == .idle {
+                try? await Task.sleep(for: .milliseconds(100))
+            }
+            withAnimation(.easeOut(duration: 0.35)) { opening = false }
         }
     }
 
@@ -133,7 +167,7 @@ struct RootView: View {
                     .zIndex(1)
             }
 
-            if let request = store.rename {
+            if let request = store.rename, store.renameSheets == 0 {
                 Color.black.opacity(0.3)
                     .ignoresSafeArea()
                     .onTapGesture { store.rename = nil }

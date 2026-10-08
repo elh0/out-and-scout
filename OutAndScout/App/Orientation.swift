@@ -56,35 +56,15 @@ struct LayoutSwitch: View {
     var body: some View {
         let mode = LayoutMode.shared
         let target = mode.portrait ? "Landscape" : "Portrait"
-        let symbol = mode.portrait ? "rectangle.landscape.rotate" : "rectangle.portrait.rotate"
         Button { mode.set(portrait: !mode.portrait) } label: {
-            if vertical {
-                VStack(spacing: 4) {
-                    Image(systemName: symbol)
-                        .font(.system(size: 15))
-                        .foregroundStyle(Palette.paper.opacity(0.8))
-                        .frame(width: 40, height: 40)
-                        .overlay(Circle().strokeBorder(Palette.nightRule, lineWidth: 1))
-                    Text(target)
-                        .font(.osTiny)
-                        .foregroundStyle(Palette.nightMuted)
-                        .lineLimit(1)
-                        .fixedSize()
-                }
-                .frame(minWidth: 44)
+            // HUD D, both layouts: a grey word like the toggles.
+            Text("↻ " + target)
+                .font(Fonts.mono(10))
+                .foregroundStyle(Palette.nightMuted)
+                .lineLimit(1)
+                .fixedSize()
+                .frame(minWidth: 44, minHeight: vertical ? 30 : 44, alignment: vertical ? .leading : .trailing)
                 .contentShape(Rectangle())
-            } else {
-                HStack(spacing: 6) {
-                    Image(systemName: symbol).font(.system(size: 11))
-                    Text(target).font(.osData)
-                }
-                .foregroundStyle(Palette.paper)
-                .padding(.horizontal, 12)
-                .frame(height: 28)
-                .overlay(Capsule().strokeBorder(Palette.nightRule, lineWidth: 1))
-                .frame(minHeight: 44)
-                .contentShape(Rectangle())
-            }
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Switch to \(target.lowercased()) layout")

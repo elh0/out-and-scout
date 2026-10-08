@@ -10,6 +10,9 @@ import UIKit
 /// screen for seconds after every portrait / landscape switch.
 struct CameraPreview: UIViewRepresentable {
     let camera: CameraController
+    /// Fill crops the picture to the screen's shape; off shows the whole sensor, like the
+    /// Camera app's photo mode.
+    var fill = true
 
     @MainActor private static var shared: PreviewView?
 
@@ -43,6 +46,10 @@ struct CameraPreview: UIViewRepresentable {
             view.isHidden = false
             container.addSubview(view)
         }
+        let gravity: AVLayerVideoGravity = fill ? .resizeAspectFill : .resizeAspect
+        if container.serial == Self.newest, view.previewLayer.videoGravity != gravity {
+            view.previewLayer.videoGravity = gravity
+        }
         if view.coordinator == nil, let device = camera.device {
             view.attach(device: device, camera: camera)
         }
@@ -54,6 +61,9 @@ struct CameraPreview: UIViewRepresentable {
         view.previewLayer.session = camera.session
         view.previewLayer.videoGravity = .resizeAspectFill
         view.backgroundColor = UIColor(Palette.night)
+        // Fit's side bars in the same ink as the controls, so they read as part of the
+        // camera's frame rather than black bars.
+        view.previewLayer.backgroundColor = UIColor(Palette.night).cgColor
         camera.previewLayer = view.previewLayer
         shared = view
         return view
@@ -76,8 +86,10 @@ struct CameraPreview: UIViewRepresentable {
                 DispatchQueue.main.async {
                     guard let connection = self?.previewLayer.connection else { return }
                     if connection.isVideoRotationAngleSupported(angle) { connection.videoRotationAngle = angle }
+                    // Off: stabilising crops the preview's edges, which made it tighter than the
+                    // Camera app and the frame lines a touch wider than what they show.
                     if connection.isVideoStabilizationSupported {
-                        connection.preferredVideoStabilizationMode = .previewOptimized
+                        connection.preferredVideoStabilizationMode = .off
                     }
                 }
             }

@@ -24,7 +24,7 @@ struct ViewfinderView: View {
         let sun = SunCalculator.position(at: planned, latitude: coord.latitude, longitude: coord.longitude)
 
         ZStack {
-            Palette.night.ignoresSafeArea()
+            Sheet.bg.ignoresSafeArea()
 
             Group {
                 if portrait {
@@ -108,47 +108,55 @@ struct ViewfinderView: View {
     /// Chips sit just under the top bar in landscape; upright, just inside the frame.
     private var chipTop: CGFloat { portrait ? 92 : 52 }
 
-    /// Upright, top to bottom: names, clock and kit; + scene, compass and the layout
-    /// switch; the frame; toggles and ratios; time over the sun timeline; shots, shutter, lens.
+    /// Upright, top to bottom: Projects, names, clock and kit; compass and the layout switch;
+    /// the framed window; scenes; toggles and ratios; time over the sun timeline; shots,
+    /// shutter, lens.
     private func portraitLayout(sun: SunPosition, planned: Date) -> some View {
         VStack(spacing: 0) {
             PortraitTopRow(planned: planned)
-                .padding(.horizontal, Space.m)
-                .frame(height: 44)
+                .frame(height: 40)
 
             PortraitCompassRow(
                 heading: motion.heading ?? location.heading,
                 headingAccuracy: location.headingAccuracy,
                 sunAzimuth: sun.azimuth
             )
-            .padding(.horizontal, Space.m)
-            .frame(height: 36)
+            .frame(height: 30)
 
+            PortraitScenesRow()
+                .frame(height: 40)
+
+            // The picture in a white window, the controls on the ground around it.
             ViewfinderFrame(sun: sun, sunDay: sunDay, planned: planned, frameFraction: $frameFraction, portrait: true)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .clipped()
-                .padding(.top, 4)
+                .padding(.top, 6)
 
             PortraitToolsRow()
-                .padding(.horizontal, Space.m)
                 .frame(height: 44)
+                .padding(.top, 4)
 
             PortraitTimeRow(sunDay: sunDay, planned: planned, sun: sun)
-                .padding(.horizontal, Space.l)
-                .padding(.top, 4)
 
             PortraitBottomRow(capturing: capturing) {
                 Task { await pin() }
             }
-            .frame(height: 92)
-            .padding(.top, 4)
+            .padding(.top, 2)
         }
+        .padding(.horizontal, Space.l)
+        .padding(.bottom, 4)
+        .background(Sheet.bg.ignoresSafeArea())
         .ignoresSafeArea(.keyboard)
     }
 
-    /// v3c layout: the top bar across the whole width; under it the toggles, the
-    /// viewfinder with the bottom bar beneath it, and the lens + shutter column.
+    /// E2 layout: the viewfinder fills the whole screen and every control floats over it,
+    /// with soft shade at the top, bottom and right edges so the type stays readable.
+    /// Taps that miss a control fall through to the viewfinder (focus, pinch, AE/AF lock).
     private func landscapeLayout(sun: SunPosition, planned: Date) -> some View {
+        // HUD D, "Framed" (Elliot, 6 Oct 2026): the picture lives in one fixed window, the
+        // ratio frame always fitted whole inside it and everything outside the frame dark,
+        // so you know exactly what's in shot. The controls sit on ink around the window,
+        // never over the picture.
         VStack(spacing: 0) {
             TopBar(
                 heading: motion.heading ?? location.heading,
@@ -156,32 +164,32 @@ struct ViewfinderView: View {
                 sunAzimuth: sun.azimuth,
                 planned: planned
             )
-            .frame(height: 44)
-            .padding(.horizontal, Space.m)
+            .frame(height: 40)
+            .padding(.horizontal, Space.l)
 
-            HStack(spacing: Space.s) {
+            HStack(alignment: .top, spacing: Space.m) {
                 LeftRail()
-                    .frame(width: 48)
-                    .padding(.leading, Space.s)
+                    .frame(width: 96)
+                    .padding(.leading, Space.l)
 
-                VStack(spacing: 0) {
-                    // Fills the space between the rails; the sensor frame and ratio lines sit inside.
+                VStack(spacing: 6) {
                     ViewfinderFrame(sun: sun, sunDay: sunDay, planned: planned, frameFraction: $frameFraction)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .clipped()
 
                     BottomBar(sunDay: sunDay, planned: planned, sun: sun)
-                        .frame(height: 56)
                 }
 
                 RightRail(capturing: capturing) {
                     Task { await pin() }
                 }
-                .frame(width: 104)
-                .padding(.trailing, Space.m)
+                .frame(width: 128)
+                .padding(.trailing, Space.l)
             }
         }
-        .padding(.vertical, Space.xs)
+        .padding(.top, 4)
+        .padding(.bottom, Space.xs)
+        .background(Sheet.bg.ignoresSafeArea())
         // The keyboard slides over the viewfinder rather than shoving it off the top.
         .ignoresSafeArea(.keyboard)
     }
@@ -347,6 +355,13 @@ enum Bearing {
         if d < -180 { d += 360 }
         return d
     }
+
+    /// "south-west", for "facing south-west".
+    static func facing(_ heading: Double) -> String {
+        let names = ["north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west"]
+        let i = Int(((heading.truncatingRemainder(dividingBy: 360) + 360).truncatingRemainder(dividingBy: 360) / 45).rounded()) % 8
+        return names[i]
+    }
 }
 
 /// "● 5A · lamp, night  [edit]" for a few seconds after the shutter, a paper pill at the
@@ -367,17 +382,20 @@ private struct SavedChip: View {
                 Text("\(shot.number) · \(shot.caption.isEmpty ? "Captioning…" : shot.caption)")
                     .lineLimit(1)
                 Text("Edit")
-                    .foregroundStyle(Palette.paper)
+                    .foregroundStyle(Palette.ink)
                     .padding(.horizontal, 10)
                     .frame(height: 26)
-                    .background(Palette.ink, in: Capsule())
+                    .background(Palette.paper, in: Capsule())
             }
             .font(.osData)
-            .foregroundStyle(Palette.ink)
+            .foregroundStyle(Palette.paper)
             .padding(.leading, 14)
             .padding(.trailing, 6)
             .frame(height: 36)
-            .background(Palette.paper, in: Capsule())
+            // Translucent over the live image, so the scene shows through behind the caption.
+            .background(Palette.ink.opacity(0.72), in: Capsule())
+            .background(.ultraThinMaterial, in: Capsule())
+            .overlay(Capsule().strokeBorder(Palette.paper.opacity(0.14), lineWidth: 1))
             .frame(minHeight: 44)
             .contentShape(Rectangle())
         }

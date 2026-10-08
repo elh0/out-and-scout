@@ -188,15 +188,17 @@
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "out & scout";
+				INFOPLIST_KEY_CFBundleDisplayName = "Out & Scout";
 				INFOPLIST_KEY_NSCameraUsageDescription = "The viewfinder uses the camera to frame shots.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save your stills to Photos, cropped to their frame lines.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Names each scene after the street you're on, tags shots with where they were taken, and works out the sun for that spot.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Names each scene after the street you're on, tags shots with where they were taken, works out the sun for that spot, and (if you turn it on) gets the weather forecast there.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_UIColorName = LaunchBackground;
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UIStatusBarHidden = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -209,7 +211,7 @@
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -223,15 +225,17 @@
 				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "out & scout";
+				INFOPLIST_KEY_CFBundleDisplayName = "Out & Scout";
 				INFOPLIST_KEY_NSCameraUsageDescription = "The viewfinder uses the camera to frame shots.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save your stills to Photos, cropped to their frame lines.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Names each scene after the street you're on, tags shots with where they were taken, and works out the sun for that spot.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Names each scene after the street you're on, tags shots with where they were taken, works out the sun for that spot, and (if you turn it on) gets the weather forecast there.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_UIColorName = LaunchBackground;
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UIStatusBarHidden = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -244,7 +248,7 @@
 				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = 1;
+				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};

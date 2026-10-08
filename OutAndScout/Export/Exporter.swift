@@ -6,9 +6,26 @@ enum Exporter {
         case pdf, csv
     }
 
+    /// The three PDFs (Elliot, 6 Oct 2026): shot cards, the ruled list, or just the frames.
+    enum Tier: String, CaseIterable {
+        case detailed, summary, photos
+        var label: String {
+            switch self {
+            case .detailed: return "Detailed"
+            case .summary: return "Summary"
+            case .photos: return "Photos only"
+            }
+        }
+    }
+
     struct Options {
         var frames = true
         var sunTimes = true
+        /// Each shot's notes on the Detailed cards and Summary rows.
+        var notes = true
+        var tier = Tier.detailed
+        /// The kit the cards' camera, mode, sensor and resolution come from.
+        var kit = Kit.default
     }
 
     /// shot-list_night-shift_all-scenes.pdf, shot-list_night-shift_brick-lane.csv
@@ -29,9 +46,7 @@ enum Exporter {
     /// `name` overrides the default file name (without extension).
     static func export(project: Project, scene: ScoutScene?, format: FileFormat, options: Options, name: String? = nil) throws -> URL {
         let scenes = scene.map { [$0] } ?? project.scenes
-        let file = name.map { cleanName($0) }.flatMap { $0.isEmpty ? nil : "\($0).\(format.rawValue)" }
-            ?? filename(project: project, scene: scene, format: format)
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent(file)
+        let url = fileURL(project: project, scene: scene, format: format, name: name)
         switch format {
         case .csv:
             // The BOM tells Excel it's UTF-8, so "°" and "·" survive.
@@ -40,6 +55,13 @@ enum Exporter {
             try pdf(project: project, scenes: scenes, options: options).write(to: url, options: .atomic)
         }
         return url
+    }
+
+    /// Where an export is written: the typed name if there is one, else the default.
+    static func fileURL(project: Project, scene: ScoutScene?, format: FileFormat, name: String? = nil) -> URL {
+        let file = name.map { cleanName($0) }.flatMap { $0.isEmpty ? nil : "\($0).\(format.rawValue)" }
+            ?? filename(project: project, scene: scene, format: format)
+        return FileManager.default.temporaryDirectory.appendingPathComponent(file)
     }
 
     // MARK: CSV
@@ -76,48 +98,54 @@ enum Exporter {
         return lines.joined(separator: "\n") + "\n"
     }
 
-    private static func escape(_ field: String) -> String {
+    static func escape(_ field: String) -> String {
         guard field.contains(where: { $0 == "," || $0 == "\"" || $0 == "\n" }) else { return field }
         return "\"" + field.replacingOccurrences(of: "\"", with: "\"\"") + "\""
     }
 
     // MARK: PDF
 
-    private static let page = CGRect(x: 0, y: 0, width: 595, height: 842) // A4 in points
+    static let page = CGRect(x: 0, y: 0, width: 595, height: 842) // A4 in points
 
-    private static let ink = UIColor(red: 0x11 / 255, green: 0x11 / 255, blue: 0x11 / 255, alpha: 1)
-    private static let graphite = UIColor(red: 0x66 / 255, green: 0x66 / 255, blue: 0x5F / 255, alpha: 1)
-    private static let rule = UIColor(red: 0xD9 / 255, green: 0xD9 / 255, blue: 0xD3 / 255, alpha: 1)
-    private static let sun = UIColor(red: 1, green: 0x5A / 255, blue: 0x1F / 255, alpha: 1)
+    static let ink = UIColor(red: 0x11 / 255, green: 0x11 / 255, blue: 0x11 / 255, alpha: 1)
+    static let graphite = UIColor(red: 0x66 / 255, green: 0x66 / 255, blue: 0x5F / 255, alpha: 1)
+    static let rule = UIColor(red: 0xD9 / 255, green: 0xD9 / 255, blue: 0xD3 / 255, alpha: 1)
+    static let sun = UIColor(red: 1, green: 0x5A / 255, blue: 0x1F / 255, alpha: 1)
 
-    private static func sans(_ size: CGFloat, medium: Bool = false) -> UIFont {
-        UIFont(name: medium ? "Geist-Medium" : "Geist-Regular", size: size)
-            ?? .systemFont(ofSize: size, weight: medium ? .medium : .regular)
+    // Geist Mono for every word in the PDF too, as in the app (Elliot, 6 Oct 2026).
+    static func sans(_ size: CGFloat, medium: Bool = false) -> UIFont {
+        UIFont(name: medium ? "GeistMono-Medium" : "GeistMono-Regular", size: size)
+            ?? .monospacedSystemFont(ofSize: size, weight: medium ? .medium : .regular)
     }
 
-    private static func mono(_ size: CGFloat) -> UIFont {
+    static func mono(_ size: CGFloat) -> UIFont {
         UIFont(name: "GeistMono-Regular", size: size) ?? .monospacedSystemFont(ofSize: size, weight: .regular)
     }
 
     // Layout follows the "08 PDF · cover" and "09 PDF · scene page" boards (794px wide),
     // scaled to A4 points (× 0.75).
-    private static let pad: CGFloat = 42
-    private static let dark = UIColor(red: 0x33 / 255, green: 0x33 / 255, blue: 0x2F / 255, alpha: 1)
-    private static let footerH: CGFloat = 20
+    static let pad: CGFloat = 42
+    static let dark = UIColor(red: 0x33 / 255, green: 0x33 / 255, blue: 0x2F / 255, alpha: 1)
+    static let footerH: CGFloat = 20
 
     /// Shots per scene page, from the row height.
-    private static func rowHeight(_ options: Options) -> CGFloat { options.frames ? 84 : 40 }
-    private static func rowsPerPage(_ options: Options) -> Int {
+    static func rowHeight(_ options: Options) -> CGFloat { options.frames ? 84 : 40 }
+    static func rowsPerPage(_ options: Options) -> Int {
         // Room under the scene header and sun grid, above the footer.
         // The sun path chart takes another 140 when sun times are on.
         let avail = page.height - pad * 2 - 168 - (options.sunTimes ? 140 : 0) - footerH
         return max(1, Int(avail / rowHeight(options)))
     }
-    private static func pages(for scene: ScoutScene, _ options: Options) -> Int {
+    static func pages(for scene: ScoutScene, _ options: Options) -> Int {
         max(1, Int(ceil(Double(scene.shots.count) / Double(rowsPerPage(options)))))
     }
 
     static func pdf(project: Project, scenes: [ScoutScene], options: Options) -> Data {
+        switch options.tier {
+        case .detailed: return detailedPDF(project: project, scenes: scenes, options: options)
+        case .photos: return photosPDF(project: project, scenes: scenes)
+        case .summary: break
+        }
         let total = 1 + scenes.reduce(0) { $0 + pages(for: $1, options) }
         // Each scene's first page number, for the cover's table.
         var firstPage: [UUID: Int] = [:]
@@ -136,16 +164,16 @@ enum Exporter {
         }
     }
 
-    private static func text(_ s: String, font: UIFont, color: UIColor = ink, kern: CGFloat = 0) -> NSAttributedString {
+    static func text(_ s: String, font: UIFont, color: UIColor = ink, kern: CGFloat = 0) -> NSAttributedString {
         NSAttributedString(string: s, attributes: [.font: font, .foregroundColor: color, .kern: kern])
     }
 
-    private static func line(at y: CGFloat, color: UIColor = rule, weight: CGFloat = 0.75) {
+    static func line(at y: CGFloat, color: UIColor = rule, weight: CGFloat = 0.75) {
         color.setFill()
         UIRectFill(CGRect(x: pad, y: y, width: page.width - pad * 2, height: weight))
     }
 
-    private static func dot(at p: CGPoint, golden: Bool, size: CGFloat = 5) {
+    static func dot(at p: CGPoint, golden: Bool, size: CGFloat = 5) {
         let r = CGRect(x: p.x, y: p.y, width: size, height: size)
         if golden {
             sun.setFill()
@@ -158,7 +186,7 @@ enum Exporter {
         }
     }
 
-    private static func footer(left: String, page pageNo: Int, of total: Int) {
+    static func footer(left: String, page pageNo: Int, of total: Int) {
         let y = page.height - pad - 9
         text(left, font: mono(8.5), color: graphite).draw(at: CGPoint(x: pad, y: y))
         let right = text("Page \(pageNo) of \(total)", font: mono(8.5), color: graphite)
@@ -166,7 +194,7 @@ enum Exporter {
     }
 
     /// Four label/value cells between an ink rule and a light rule.
-    private static func grid(_ cells: [(label: String, value: String, golden: Bool)], y: CGFloat) -> CGFloat {
+    static func grid(_ cells: [(label: String, value: String, golden: Bool)], y: CGFloat) -> CGFloat {
         line(at: y, color: ink)
         let colW = (page.width - pad * 2) / CGFloat(cells.count)
         for (i, c) in cells.enumerated() {
@@ -185,7 +213,8 @@ enum Exporter {
 
     /// The day's sun path across the compass (N E S W along the bottom, height up the side),
     /// golden hour in orange, every other hour marked, and a tick for the way each shot faced.
-    private static func sunPathChart(scene: ScoutScene, at loc: ShotLocation, on date: Date, y top: CGFloat) -> CGFloat {
+    /// With `suns`, each shot also gets an orange dot where the sun was for it (the Detailed PDF).
+    static func sunPathChart(scene: ScoutScene, at loc: ShotLocation, on date: Date, y top: CGFloat, suns: Bool = false) -> CGFloat {
         let day = SunCalculator.day(containing: date, latitude: loc.latitude, longitude: loc.longitude)
         let h: CGFloat = 96
         let w = page.width - pad * 2
@@ -252,11 +281,25 @@ enum Exporter {
             let t = text(shot.number, font: mono(7))
             t.draw(at: CGPoint(x: x - t.size().width / 2, y: horizon + 7 + CGFloat(row) * 9))
         }
+
+        // Where the sun was for each shot.
+        if suns {
+            var labelled: [CGPoint] = []
+            for shot in scene.shots where shot.sunElevation > minEl {
+                let p = point(shot.sunAzimuth, shot.sunElevation)
+                sun.setFill()
+                UIBezierPath(ovalIn: CGRect(x: p.x - 3, y: p.y - 3, width: 6, height: 6)).fill()
+                let row = labelled.filter { abs($0.x - p.x) < 16 && abs($0.y - p.y) < 10 }.count
+                labelled.append(p)
+                let t = text(shot.number, font: mono(7), color: sun)
+                t.draw(at: CGPoint(x: p.x + 5, y: p.y - 13 - CGFloat(row) * 9))
+            }
+        }
         return plot.maxY + 14
     }
 
     /// Sunrise, the evening golden and blue hours, and sunset for a place on the recce day.
-    private static func sunTimes(at loc: ShotLocation?, on date: Date) -> (rise: String, golden: String, set: String, blue: String) {
+    static func sunTimes(at loc: ShotLocation?, on date: Date) -> (rise: String, golden: String, set: String, blue: String) {
         guard let loc else { return ("–", "–", "–", "–") }
         let day = SunCalculator.day(containing: date, latitude: loc.latitude, longitude: loc.longitude)
         let span = { (r: ClosedRange<Date>?) in r.map { "\(Format.time($0.lowerBound)) – \(Format.time($0.upperBound))" } ?? "–" }
@@ -264,29 +307,29 @@ enum Exporter {
                 day.sunset.map { Format.time($0) } ?? "–", span(day.blueWindows.last))
     }
 
-    private static func place(of scene: ScoutScene) -> ShotLocation? {
+    static func place(of scene: ScoutScene) -> ShotLocation? {
         scene.location ?? scene.shots.first(where: { $0.location != nil })?.location
     }
 
-    private static func recceDate(_ scenes: [ScoutScene]) -> Date {
+    static func recceDate(_ scenes: [ScoutScene]) -> Date {
         scenes.flatMap(\.shots).map(\.capturedAt).min() ?? Date()
     }
 
-    private static func coords(_ loc: ShotLocation) -> String {
+    static func coords(_ loc: ShotLocation) -> String {
         String(format: "%.4f°%@ %.4f°%@", abs(loc.latitude), loc.latitude >= 0 ? "N" : "S",
                abs(loc.longitude), loc.longitude >= 0 ? "E" : "W")
     }
 
-    private static func lightWord(_ shot: Shot) -> String {
+    static func lightWord(_ shot: Shot) -> String {
         shot.light == .goldenHour ? "Golden" : shot.light.label
     }
 
-    private static func drawCover(_ ctx: UIGraphicsPDFRendererContext, project: Project, scenes: [ScoutScene],
+    static func drawCover(_ ctx: UIGraphicsPDFRendererContext, project: Project, scenes: [ScoutScene],
                                   firstPage: [UUID: Int], total: Int, options: Options) {
         ctx.beginPage()
         let w = page.width - pad * 2
         let date = recceDate(scenes)
-        text("out & scout", font: sans(11, medium: true), kern: -0.2).draw(at: CGPoint(x: pad, y: pad))
+        wordmark(at: CGPoint(x: pad, y: pad), size: 12)
         let scope = text("Shot List · \(scenes.count == 1 ? scenes[0].name : "All scenes")", font: mono(8.5), color: graphite)
         scope.draw(at: CGPoint(x: page.width - pad - scope.size().width, y: pad + 2))
 
@@ -312,6 +355,21 @@ enum Exporter {
         if options.sunTimes, let where_ = scenes.lazy.compactMap(place).first {
             let t = sunTimes(at: where_, on: date)
             y = grid([("Sunrise", t.rise, false), ("Golden hour", t.golden, true), ("Sunset", t.set, false), ("Blue hour", t.blue, false)], y: y) + 16
+        }
+
+        // Detailed, round 4: the shoot day's weather and the plan in the order the light
+        // comes round, instead of the scene table (each scene's map is on its own page).
+        if options.tier == .detailed {
+            let stops = dayPlan(scenes, on: date)
+            if !stops.isEmpty {
+                y = shootDayWeather(scenes, on: date, y: y)
+                y = drawPlan(stops, firstPage: firstPage, kit: options.kit, y: y + 18)
+                let stamp = DateFormatter()
+                stamp.locale = Locale(identifier: "en_GB")
+                stamp.dateFormat = "d MMM yyyy, HH:mm"
+                footer(left: "Exported from Out & Scout · \(stamp.string(from: Date()))", page: 1, of: total)
+                return
+            }
         }
 
         // Scene table: #, scene, location, light, shots.
@@ -351,7 +409,7 @@ enum Exporter {
         footer(left: "Exported from Out & Scout · \(stamp.string(from: Date()))", page: 1, of: total)
     }
 
-    private static func drawScene(_ ctx: UIGraphicsPDFRendererContext, project: Project, scene: ScoutScene, index: Int,
+    static func drawScene(_ ctx: UIGraphicsPDFRendererContext, project: Project, scene: ScoutScene, index: Int,
                                   startPage pageNo: inout Int, total: Int, options: Options) {
         var y: CGFloat = 0
         // Columns: shot, frame, description, lens, time, light.
@@ -368,8 +426,7 @@ enum Exporter {
             ctx.beginPage()
             y = pad
             text("\(project.name) · Scene \(String(format: "%02d", index))", font: mono(8.5), color: graphite).draw(at: CGPoint(x: pad, y: y))
-            let brand = text("out & scout", font: sans(11, medium: true), kern: -0.2)
-            brand.draw(at: CGPoint(x: page.width - pad - brand.size().width, y: y))
+            wordmark(at: CGPoint(x: page.width - pad - wordmarkWidth(size: 10), y: y), size: 10)
             y += 14
             text(scene.name, font: sans(26, medium: true), kern: -0.8)
                 .draw(with: CGRect(x: pad, y: y, width: page.width - pad * 2 - 80, height: 34), options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], context: nil)
@@ -480,7 +537,7 @@ enum Exporter {
 
     /// Shrinks a 12MP still to what the thumbnail needs at print resolution and makes it a
     /// JPEG, which the PDF embeds as is. Drawing the full still made each page tens of MB.
-    private static func printable(_ image: UIImage, for rect: CGRect) -> UIImage? {
+    static func printable(_ image: UIImage, for rect: CGRect) -> UIImage? {
         let fill = aspectFill(image.size, in: rect).size
         let target = CGSize(width: fill.width * 3, height: fill.height * 3)
         let small = image.size.width > target.width ? (image.preparingThumbnail(of: target) ?? image) : image
@@ -488,14 +545,14 @@ enum Exporter {
     }
 
     /// Where to draw an image of `imageSize` so that its `crop` region fills `rect`.
-    private static func aspectFill(crop: CGRect, imageSize: CGSize, in rect: CGRect) -> CGRect {
+    static func aspectFill(crop: CGRect, imageSize: CGSize, in rect: CGRect) -> CGRect {
         let scale = max(rect.width / crop.width, rect.height / crop.height)
         return CGRect(x: rect.midX - crop.midX * scale, y: rect.midY - crop.midY * scale,
                       width: imageSize.width * scale, height: imageSize.height * scale)
     }
 
     /// The largest centred region of `aspect` inside `size`.
-    private static func fitCrop(aspect: Double, in size: CGSize) -> CGRect {
+    static func fitCrop(aspect: Double, in size: CGSize) -> CGRect {
         guard aspect > 0, size.width > 0, size.height > 0 else { return CGRect(origin: .zero, size: size) }
         var w = size.width
         var h = w / aspect
@@ -503,7 +560,7 @@ enum Exporter {
         return CGRect(x: (size.width - w) / 2, y: (size.height - h) / 2, width: w, height: h)
     }
 
-    private static func aspectFill(_ size: CGSize, in rect: CGRect) -> CGRect {
+    static func aspectFill(_ size: CGSize, in rect: CGRect) -> CGRect {
         let scale = max(rect.width / size.width, rect.height / size.height)
         let w = size.width * scale
         let h = size.height * scale

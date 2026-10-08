@@ -39,16 +39,18 @@ struct SheetField: View {
     let placeholder: String
     @Binding var text: String
     var onSubmit: () -> Void = {}
+    /// E2 sheets: a square box with a dark hairline, not the rounded light field.
+    var square = false
 
     var body: some View {
-        TextField("", text: $text, prompt: Text(placeholder).foregroundStyle(Palette.graphite))
+        TextField("", text: $text, prompt: Text(placeholder).foregroundStyle(square ? Sheet.muted : Palette.graphite))
             .font(.osRow)
             .textInputAutocapitalization(.never)
             .submitLabel(.done)
             .onSubmit(onSubmit)
             .padding(.horizontal, Space.s)
             .frame(height: 44)
-            .overlay(RoundedRectangle(cornerRadius: Radius.card).strokeBorder(Palette.rule, lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: square ? 0 : Radius.card).strokeBorder(square ? Sheet.rule : Palette.rule, lineWidth: 1))
     }
 }
 
@@ -80,7 +82,7 @@ struct CaptionCard: View {
 
                         VStack(alignment: .leading, spacing: Space.xs) {
                             Text("\(p.number) · \(Format.mm(p.lensMM))mm · \(Format.time(p.plannedTime)) · \(p.light.label)")
-                                .font(.osData)
+                                .font(.osNum)
                                 .foregroundStyle(Palette.graphite)
 
                             ForEach(Array(p.suggestions.enumerated()), id: \.offset) { i, s in
@@ -157,7 +159,7 @@ struct LocationPermissionCard: View {
 
             // Agreed with Elliot, 1 Oct 2026. True while the app has no server (street names come from
             // Apple's on-device-requested geocoder). Revisit if live links ship.
-            Text("Saved only on your phone. We never upload them; you choose when to share a shot list.")
+            Text("Saved only on your phone. We never upload them; you choose when to share a shot list. Weather forecasts, if you turn them on, send only a scene's rough location.")
                 .font(.osSupport)
                 .foregroundStyle(Palette.graphite)
 
@@ -228,7 +230,7 @@ struct NameSceneCard: View {
             }
 
             HStack(spacing: Space.xs) {
-                TextField("", text: $text, prompt: Text("Type a name").foregroundStyle(Palette.nightMuted))
+                TextField("", text: $text, prompt: Text("Name this scene").foregroundStyle(Palette.nightMuted))
                     .font(.osRow)
                     .foregroundStyle(Palette.paper)
                     .tint(Palette.paper)

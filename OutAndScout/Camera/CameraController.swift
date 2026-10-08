@@ -21,6 +21,9 @@ final class CameraController: NSObject {
     private(set) var cropIsSoft = false
     /// True when the cine lens sees wider than the phone can, even fully zoomed out.
     private(set) var isTooWide = false
+    /// How much bigger the cine frame is than what the phone sees when the lens is too wide
+    /// (1 otherwise). The viewfinder shrinks the picture by this, inside the true frame lines.
+    private(set) var shrink: Double = 1
     private(set) var aeAfLocked = false
     private(set) var exposureBias: Float = 0
     /// Horizontal field of view of the live preview, degrees.
@@ -43,7 +46,7 @@ final class CameraController: NSObject {
     /// The camera's long-side field of view at 1×.
     @ObservationIgnored private var longSideFOV: Double = 70
     /// Long side over short side of the camera's frames (4:3 on iPhone).
-    @ObservationIgnored private var formatAspect: Double = 4.0 / 3.0
+    @ObservationIgnored private(set) var formatAspect: Double = 4.0 / 3.0
     /// Upright, the preview's width spans the camera's short side.
     @ObservationIgnored var portrait = false
     /// Field of view across the preview's width at 1×.
@@ -115,6 +118,9 @@ final class CameraController: NSObject {
             }
         }
         configured = ok
+        // The photo preset switches the camera to its 4:3 photo format; read the field of
+        // view again from that, not the start-up format, so the lens matching is true.
+        if ok { readLensInfo(from: device) }
         status = ok ? .running : .unavailable
         // Exposure stays where you put it, even after the app is closed.
         let saved = UserDefaults.standard.float(forKey: Self.biasKey)
@@ -184,6 +190,7 @@ final class CameraController: NSObject {
 
         previewHFOV = 2 * atan(tan(rad(baseHFOV) / 2) / Double(z)) * 180 / .pi
         isTooWide = CGFloat(wanted) < minZoom - 0.01
+        shrink = isTooWide ? Double(minZoom) / wanted : 1
         updateReadout(zoom: z, tooWide: isTooWide)
     }
 

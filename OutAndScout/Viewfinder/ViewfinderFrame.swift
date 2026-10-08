@@ -16,6 +16,25 @@ struct ViewfinderFrame: View {
     @Binding var frameFraction: Double
     /// Upright phone: the v3c portrait frame (342 wide on a 390 screen).
     var portrait = false
+    /// E2: the image fills the whole screen under floating controls. Lines only show for a
+    /// picked ratio, and the label hides when the frame is big enough to reach the controls.
+    var fullBleed = false
+    /// Full bleed: the space the controls take at each edge. The frame no longer shrinks to
+    /// fit inside it (that made wide lenses look tight); notices sit inside it.
+    var clear = EdgeInsets()
+
+
+    /// The light chip in the frame's bottom-left corner: "Side lit, sun on the left".
+    private var chipText: String {
+        if sun.elevation <= -1 { return "Sun down · \(moon.phaseName.lowercased())" }
+        guard let heading = motion.heading ?? location.heading else { return "Sun \(Int(sun.elevation.rounded()))° up" }
+        return LightClass.readLong(rel: LightRead.rel(sunAzimuth: sun.azimuth, heading: heading))
+    }
+
+    /// The moon at the planned time, for after sunset.
+    private var moon: MoonInfo {
+        MoonCalculator.info(at: planned, latitude: location.coordinate.latitude, longitude: location.coordinate.longitude)
+    }
 
     @State private var focusPoint: CGPoint?
     @State private var focusShownAt = Date.distantPast
@@ -29,13 +48,33 @@ struct ViewfinderFrame: View {
             // made as big as they'll go (with a small margin so they read as a frame), and the
             // phone zooms so the lines show exactly what the cine lens would. Everything outside
             // is dimmed, like the v3c prototype. "full" is the whole sensor mode.
-            let frame = FrameMath.fit(aspect: lineAspect, in: inset(size).size)
-                .offsetBy(dx: inset(size).minX, dy: inset(size).minY)
+            let frame = frameRect(size)
+            // A lens wider than the phone: the frame lines stay at their true size and the
+            // picture shrinks inside them, leaving a grey margin the iPhone can't see.
+            let shrink = camera.status == .running ? camera.shrink : 1
+            let anchor = UnitPoint(x: frame.midX / max(size.width, 1), y: frame.midY / max(size.height, 1))
+            let img = imageRect(size)
 
             ZStack(alignment: .topLeading) {
+                if shrink > 1 {
+                    Sheet.bg
+                    Color(hex: 0x262624)
+                        .frame(width: frame.width, height: frame.height)
+                        .offset(x: frame.minX, y: frame.minY)
+                }
                 cameraLayer
+                    // Only the picture shrinks, not Fit's dark bars around it.
+                    .mask(alignment: .topLeading) {
+                        Rectangle().frame(width: img.width, height: img.height).offset(x: img.minX, y: img.minY)
+                    }
+                    .scaleEffect(1 / shrink, anchor: anchor)
 
-                AspectMask(frame: frame)
+                // Corner ticks always mark the frame, Full included, and outside it goes dark
+                // enough that there's no doubt what's in shot.
+                // HUD D (Elliot, 6 Oct 2026): only the shot shows. Outside the frame is solid
+                // ink, so nothing bleeds in around the edges.
+                AspectMask(frame: frame, shade: fullBleed ? 0.55 : nil,
+                           ticks: fullBleed, solid: fullBleed ? nil : Sheet.bg)
 
                 if store.overlays.grid {
                     ThirdsGrid().frame(width: frame.width, height: frame.height).offset(x: frame.minX, y: frame.minY)
@@ -50,43 +89,49 @@ struct ViewfinderFrame: View {
                         // When the time is scrubbed, a ring marks where the sun is right now.
                         nowSun: store.plannedMinutes == nil ? nil : SunCalculator.position(
                             at: Date(), latitude: location.coordinate.latitude, longitude: location.coordinate.longitude),
-                        projector: Projector(heading: heading, elevation: motion.cameraElevation, hfov: camera.previewHFOV, size: size)
+                        // After sunset, the moon takes the sun's place.
+                        moon: sun.elevation < -1 ? moon : nil,
+                        projector: Projector(heading: heading, elevation: motion.cameraElevation, hfov: 2 * atan(tan(camera.previewHFOV * .pi / 360) * shrink) * 360 / .pi, size: size)
                     )
                 }
 
-                // Ratio and lens in the frame's bottom-left corner, like the v3c prototype.
-                // Time and bearing live in the top bar now.
-                Text("\(store.aspect.display) · \(Format.mm(store.lensMM))mm")
-                    .font(.osDataSmall)
-                    .foregroundStyle(Palette.paper.opacity(0.7))
-                    .fixedSize()
-                    .offset(x: frame.minX + Space.xs, y: frame.maxY - 20)
-
-                // Portrait board: the sun's height in the frame's top-right corner.
-                if portrait, sun.elevation > 0 {
-                    Text("Sun \(Int(sun.elevation.rounded()))° up")
-                        .font(.osDataSmall)
-                        .foregroundStyle(Palette.paper)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Palette.night.opacity(0.72), in: RoundedRectangle(cornerRadius: 4))
-                        .fixedSize()
-                        .frame(width: frame.width - 16, alignment: .trailing)
-                        .offset(x: frame.minX + 8, y: frame.minY + 8)
+                // Outline look: the frame is a white window, and the light as it falls on this
+                // shot sits in its bottom-left corner as a small chip.
+                if !fullBleed {
+                    Rectangle()
+                        .strokeBorder(Palette.paper, lineWidth: 2)
+                        .frame(width: frame.width, height: frame.height)
+                        .offset(x: frame.minX, y: frame.minY)
+                        .allowsHitTesting(false)
                 }
+                Text(chipText.uppercased())
+                    .font(Fonts.mono(9))
+                    .tracking(0.6)
+                    .foregroundStyle(Palette.paper)
+                    .lineLimit(1)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Sheet.bg.opacity(0.82), in: Capsule())
+                    .overlay(Capsule().strokeBorder(Outline.line, lineWidth: 1))
+                    .fixedSize()
+                    .offset(x: frame.minX + 8, y: frame.maxY - 30)
+                    .allowsHitTesting(false)
 
                 // Honest about the phone's limit: say how wide it can really go here.
                 if camera.isTooWide, camera.status == .running {
-                    Text("Wider than the iPhone can see · widest here ≈ \(widestFocal(size: size, frame: frame))mm")
+                    Text("Grey edge: outside what the iPhone sees · it reaches ≈ \(widestFocal(size: size, frame: frame))mm")
                         .font(.osDataSmall)
                         .foregroundStyle(Palette.paper)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .background(Palette.hud, in: RoundedRectangle(cornerRadius: 4))
                         .fixedSize()
-                        .frame(width: frame.width)
+                        // E2: centred in the open space under the top controls, so it never
+                        // sits on the compass or the scene buttons.
+                        .frame(width: fullBleed ? max(size.width - clear.leading - clear.trailing, 1) : frame.width)
                         // Upright, the sun's height sits top-right, so this goes near the bottom.
-                        .offset(x: frame.minX, y: portrait ? frame.maxY - 44 : frame.minY + Space.xs)
+                        .offset(x: fullBleed ? clear.leading : frame.minX,
+                                y: fullBleed ? clear.top + Space.xs : portrait ? frame.maxY - 44 : frame.minY + Space.xs)
                 }
 
                 if let p = focusPoint {
@@ -104,7 +149,7 @@ struct ViewfinderFrame: View {
             }
             .contentShape(Rectangle())
             .onTapGesture(coordinateSpace: .local) { p in
-                camera.focus(atLayerPoint: p)
+                camera.focus(atLayerPoint: layerPoint(p, size: size, frame: frame))
                 showFocus(at: p)
             }
             // Pinch like the Camera app: smooth while your fingers move (out for longer, in for
@@ -130,7 +175,7 @@ struct ViewfinderFrame: View {
             .onLongPressGesture(minimumDuration: 0.6) {
                 // SwiftUI's long press doesn't report a location; lock where the last tap was, or the centre.
                 let p = focusPoint ?? CGPoint(x: size.width / 2, y: size.height / 2)
-                camera.lock(atLayerPoint: p)
+                camera.lock(atLayerPoint: layerPoint(p, size: size, frame: frame))
                 showFocus(at: p)
             }
             .onAppear { syncLens(size: size, frame: frame) }
@@ -194,10 +239,35 @@ struct ViewfinderFrame: View {
         store.aspect.isFull ? sensorAspect : store.aspect.value
     }
 
+    /// Where the cine frame sits. Its width decides how wide a lens the phone can show, so
+    /// it's kept as big as it will go.
+    private func frameRect(_ size: CGSize) -> CGRect {
+        // The picture always fills the screen (no bars, no modes); every ratio, Full included,
+        // is fitted whole inside it with corner ticks, so what's in the lines is the shot.
+        let box = inset(size)
+        return FrameMath.fit(aspect: lineAspect, in: box.size).offsetBy(dx: box.minX, dy: box.minY)
+    }
+
+    /// A tap on screen to the same spot on the preview layer, undoing the wide-lens shrink.
+    private func layerPoint(_ p: CGPoint, size: CGSize, frame: CGRect) -> CGPoint {
+        let s = camera.status == .running ? camera.shrink : 1
+        return CGPoint(x: frame.midX + (p.x - frame.midX) * s, y: frame.midY + (p.y - frame.midY) * s)
+    }
+
+    /// Where the camera picture sits: always the whole view, edge to edge.
+    private func imageRect(_ size: CGSize) -> CGRect {
+        CGRect(origin: .zero, size: size)
+    }
+
     /// A small margin so even the widest ratio reads as a frame rather than full bleed.
-    /// Portrait follows the board: 24 each side, 5 top and bottom.
+    /// Portrait follows the board: 24 each side, 5 top and bottom. E2 keeps the same margin
+    /// (fitting the lines between the controls made every lens look too tight) and marks
+    /// the frame with corner ticks, so no line runs through the controls.
+    /// HUD D (landscape and upright) has its own window, so the frame fills it exactly:
+    /// no margin of picture around the shot.
     private func inset(_ size: CGSize) -> CGRect {
-        CGRect(origin: .zero, size: size).insetBy(dx: portrait ? 24 : 10, dy: portrait ? 5 : 8)
+        guard fullBleed else { return CGRect(origin: .zero, size: size) }
+        return CGRect(origin: .zero, size: size).insetBy(dx: portrait ? 24 : 10, dy: portrait ? 5 : 8)
     }
 
     /// How much of the sensor's width the lines take: 1 for ratios wider than the sensor
@@ -220,7 +290,8 @@ struct ViewfinderFrame: View {
         let sensorHFOV = sensorWidthFOV
         // The lines see r of the sensor's width.
         let linesHFOV = 2 * atan(r * tan(sensorHFOV * .pi / 360)) * 180 / .pi
-        let fraction = Double(frame.width / size.width)
+        // Measured against the picture, which in Fit is narrower than the screen.
+        let fraction = Double(frame.width / imageRect(size).width)
         camera.match(targetHFOV: linesHFOV, frameFraction: fraction)
         // The still keeps the whole sensor frame, which is 1/r times as wide as the lines.
         frameFraction = min(fraction / r, 1)
@@ -229,7 +300,7 @@ struct ViewfinderFrame: View {
     /// The widest cine focal length the phone can show truthfully in these frame lines.
     private func widestFocal(size: CGSize, frame: CGRect) -> String {
         guard size.width > 0 else { return "—" }
-        let linesMax = camera.widestHFOV(frameFraction: Double(frame.width / size.width))
+        let linesMax = camera.widestHFOV(frameFraction: Double(frame.width / imageRect(size).width))
         let sensorHalf = tan(linesMax * .pi / 360) / linesToSensorWidth
         let width = store.kit.mode.widthMM * store.kit.lenses.squeeze / (onSide ? store.kit.frameAspect : 1)
         return Format.mm((width / (2 * sensorHalf)).rounded())
@@ -261,13 +332,38 @@ enum FrameMath {
 /// Darkens everything outside the frame lines (ink at 72%) and draws a thin frame line.
 struct AspectMask: View {
     let frame: CGRect
+    /// Draw the frame lines (E2 leaves them off until a ratio is picked).
+    var lines = true
+    /// How dark outside the frame goes; nil is the usual HUD shade.
+    var shade: Double? = nil
+    /// E2: corner ticks instead of a full outline, so the frame never cuts through a control.
+    var ticks = false
+    /// HUD D: outside the frame is this colour, fully opaque, with a quiet outline.
+    var solid: Color? = nil
 
     var body: some View {
         Canvas { ctx, size in
             var outside = Path(CGRect(origin: .zero, size: size))
             outside.addRect(frame)
-            ctx.fill(outside, with: .color(Palette.hud), style: FillStyle(eoFill: true))
-            ctx.stroke(Path(frame.insetBy(dx: 0.5, dy: 0.5)), with: .color(Palette.paper.opacity(0.85)), lineWidth: 1)
+            let fill = solid ?? shade.map { Color.black.opacity($0) } ?? Palette.hud
+            ctx.fill(outside, with: .color(fill), style: FillStyle(eoFill: true))
+            if lines {
+                let r = frame.insetBy(dx: 0.5, dy: 0.5)
+                let color = GraphicsContext.Shading.color(Palette.paper.opacity(solid != nil ? 0.6 : shade != nil ? 0.7 : 0.85))
+                if ticks {
+                    let t: CGFloat = 14
+                    var p = Path()
+                    for (x, y, dx, dy) in [(r.minX, r.minY, t, t), (r.maxX, r.minY, -t, t),
+                                           (r.minX, r.maxY, t, -t), (r.maxX, r.maxY, -t, -t)] {
+                        p.move(to: CGPoint(x: x + dx, y: y))
+                        p.addLine(to: CGPoint(x: x, y: y))
+                        p.addLine(to: CGPoint(x: x, y: y + dy))
+                    }
+                    ctx.stroke(p, with: color, lineWidth: 1)
+                } else {
+                    ctx.stroke(Path(r), with: color, lineWidth: 1)
+                }
+            }
         }
         .allowsHitTesting(false)
     }
@@ -386,6 +482,8 @@ struct SunPathOverlay: View {
     let sunDay: SunDay?
     let sun: SunPosition
     var nowSun: SunPosition?
+    /// Set once the sun is down: drawn instead of the sun, with its phase.
+    var moon: MoonInfo?
     let projector: Projector
 
     var body: some View {
@@ -441,13 +539,15 @@ struct SunPathOverlay: View {
                 }
             }
 
-            if let p = projector.point(azimuth: sun.azimuth, elevation: sun.elevation),
+            if let moon {
+                drawMoon(moon, in: &ctx, size: size)
+            } else if let p = projector.point(azimuth: sun.azimuth, elevation: sun.elevation),
                bounds.insetBy(dx: -8, dy: -8).contains(p) {
                 let r: CGFloat = 7
                 let dot = Path(ellipseIn: CGRect(x: p.x - r, y: p.y - r, width: r * 2, height: r * 2))
                 ctx.fill(dot, with: .color(Palette.sun))
                 let readout = ctx.resolve(Text("Az \(Int(sun.azimuth.rounded()))° · El \(Int(sun.elevation.rounded()))°")
-                    .font(.osDataSmall).foregroundColor(Palette.paper))
+                    .font(.osNumSmall).foregroundColor(Palette.paper))
                 // Keep the readout inside the frame: flip sides near the right edge and hold it
                 // clear of the top and bottom.
                 let w = readout.measure(in: size).width
@@ -472,6 +572,58 @@ struct SunPathOverlay: View {
             }
         }
         .allowsHitTesting(false)
+    }
+
+    /// The moon where it is, lit to its phase, with "Moon · Waxing gibbous · 78% lit"; an arrow
+    /// at the edge when it's out of frame; a quiet line when it hasn't risen.
+    private func drawMoon(_ moon: MoonInfo, in ctx: inout GraphicsContext, size: CGSize) {
+        let bounds = CGRect(origin: .zero, size: size)
+        let label = "Moon · \(moon.summary)"
+        guard moon.position.elevation > -0.5 else {
+            ctx.draw(Text("Moon below the horizon · \(moon.summary)").font(.osDataSmall).foregroundColor(Palette.paper.opacity(0.8)),
+                     at: CGPoint(x: size.width / 2, y: 14), anchor: .top)
+            return
+        }
+        if let p = projector.point(azimuth: moon.position.azimuth, elevation: moon.position.elevation),
+           bounds.insetBy(dx: -8, dy: -8).contains(p) {
+            let r: CGFloat = 8
+            let disc = CGRect(x: p.x - r, y: p.y - r, width: r * 2, height: r * 2)
+            ctx.fill(Path(ellipseIn: disc), with: .color(Palette.paper.opacity(0.18)))
+            // The lit part: a half disc plus or minus an ellipse for the terminator.
+            var lit = Path()
+            let k = CGFloat(1 - 2 * moon.illumination)
+            let rightLit = moon.waxing
+            lit.addArc(center: p, radius: r, startAngle: .degrees(-90), endAngle: .degrees(90), clockwise: !rightLit)
+            let steps = 24
+            for i in 0...steps {
+                let a = Double.pi / 2 - Double(i) / Double(steps) * Double.pi
+                let x = p.x + (rightLit ? 1 : -1) * k * r * CGFloat(cos(a))
+                let y = p.y + r * CGFloat(sin(a))
+                lit.addLine(to: CGPoint(x: x, y: y))
+            }
+            lit.closeSubpath()
+            ctx.fill(lit, with: .color(Palette.paper))
+            ctx.stroke(Path(ellipseIn: disc), with: .color(Palette.paper.opacity(0.6)), lineWidth: 0.75)
+            let readout = ctx.resolve(Text(label).font(.osDataSmall).foregroundColor(Palette.paper))
+            let w = readout.measure(in: size).width
+            let right = p.x + r + 5 + w < size.width - 6
+            let y = min(max(p.y, 12), size.height - 12)
+            ctx.draw(readout, at: CGPoint(x: right ? p.x + r + 5 : max(p.x - r - 5, w + 6), y: y), anchor: right ? .leading : .trailing)
+        } else {
+            let left = Bearing.difference(moon.position.azimuth, projector.heading) < 0
+            let y = size.height / 2
+            let x: CGFloat = left ? 14 : size.width - 14
+            var tri = Path()
+            if left {
+                tri.move(to: CGPoint(x: x - 6, y: y)); tri.addLine(to: CGPoint(x: x + 4, y: y - 6)); tri.addLine(to: CGPoint(x: x + 4, y: y + 6))
+            } else {
+                tri.move(to: CGPoint(x: x + 6, y: y)); tri.addLine(to: CGPoint(x: x - 4, y: y - 6)); tri.addLine(to: CGPoint(x: x - 4, y: y + 6))
+            }
+            tri.closeSubpath()
+            ctx.fill(tri, with: .color(Palette.paper))
+            ctx.draw(Text("Moon \(Int(moon.position.azimuth.rounded()))° · \(Int((moon.illumination * 100).rounded()))% lit").font(.osDataSmall).foregroundColor(Palette.paper),
+                     at: CGPoint(x: left ? x + 10 : x - 10, y: y + 16), anchor: left ? .leading : .trailing)
+        }
     }
 }
 
