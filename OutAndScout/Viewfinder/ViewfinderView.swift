@@ -24,7 +24,7 @@ struct ViewfinderView: View {
         let sun = SunCalculator.position(at: planned, latitude: coord.latitude, longitude: coord.longitude)
 
         ZStack {
-            Palette.night.ignoresSafeArea()
+            Sheet.bg.ignoresSafeArea()
 
             Group {
                 if portrait {
@@ -114,43 +114,38 @@ struct ViewfinderView: View {
     private func portraitLayout(sun: SunPosition, planned: Date) -> some View {
         VStack(spacing: 0) {
             PortraitTopRow(planned: planned)
-                .padding(.horizontal, Space.m)
-                .frame(height: 44)
+                .frame(height: 40)
 
             PortraitCompassRow(
                 heading: motion.heading ?? location.heading,
                 headingAccuracy: location.headingAccuracy,
                 sunAzimuth: sun.azimuth
             )
-            .padding(.horizontal, Space.m)
-            .frame(height: 36)
+            .frame(height: 30)
 
-            // HUD D upright: the picture in one window with no edge of its own (only the
-            // ratio's frame line shows), the controls on ink around it, never over it.
+            PortraitScenesRow()
+                .frame(height: 40)
+
+            // The picture in a white window, the controls on the ground around it.
             ViewfinderFrame(sun: sun, sunDay: sunDay, planned: planned, frameFraction: $frameFraction, portrait: true)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .clipped()
-                .padding(.horizontal, Space.m)
-                .padding(.top, 4)
-
-            PortraitScenesRow()
-                .padding(.horizontal, Space.m)
-                .frame(height: 40)
+                .padding(.top, 6)
 
             PortraitToolsRow()
-                .padding(.horizontal, Space.m)
                 .frame(height: 44)
+                .padding(.top, 4)
 
             PortraitTimeRow(sunDay: sunDay, planned: planned, sun: sun)
-                .padding(.horizontal, Space.l)
-                .padding(.top, 4)
 
             PortraitBottomRow(capturing: capturing) {
                 Task { await pin() }
             }
-            .frame(height: 92)
-            .padding(.top, 4)
+            .padding(.top, 2)
         }
+        .padding(.horizontal, Space.l)
+        .padding(.bottom, 4)
+        .background(Sheet.bg.ignoresSafeArea())
         .ignoresSafeArea(.keyboard)
     }
 
