@@ -21,6 +21,8 @@ enum Exporter {
     struct Options {
         var frames = true
         var sunTimes = true
+        /// Each shot's notes on the Detailed cards and Summary rows.
+        var notes = true
         var tier = Tier.detailed
         /// The kit the cards' camera, mode, sensor and resolution come from.
         var kit = Kit.default
@@ -44,9 +46,7 @@ enum Exporter {
     /// `name` overrides the default file name (without extension).
     static func export(project: Project, scene: ScoutScene?, format: FileFormat, options: Options, name: String? = nil) throws -> URL {
         let scenes = scene.map { [$0] } ?? project.scenes
-        let file = name.map { cleanName($0) }.flatMap { $0.isEmpty ? nil : "\($0).\(format.rawValue)" }
-            ?? filename(project: project, scene: scene, format: format)
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent(file)
+        let url = fileURL(project: project, scene: scene, format: format, name: name)
         switch format {
         case .csv:
             // The BOM tells Excel it's UTF-8, so "°" and "·" survive.
@@ -55,6 +55,13 @@ enum Exporter {
             try pdf(project: project, scenes: scenes, options: options).write(to: url, options: .atomic)
         }
         return url
+    }
+
+    /// Where an export is written: the typed name if there is one, else the default.
+    static func fileURL(project: Project, scene: ScoutScene?, format: FileFormat, name: String? = nil) -> URL {
+        let file = name.map { cleanName($0) }.flatMap { $0.isEmpty ? nil : "\($0).\(format.rawValue)" }
+            ?? filename(project: project, scene: scene, format: format)
+        return FileManager.default.temporaryDirectory.appendingPathComponent(file)
     }
 
     // MARK: CSV

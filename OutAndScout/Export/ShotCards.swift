@@ -92,7 +92,7 @@ extension Exporter {
                     let k = caps("\(project.name) · \(scene.name)")
                     k.draw(at: CGPoint(x: page.width - cardPad - k.size().width, y: cardPad + 1))
                     for (j, shot) in scene.shots.dropFirst(p * 2).prefix(2).enumerated() {
-                        card(shot, scene: scene, sceneIndex: i + 1, kit: options.kit,
+                        card(shot, scene: scene, sceneIndex: i + 1, kit: options.kit, notes: options.notes,
                              in: CGRect(x: cardPad, y: cardPad + 24 + CGFloat(j) * cardH, width: page.width - cardPad * 2, height: cardH), ctx: ctx)
                     }
                     pageFooter(pageNo, legend: true)
@@ -191,7 +191,7 @@ extension Exporter {
         return [height, where_].compactMap { $0 }.joined(separator: ", ")
     }
 
-    private static func card(_ shot: Shot, scene: ScoutScene, sceneIndex: Int, kit: Kit, in r: CGRect, ctx: UIGraphicsPDFRendererContext) {
+    private static func card(_ shot: Shot, scene: ScoutScene, sceneIndex: Int, kit: Kit, notes showNotes: Bool = true, in r: CGRect, ctx: UIGraphicsPDFRendererContext) {
         ink.setFill()
         UIRectFill(CGRect(x: r.minX, y: r.minY, width: r.width, height: 0.75))
         var y = r.minY + 9
@@ -334,8 +334,10 @@ extension Exporter {
         let qrImage = loc?.directionsURL.flatMap { qrCode($0.absoluteString) }
         let qrLabel = caps("Directions", size: 5.5)
         let notesW = r.width - (qrImage == nil ? 0 : qr + qrLabel.size().width + 22)
-        caps("Notes").draw(at: CGPoint(x: r.minX, y: y))
-        if let notes = shot.notes, !notes.isEmpty {
+        if showNotes { caps("Notes").draw(at: CGPoint(x: r.minX, y: y)) }
+        if !showNotes {
+            // Left out of this export.
+        } else if let notes = shot.notes, !notes.isEmpty {
             text(notes, font: mono(7.5)).draw(with: CGRect(x: r.minX, y: y + 10, width: notesW, height: 22),
                                               options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], context: nil)
         } else {

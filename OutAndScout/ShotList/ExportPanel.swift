@@ -1,9 +1,12 @@
-import QuickLook
+import PDFKit
 import SwiftUI
 import UIKit
 
-/// 03 Export panel. Slides in on the Shot List: this scene or all scenes,
-/// then PDF for the crew, CSV for spreadsheets, or a view-only link.
+/// The export sheet, outline look round 4 (locked 8 Oct 2026). A card over the Shot List:
+/// on the left, this scene or all scenes, the three PDFs as cards with a round tick, and
+/// Frames / Sun / Notes; on the right, the real A4 pages as they'll be sent (Fit, 50%, 75%),
+/// the file name, Cancel and Export PDF. Once made, a done view with the share sheet.
+/// Upright, the same pieces stack in one scrolling column.
 struct ExportPanel: View {
     @Environment(ScoutStore.self) private var store
     @Environment(\.isPortrait) private var portrait
@@ -11,257 +14,419 @@ struct ExportPanel: View {
     let scene: ScoutScene?
 
     @State private var allScenes = false
-    /// The rename / reorder list, folded away until asked for.
-    @State private var format = Choice.pdf
     @State private var options = Exporter.Options()
-    @State private var shareItem: ShareItem?
-    @State private var error: String?
     /// A name typed over the default file name, without the extension.
     @State private var customName: String?
-    /// The PDF being previewed in Quick Look.
-    @State private var previewURL: URL?
-    /// A PDF is being made; building one with stills can take a moment on older phones.
+    /// The PDF for the current choices, rebuilt a moment after each change.
+    @State private var pdf: Data?
+    @State private var building = false
+    @State private var zoom = Zoom.fit
+    /// The file made by Export PDF; shows the done view.
+    @State private var made: URL?
+    @State private var shareItem: ShareItem?
     @State private var busy = false
+    @State private var error: String?
+    @State private var forecastReady = false
 
-    enum Choice: String, CaseIterable { case pdf, csv, photos, link }
-
-    var body: some View {
-        let project = store.currentProject
-        let thisScene = scene ?? store.currentScene
-        let target = allScenes ? nil : thisScene
-        let total = project.scenes.reduce(0) { $0 + $1.shots.count }
-        let shots = target?.shots.count ?? total
-        let ext = format == .csv ? "csv" : "pdf"
-        let defaultName = Exporter.filename(project: project, scene: target, format: format == .csv ? .csv : .pdf)
-            .replacingOccurrences(of: ".\(ext)", with: "")
-
-        // v3c export panel: 380 wide, 18/20 padding, 12 between blocks, scrolls when it runs out of room.
-        VStack(spacing: 0) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    // Done is always here, so the panel can be closed however little room is left
-                    // around it (upright it fills the screen).
-                    PanelHeader(
-                        title: "Export",
-                        sub: "\(project.name) · \(target.map { "\($0.name) · " } ?? "All scenes · ")\(ShotListView.shots(shots))",
-                        action: ("Done", { store.showingExport = false })
-                    )
-
-                    // Which scenes first, as two big halves, since it's half of every export
-                    // (Elliot, 6 Oct 2026: it was hidden down the scroll). Then what to send.
-                    HStack(spacing: 0) {
-                        scopeHalf("This scene", "\(thisScene.name) · \(ShotListView.shots(thisScene.shots.count))", on: !allScenes) { allScenes = false }
-                        scopeHalf("All scenes", "\(project.scenes.count) · \(ShotListView.shots(total))", on: allScenes) { allScenes = true }
-                    }
-                    .overlay(Rectangle().strokeBorder(Sheet.text, lineWidth: 1))
-
-                    // What to send: six tiles, two across, so every choice is on screen at once.
-                    VStack(alignment: .leading, spacing: 6) {
-                        Caps(text: "What to send").foregroundStyle(Sheet.muted)
-                        LazyVGrid(columns: [GridItem(.flexible(), spacing: 8), GridItem(.flexible(), spacing: 8)], spacing: 8) {
-                            ForEach(Exporter.Tier.allCases, id: \.self) { t in
-                                tile(selected: format == .pdf && options.tier == t, t.label, "PDF", tierShort(t)) {
-                                    format = .pdf
-                                    options.tier = t
-                                }
-                            }
-                            tile(selected: format == .csv, "Spreadsheet", "CSV", "For the AD") { format = .csv }
-                            tile(selected: format == .photos, "Camera roll", nil, "Stills to Photos") { format = .photos }
-                            // The live link needs outandscout.com/s/<project> to exist first.
-                            tile(selected: false, "Live link", nil, "Soon") {}
-                                .opacity(0.45)
-                                .disabled(true)
-                        }
-                    }
-
-                    if format == .csv || (format == .pdf && options.tier == .summary) {
-                        HStack(spacing: Space.l) {
-                            includeChip("Frames", on: options.frames) { options.frames.toggle() }
-                                .disabled(format == .csv)
-                            includeChip("Sun Times", on: options.sunTimes) { options.sunTimes.toggle() }
-                        }
-                    }
-                }
-                .padding(.top, 18)
-                .padding(.horizontal, 20)
-                .padding(.bottom, 12)
+    enum Zoom: String, CaseIterable {
+        case fit = "Fit", half = "50%", threeQuarter = "75%"
+        /// Points on screen per PDF point; nil fits the page width.
+        var scale: CGFloat? {
+            switch self {
+            case .fit: return nil
+            case .half: return 0.5
+            case .threeQuarter: return 0.75
             }
-            .scrollIndicators(.hidden)
-            // Long scene lists stop at the footer instead of running under the button.
-            .clipped()
-
-            // Always in reach: the export button, file name and preview stay put while the
-            // options above scroll.
-            VStack(spacing: 8) {
-                if let error {
-                    Text(error).font(.osData).foregroundStyle(Sheet.muted)
-                }
-
-                // E: the one outlined button.
-                Button(busy ? "Preparing…" : format == .photos
-                       ? "Save \(shots == 1 ? "1 still" : "\(shots) stills") to Photos"
-                       : "\(target == nil ? "Export all scenes" : "Export scene") · \(format == .pdf ? "\(options.tier.label) PDF" : ext.uppercased())") {
-                    export(project: project, scene: target)
-                }
-                .buttonStyle(PillButtonStyle(kind: .outline))
-
-                // Tap the file name to rename the export.
-                if format != .photos { HStack(spacing: 0) {
-                    EditableName(text: customName ?? defaultName, font: .osData, color: Sheet.muted, title: "File Name") {
-                        customName = Exporter.cleanName($0)
-                    }
-                    Text(".\(ext)").font(.osData).foregroundStyle(Sheet.muted)
-                    Image(systemName: "pencil").font(.system(size: 10)).foregroundStyle(Sheet.muted)
-                        .padding(.leading, 5).accessibilityHidden(true)
-                }
-                .frame(maxWidth: .infinity) }
-
-                if format == .pdf {
-                    // Look before you send: opens the PDF in Quick Look.
-                    Button("Preview the PDF →") { preview(project: project, scene: target) }
-                        .buttonStyle(.plain)
-                        .font(.osData)
-                        .underline()
-                        .foregroundStyle(Sheet.text)
-                        .frame(maxWidth: .infinity, minHeight: 28)
-                }
-            }
-            .padding(.horizontal, 20)
-            .padding(.top, 12)
-            .padding(.bottom, 12)
-            .background(Sheet.bg)
-            .overlay(alignment: .top) { Rule() }
-        }
-        .frame(width: portrait ? nil : 380)
-        // E: square edge, a hairline where it meets the screen behind.
-        .background(Sheet.bg.ignoresSafeArea())
-        .overlay(alignment: .leading) { Sheet.rule.frame(width: 1).ignoresSafeArea() }
-        .foregroundStyle(Sheet.text)
-        // The Shot List was showing every scene, so start there.
-        .onAppear {
-            allScenes = scene == nil
-            #if DEBUG
-            // Screenshot testing: -exportAllScenes YES shows the scene order list.
-            if UserDefaults.standard.bool(forKey: "exportAllScenes") { allScenes = true }
-            #endif
-        }
-        .quickLookPreview($previewURL)
-        .sheet(item: $shareItem) { item in
-            ActivityView(items: [item.url])
-                .presentationDetents([.large])
-                .font(.osRow)
         }
     }
 
-    /// Half of the scope switch: the name big, what's in it small; filled when picked.
-    private func scopeHalf(_ title: String, _ sub: String, on: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(.osTitle)
-                Text(sub).font(.osDataSmall).opacity(0.7).lineLimit(1)
+    private var project: Project { store.currentProject }
+    private var thisScene: ScoutScene { scene ?? store.currentScene }
+    private var target: ScoutScene? { allScenes ? nil : thisScene }
+    private var shotCount: Int {
+        target?.shots.count ?? project.scenes.reduce(0) { $0 + $1.shots.count }
+    }
+    private var defaultName: String {
+        Exporter.filename(project: project, scene: target, format: .pdf).replacingOccurrences(of: ".pdf", with: "")
+    }
+    /// Everything the pages depend on; a change rebuilds the preview.
+    private var previewKey: String {
+        let shots = (target.map { [$0] } ?? project.scenes).flatMap(\.shots)
+        let names = shots.map { "\($0.id)\($0.caption)\($0.notes ?? "")" }.joined()
+        return "\(allScenes)\(options.tier)\(options.frames)\(options.sunTimes)\(options.notes)\(project.name)\(names.hashValue)\(forecastReady)"
+    }
+
+    var body: some View {
+        Group {
+            if portrait { uprightSheet } else { wideSheet }
+        }
+        .background(RoundedRectangle(cornerRadius: 18).fill(Outline.card))
+        .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Outline.line, lineWidth: 1.5))
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+        .foregroundStyle(Sheet.text)
+        .onAppear {
+            allScenes = scene == nil
+            #if DEBUG
+            if UserDefaults.standard.bool(forKey: "exportAllScenes") { allScenes = true }
+            #endif
+        }
+        .task {
+            // The Detailed pages carry the week's weather; fetch it once, then rebuild.
+            await Forecast.prefetch(project: project, scene: nil)
+            forecastReady = true
+        }
+        .task(id: previewKey) { await rebuild() }
+        .sheet(item: $shareItem) { item in
+            ActivityView(items: [item.url])
+                .presentationDetents([.medium, .large])
+        }
+    }
+
+    // MARK: Layouts
+
+    /// Landscape: options on the left, the pages and buttons on the right.
+    private var wideSheet: some View {
+        HStack(alignment: .top, spacing: 18) {
+            ScrollView {
+                optionsColumn(width: 200)
+                    .padding(.vertical, 16)
             }
-            .foregroundStyle(on ? Sheet.bg : Sheet.text)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .scrollIndicators(.hidden)
+            .frame(width: 200)
+
+            Rectangle().fill(Outline.line).frame(width: 1)
+
+            if let made {
+                doneView(made)
+            } else {
+                HStack(alignment: .top, spacing: 16) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("TAP EXPORT TO SEND THESE PAGES")
+                            .font(Fonts.mono(8)).tracking(0.6).foregroundStyle(Sheet.muted)
+                        preview
+                    }
+                    .padding(.vertical, 16)
+                    sideColumn
+                        .frame(width: 132)
+                        .padding(.vertical, 16)
+                }
+            }
+        }
+        .padding(.horizontal, 18)
+    }
+
+    /// Upright: one column, the pages in the middle, the buttons always at the bottom.
+    private var uprightSheet: some View {
+        VStack(spacing: 0) {
+            if let made {
+                doneView(made).padding(18)
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 14) {
+                        optionsColumn(width: nil)
+                        preview.frame(height: 380)
+                        fileRow
+                        zoomRow
+                    }
+                    .padding(18)
+                }
+                .scrollIndicators(.hidden)
+                Rectangle().fill(Outline.line).frame(height: 1)
+                HStack(spacing: 8) {
+                    OPill(label: "Cancel", size: .big, caps: true) { close() }
+                    Spacer(minLength: 0)
+                    OPill(label: busy ? "Making…" : "Export PDF", on: true, size: .big, caps: true) { exportPDF() }
+                }
+                .padding(.horizontal, 18)
+                .padding(.vertical, 10)
+            }
+        }
+    }
+
+    // MARK: Pieces
+
+    /// Title, scope, the three tiers, what's included, and the other ways out.
+    private func optionsColumn(width: CGFloat?) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Export").font(.osSans(18))
+            HStack(spacing: 6) {
+                OPill(label: "This scene", on: !allScenes, size: .small) { allScenes = false }
+                OPill(label: "All scenes", on: allScenes, size: .small) { allScenes = true }
+            }
+            .padding(.top, 12)
+            .padding(.bottom, 14)
+
+            VStack(spacing: 6) {
+                ForEach(Exporter.Tier.allCases, id: \.self) { t in tierCard(t) }
+            }
+
+            HStack(spacing: 12) {
+                include("Frames", on: options.frames) { options.frames.toggle() }
+                include("Sun", on: options.sunTimes) { options.sunTimes.toggle() }
+                include("Notes", on: options.notes) { options.notes.toggle() }
+            }
+            .padding(.top, 6)
+
+            HStack(spacing: 4) {
+                Text("ALSO:").foregroundStyle(Sheet.muted)
+                Button("SPREADSHEET") { exportCSV() }
+                    .buttonStyle(.plain).underline()
+                Text("·").foregroundStyle(Sheet.muted)
+                Button("PHOTOS APP") { saveToPhotos() }
+                    .buttonStyle(.plain).underline()
+            }
+            .font(Fonts.mono(8))
+            .tracking(0.6)
+            .frame(minHeight: 32)
+
+            if let error {
+                Text(error).font(Fonts.mono(9)).foregroundStyle(Sheet.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .frame(width: width, alignment: .leading)
+        .frame(maxWidth: width == nil ? .infinity : nil, alignment: .leading)
+    }
+
+    private func tierCard(_ t: Exporter.Tier) -> some View {
+        let on = options.tier == t
+        return Button { options.tier = t } label: {
+            HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(t.label).font(.osSans(13))
+                    Text(tierLine(t)).font(Fonts.mono(9)).foregroundStyle(Sheet.muted)
+                        .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+                TickBox(on: on, round: true)
+            }
             .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .background(on ? Sheet.text : .clear)
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, minHeight: 44, alignment: .leading)
+            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(on ? Sheet.text : Outline.line, lineWidth: 1.5))
+            .background(RoundedRectangle(cornerRadius: 14).stroke(on ? Outline.ring : .clear, lineWidth: 3).padding(-1.5))
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(OPressRing())
+        .accessibilityAddTraits(on ? .isSelected : [])
+    }
+
+    private func tierLine(_ t: Exporter.Tier) -> String {
+        switch t {
+        case .detailed: return "Shot cards: light, sun, best time"
+        case .summary: return "One line per shot"
+        case .photos: return "Just the frames"
+        }
+    }
+
+    private func include(_ label: String, on: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                TickBox(on: on)
+                Text(label.uppercased()).font(Fonts.mono(9)).tracking(0.6)
+                    .foregroundStyle(on ? Sheet.text : Sheet.muted)
+            }
+            .frame(minHeight: 36)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(on ? .isSelected : [])
     }
 
-    /// One choice as a small box: the name, its file type, a line on what it's for.
-    private func tile(selected: Bool, _ label: String, _ type: String?, _ sub: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(alignment: .firstTextBaseline, spacing: 5) {
-                    Text(label).font(.osRow)
-                    if let type { Text(type).font(.osDataSmall).opacity(0.6) }
-                }
-                Text(sub).font(.osDataSmall).opacity(0.7).lineLimit(1)
+    /// The real pages, on a dark well.
+    private var preview: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 6).fill(Color(hex: 0x0C0C0B))
+            if let pdf {
+                PDFPages(data: pdf, scale: zoom.scale)
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
             }
-            .foregroundStyle(selected ? Sheet.bg : Sheet.text)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 9)
-            .background(selected ? Sheet.text : .clear)
-            .overlay(Rectangle().strokeBorder(selected ? Sheet.text : Sheet.rule, lineWidth: 1))
-            .contentShape(Rectangle())
+            if building || pdf == nil {
+                Text(pdf == nil ? "MAKING THE PAGES…" : "UPDATING…")
+                    .font(Fonts.mono(8)).tracking(0.6).foregroundStyle(Sheet.muted)
+                    .padding(6)
+                    .background(Capsule().fill(Outline.card.opacity(0.9)))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: pdf == nil ? .center : .top)
+                    .padding(.top, 8)
+                    .allowsHitTesting(false)
+            }
         }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(selected ? .isSelected : [])
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
-    private func tierShort(_ t: Exporter.Tier) -> String {
-        switch t {
-        case .detailed: return "Shot cards, the light"
-        case .summary: return "A row per shot"
-        case .photos: return "Just the frames"
-        }
-    }
-
-    /// E include toggle: the word, underlined when it's in the export.
-    private func includeChip(_ label: String, on: Bool, action: @escaping () -> Void) -> some View {
-        Chip(label: label, selected: on, underline: true, action: action)
-    }
-
-    private func preview(project: Project, scene: ScoutScene?) {
-        guard !busy else { return }
-        busy = true
-        var picked = self.options
-        picked.kit = store.kit
-        let options = picked, name = customName
-        // Off the main thread, so the panel stays responsive while the stills are drawn.
-        Task {
-            await Forecast.prefetch(project: project, scene: scene)
-            let url = await Task.detached(priority: .userInitiated) {
-                try? Exporter.export(project: project, scene: scene, format: .pdf, options: options, name: name)
-            }.value
-            busy = false
-            previewURL = url
-            if url == nil { error = "Couldn't make the preview. Try again." }
+    /// File name, pages and zoom, then Cancel and Export PDF.
+    private var sideColumn: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            fileRow
+            zoomRow.padding(.top, 10)
+            Spacer(minLength: 12)
+            OPill(label: "Cancel", size: .big, caps: true) { close() }
+            OPill(label: busy ? "Making…" : "Export PDF", on: true, size: .big, caps: true) { exportPDF() }
         }
     }
 
-    private func export(project: Project, scene: ScoutScene?) {
-        if format == .photos {
-            let shots = scene?.shots ?? project.scenes.flatMap(\.shots)
-            Task {
-                do {
-                    let n = try await PhotoSaver.save(shots)
-                    store.toast = "Saved \(n == 1 ? "1 still" : "\(n) stills") to Photos"
-                    error = nil
-                } catch PhotoSaver.Failure.nothingToSave {
-                    error = "No stills to save yet."
-                } catch {
-                    self.error = "Couldn't save to Photos. Check access in Settings."
+    private var fileRow: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("FILE").font(Fonts.mono(8)).tracking(0.6).foregroundStyle(Sheet.muted)
+            HStack(alignment: .firstTextBaseline, spacing: 0) {
+                EditableName(text: customName ?? defaultName, font: Fonts.mono(10), lineLimit: 3, title: "File Name", inPlace: true) {
+                    customName = Exporter.cleanName($0)
+                }
+                Text(".pdf").font(Fonts.mono(10)).foregroundStyle(Sheet.muted)
+            }
+        }
+    }
+
+    private var zoomRow: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("\(pageCount) PAGE\(pageCount == 1 ? "" : "S") · ZOOM")
+                .font(Fonts.mono(8)).tracking(0.6).foregroundStyle(Sheet.muted)
+            HStack(spacing: 6) {
+                ForEach(Zoom.allCases, id: \.self) { z in
+                    OPill(label: z.rawValue, on: zoom == z, size: .small) { zoom = z }
                 }
             }
-            return
         }
+    }
+
+    private var pageCount: Int {
+        guard let pdf, let doc = PDFDocument(data: pdf) else { return 0 }
+        return doc.pageCount
+    }
+
+    /// The file is ready: its name, what's in it, the share sheet, and a way back.
+    private func doneView(_ url: URL) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("READY").font(Fonts.mono(9)).tracking(0.6).foregroundStyle(Sheet.muted)
+            Text(url.lastPathComponent).font(.osSans(20)).lineLimit(3)
+            Text("\(pageCount) PAGE\(pageCount == 1 ? "" : "S") · \(ShotListView.shots(shotCount).uppercased()) · \(options.tier.label.uppercased())")
+                .font(Fonts.mono(9)).tracking(0.6).foregroundStyle(Sheet.muted)
+            OPill(label: "Send · AirDrop, Mail, Files", on: true, size: .big) { shareItem = ShareItem(url: url) }
+                .padding(.top, 10)
+            Spacer(minLength: 20)
+            HStack(spacing: 8) {
+                OPill(label: "Edit again", caps: true) { made = nil }
+                OPill(label: "Done", on: true, caps: true) { close() }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .padding(.vertical, portrait ? 0 : 24)
+    }
+
+    // MARK: Actions
+
+    private func close() { store.showingExport = false }
+
+    /// Builds the pages off the main thread, a beat after the last change.
+    private func rebuild() async {
+        try? await Task.sleep(for: .milliseconds(pdf == nil ? 0 : 250))
+        guard !Task.isCancelled else { return }
+        building = true
+        var picked = options
+        picked.kit = store.kit
+        let opts = picked, proj = project
+        let scenes = target.map { [$0] } ?? proj.scenes
+        let data = await Task.detached(priority: .userInitiated) {
+            Exporter.pdf(project: proj, scenes: scenes, options: opts)
+        }.value
+        guard !Task.isCancelled else { return }
+        pdf = data
+        building = false
+    }
+
+    private func exportPDF() {
         guard !busy else { return }
         busy = true
-        var picked = self.options
+        error = nil
+        var picked = options
         picked.kit = store.kit
-        let options = picked, name = customName
-        let fileFormat: Exporter.FileFormat = format == .csv ? .csv : .pdf
+        let opts = picked, proj = project, scene = target, name = customName, ready = building ? nil : pdf
         Task {
-            if fileFormat == .pdf { await Forecast.prefetch(project: project, scene: scene) }
-            let url = await Task.detached(priority: .userInitiated) {
-                try? Exporter.export(project: project, scene: scene, format: fileFormat, options: options, name: name)
+            let url = await Task.detached(priority: .userInitiated) { () -> URL? in
+                if let ready {
+                    let url = Exporter.fileURL(project: proj, scene: scene, format: .pdf, name: name)
+                    do { try ready.write(to: url, options: .atomic); return url } catch { return nil }
+                }
+                return try? Exporter.export(project: proj, scene: scene, format: .pdf, options: opts, name: name)
             }.value
             busy = false
-            if let url {
-                shareItem = ShareItem(url: url)
+            if let url { made = url } else { error = "Couldn't make the PDF. Try again." }
+        }
+    }
+
+    private func exportCSV() {
+        var picked = options
+        picked.kit = store.kit
+        let opts = picked, proj = project, scene = target
+        Task {
+            let url = await Task.detached(priority: .userInitiated) {
+                try? Exporter.export(project: proj, scene: scene, format: .csv, options: opts)
+            }.value
+            if let url { shareItem = ShareItem(url: url); error = nil } else { error = "Couldn't make the spreadsheet." }
+        }
+    }
+
+    private func saveToPhotos() {
+        let shots = target?.shots ?? project.scenes.flatMap(\.shots)
+        Task {
+            do {
+                let n = try await PhotoSaver.save(shots)
+                store.toast = "Saved \(n == 1 ? "1 still" : "\(n) stills") to Photos"
                 error = nil
-            } else {
-                error = "Couldn't make the file. Try again."
+            } catch PhotoSaver.Failure.nothingToSave {
+                error = "No stills to save yet."
+            } catch {
+                self.error = "Couldn't save to Photos. Check access in Settings."
             }
         }
     }
 }
 
+/// The PDF's pages, scrolling down, at a set scale or fitted to the width.
+struct PDFPages: UIViewRepresentable {
+    let data: Data
+    /// Points on screen per PDF point; nil fits the width.
+    let scale: CGFloat?
+
+    func makeUIView(context: Context) -> PDFView {
+        let v = PDFView()
+        v.displayMode = .singlePageContinuous
+        v.displayDirection = .vertical
+        v.displaysPageBreaks = true
+        v.pageBreakMargins = UIEdgeInsets(top: 6, left: 6, bottom: 6, right: 6)
+        v.backgroundColor = .clear
+        v.pageShadowsEnabled = false
+        return v
+    }
+
+    func updateUIView(_ v: PDFView, context: Context) {
+        if context.coordinator.data != data {
+            context.coordinator.data = data
+            // Keep the reader on the same page when the options change.
+            let index = v.currentPage.flatMap { v.document?.index(for: $0) } ?? 0
+            v.document = PDFDocument(data: data)
+            if let doc = v.document, doc.pageCount > 0, let page = doc.page(at: min(index, doc.pageCount - 1)) {
+                v.go(to: page)
+            }
+        }
+        if let scale {
+            v.autoScales = false
+            v.minScaleFactor = 0.1
+            v.maxScaleFactor = 4
+            v.scaleFactor = scale
+        } else {
+            v.autoScales = true
+            // Re-fit once laid out, so the whole page width shows.
+            DispatchQueue.main.async {
+                v.minScaleFactor = 0.1
+                v.scaleFactor = v.scaleFactorForSizeToFit
+            }
+        }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
+    final class Coordinator { var data: Data? }
+}
 
 /// A drag-to-reorder list: ruled rows 40 high, E style; drag the grip on the right
 /// and the row moves as you pass each neighbour, like the v3c board. Tap a name to rename it.
