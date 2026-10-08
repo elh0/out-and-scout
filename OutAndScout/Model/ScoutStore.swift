@@ -79,7 +79,7 @@ final class ScoutStore {
         // real projects are never touched.
         if UserDefaults.standard.bool(forKey: "demoData") {
             self.fileURL = FileManager.default.temporaryDirectory.appendingPathComponent("demo-scout.json")
-            let demo = Self.demoProjects()
+            let demo = ScoutStore.demoProjects()
             projects = demo
             currentProjectID = demo[1].id
             currentSceneID = demo[1].scenes[2].id

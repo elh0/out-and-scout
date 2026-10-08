@@ -138,11 +138,12 @@ struct StartScreen: View {
             Spacer(minLength: Space.s)
             HStack(alignment: .bottom) {
                 if !compact {
-                    HStack(spacing: 6) {
-                        ForEach(shots.suffix(3)) { s in
-                            ShotThumb(shot: s).frame(width: 79, height: 44)
-                                .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
-                        }
+                    // As many of the last stills as fit beside the buttons (none on an SE).
+                    ViewThatFits(in: .horizontal) {
+                        thumbs(shots.suffix(3))
+                        thumbs(shots.suffix(2))
+                        thumbs(shots.suffix(1))
+                        Color.clear.frame(width: 0, height: 0)
                     }
                 }
                 Spacer(minLength: 0)
@@ -153,12 +154,22 @@ struct StartScreen: View {
                         OPill(label: "Export", caps: true) { open(p) { store.showingShotList = true; store.showingExport = true } }
                     }
                 }
+                .layoutPriority(1)
             }
         }
         .padding(Space.m)
         .frame(maxWidth: .infinity, maxHeight: compact ? nil : .infinity, alignment: .topLeading)
         .background(Outline.card, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Outline.line, lineWidth: 1.5))
+    }
+
+    private func thumbs(_ shots: ArraySlice<Shot>) -> some View {
+        HStack(spacing: 6) {
+            ForEach(shots) { s in
+                ShotThumb(shot: s).frame(width: 79, height: 44)
+                    .clipShape(RoundedRectangle(cornerRadius: 5, style: .continuous))
+            }
+        }
     }
 
     private func details(_ p: Project, shots: [Shot]) -> some View {

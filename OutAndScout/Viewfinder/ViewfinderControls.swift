@@ -35,7 +35,7 @@ struct TopBar: View {
                 .foregroundStyle(Ink.muted)
                 .lineLimit(1)
                 .truncationMode(.middle)
-                .padding(.horizontal, 150)
+                .padding(.horizontal, 170)
                 .accessibilityLabel(crumb.lowercased())
 
             HStack(alignment: .firstTextBaseline, spacing: Space.m) {
@@ -62,7 +62,7 @@ struct TopBar: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .frame(maxWidth: 140, alignment: .trailing)
+                .frame(maxWidth: 110, alignment: .trailing)
                 .accessibilityLabel("kit, \(store.kit.label)")
 
                 Text(Format.time(Date()))
@@ -424,7 +424,7 @@ struct LensPills: View {
     var vertical = true
 
     var body: some View {
-        let layout = vertical ? AnyLayout(VStackLayout(alignment: .trailing, spacing: 5)) : AnyLayout(HStackLayout(spacing: 6))
+        let layout = vertical ? AnyLayout(VStackLayout(alignment: .trailing, spacing: 3)) : AnyLayout(HStackLayout(spacing: 6))
         layout {
             ForEach(window, id: \.self) { f in
                 let on = abs(f - store.lensMM) < 0.01
@@ -439,7 +439,8 @@ struct LensPills: View {
                         .padding(.horizontal, 6)
                         .background(on ? Sheet.text : .clear, in: Capsule())
                         .overlay(Capsule().strokeBorder(on ? Sheet.text : Outline.line, lineWidth: 1))
-                        .padding(4)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, vertical ? 1 : 4)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(OPressRing())
@@ -451,11 +452,13 @@ struct LensPills: View {
     }
 
     private var window: [Double] {
+        // Four down the rail, so the shutter still fits on an SE or a mini.
+        let n = vertical ? 4 : 5
         let focals = store.focalLengths
-        guard focals.count > 5 else { return focals }
+        guard focals.count > n else { return focals }
         let i = focals.firstIndex { $0 >= store.lensMM - 0.01 } ?? 0
-        let start = max(0, min(focals.count - 5, i - 2))
-        return Array(focals[start..<(start + 5)])
+        let start = max(0, min(focals.count - n, i - n / 2))
+        return Array(focals[start..<(start + n)])
     }
 }
 

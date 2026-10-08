@@ -146,24 +146,33 @@ extension Exporter {
         opts.mapType = .mutedStandard
         opts.pointOfInterestFilter = .excludingAll
         opts.traitCollection = UITraitCollection(userInterfaceStyle: .light)
-        var result: MKMapSnapshotter.Snapshot?
-        let done = DispatchSemaphore(value: 0)
-        MKMapSnapshotter(options: opts).start(with: .global(qos: .userInitiated)) { snap, _ in
-            result = snap
-            done.signal()
+        // The preview rebuilds on every change, so each place's map is fetched once.
+        let key = String(format: "%.5f,%.5f,%.0fx%.0f", center.latitude, center.longitude, rect.width, rect.height)
+        var image = MapCache.image(key)
+        if image == nil {
+            var result: MKMapSnapshotter.Snapshot?
+            let done = DispatchSemaphore(value: 0)
+            MKMapSnapshotter(options: opts).start(with: .global(qos: .userInitiated)) { snap, _ in
+                result = snap
+                done.signal()
+            }
+            if done.wait(timeout: .now() + 6) == .success, let snap = result {
+                image = snap.image
+                MapCache.store(snap.image, key)
+            }
         }
         hair.setStroke()
-        guard done.wait(timeout: .now() + 8) == .success, let snap = result else {
+        guard let image else {
             UIBezierPath(rect: rect).stroke()
             return
         }
-        snap.image.draw(in: rect)
+        image.draw(in: rect)
         UIBezierPath(rect: rect).stroke()
         guard let cg = UIGraphicsGetCurrentContext() else { return }
         cg.saveGState()
         UIRectClip(rect)
-        let p0 = snap.point(for: center)
-        let p = CGPoint(x: rect.minX + p0.x, y: rect.minY + p0.y)
+        // The map is centred on the spot.
+        let p = CGPoint(x: rect.midX, y: rect.midY)
         let r = min(rect.width, rect.height) * 0.42
         // The way to point: a wedge as wide as the lens sees.
         if let b = stop.heading {
@@ -199,5 +208,21 @@ extension Exporter {
         let n = text("N", font: mono(6))
         n.draw(at: CGPoint(x: rect.maxX - 9, y: rect.minY + 3))
         cg.restoreGState()
+    }
+}
+
+/// Map snapshots for the shoot day page, kept for the session.
+private enum MapCache {
+    private static let lock = NSLock()
+    private static var images: [String: UIImage] = [:]
+
+    static func image(_ key: String) -> UIImage? {
+        lock.lock(); defer { lock.unlock() }
+        return images[key]
+    }
+
+    static func store(_ image: UIImage, _ key: String) {
+        lock.lock(); defer { lock.unlock() }
+        images[key] = image
     }
 }
