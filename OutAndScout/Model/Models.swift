@@ -166,6 +166,12 @@ enum LightPhase: String, Codable, CaseIterable {
 }
 
 enum Format {
+    /// "18:38" from minutes after midnight.
+    static func time(at minutes: Double) -> String {
+        let m = Int(minutes.rounded()) % 1440
+        return String(format: "%02d:%02d", m / 60, m % 60)
+    }
+
     static func time(_ date: Date, in zone: TimeZone = .current) -> String {
         var cal = Calendar(identifier: .gregorian)
         cal.timeZone = zone

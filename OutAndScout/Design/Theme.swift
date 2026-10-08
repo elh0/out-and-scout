@@ -34,10 +34,75 @@ enum Palette {
 /// E2 sheets (Shot List, Export, Projects, Kit): dark, ruled lines instead of boxes,
 /// underlined words instead of pills, one outlined button.
 enum Sheet {
-    static let bg = Color(hex: 0x0E0E0D)
+    /// The outline look's grey-black (Elliot kept it over pure black, 8 Oct 2026).
+    static let bg = Color(hex: 0x121211)
     static let text = Color(hex: 0xECEBE6)
     static let muted = Color(hex: 0x8C8A83)
     static let rule = Color(hex: 0x2A2926)
+}
+
+/// The outline look (round 4, locked 8 Oct 2026): hairline rounded cards and pills, a white
+/// frame window, Geist for names and big numbers, Geist Mono caps for labels.
+enum Outline {
+    /// Pill and card edges: paper at 42%.
+    static let line = Color(hex: 0xECEBE6, opacity: 0.42)
+    /// Sheets and cards that sit over the screen.
+    static let card = Color(hex: 0x1A1A19)
+    /// The ring a pill or card gets while pressed.
+    static let ring = Color(hex: 0xECEBE6, opacity: 0.16)
+}
+
+/// A hairline pill: outlined, or filled paper when on. Hit area padded to 44.
+struct OPill: View {
+    enum Size { case small, regular, big }
+    let label: String
+    var on = false
+    var size: Size = .regular
+    var caps = false
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(caps ? label.uppercased() : label)
+                .font(Fonts.mono(size == .big ? 11 : 10))
+                .tracking(0.4)
+                .lineLimit(1)
+                .fixedSize()
+                .foregroundStyle(on ? Sheet.bg : Palette.paper)
+                .padding(.horizontal, size == .small ? 8 : size == .big ? 18 : 11)
+                .frame(minWidth: size == .small ? 34 : 38, minHeight: height)
+                .background(on ? Sheet.text : .clear, in: Capsule())
+                .overlay(Capsule().strokeBorder(on ? Sheet.text : Outline.line, lineWidth: 1))
+                .padding(.vertical, max(0, (44 - height) / 2))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(OPressRing())
+        .accessibilityAddTraits(on ? .isSelected : [])
+    }
+
+    private var height: CGFloat { size == .small ? 22 : size == .big ? 34 : 26 }
+}
+
+/// Pressed: a soft ring and a touch of fade, like the prototype's hover ring.
+struct OPressRing: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .opacity(configuration.isPressed ? 0.75 : 1)
+            .scaleEffect(configuration.isPressed ? 0.97 : 1)
+            .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+    }
+}
+
+/// A small tick box: hairline square, filled paper when on.
+struct TickBox: View {
+    let on: Bool
+    var round = false
+    var body: some View {
+        RoundedRectangle(cornerRadius: round ? 6 : 3)
+            .fill(on ? Sheet.text : .clear)
+            .overlay(RoundedRectangle(cornerRadius: round ? 6 : 3).strokeBorder(on ? Sheet.text : Outline.line, lineWidth: 1))
+            .frame(width: 11, height: 11)
+    }
 }
 
 /// A small caps label, like "EXPORT" or "OTHER PROJECTS".
@@ -96,6 +161,9 @@ extension Font {
     static let osNumSmall = Fonts.mono(10)
     /// 9, hour ticks.
     static let osNumTiny = Fonts.mono(9)
+
+    /// Outline look: Geist for names, titles and the big lens number.
+    static func osSans(_ size: CGFloat) -> Font { Fonts.sans(size, .regular) }
 }
 
 // MARK: - Buttons

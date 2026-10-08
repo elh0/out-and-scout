@@ -7,7 +7,7 @@ private enum Ink {
     // E2: these sit straight on the live image, so the greys are paper at reduced opacity
     // (lifted from the old solid greys) and read over bright and dark scenes alike.
     /// Off and unselected labels.
-    static let muted = Palette.paper.opacity(0.62)
+    static let muted = Sheet.muted
     /// Next/previous focal lengths.
     static let faint = Palette.paper.opacity(0.38)
     /// Compass letters and hour ticks.
@@ -26,79 +26,57 @@ struct TopBar: View {
     let planned: Date
 
     var body: some View {
-        // One quiet line of words on a shared baseline: Projects, then project / scene from
-        // the window's left edge; the compass centred over the window; the time and kit as
-        // plain words on the right (no pills).
+        // Outline look, round 4: Projects on the left, "PROJECT / SCENE · FACING SOUTH-WEST"
+        // in grey caps in the middle, the kit (underlined, tap to change) and the time on the right.
         ZStack {
-            HStack(alignment: .firstTextBaseline, spacing: 0) {
+            Text(crumb)
+                .font(Fonts.mono(10))
+                .tracking(0.6)
+                .foregroundStyle(Ink.muted)
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .padding(.horizontal, 150)
+                .accessibilityLabel(crumb.lowercased())
+
+            HStack(alignment: .firstTextBaseline, spacing: Space.m) {
                 Button { store.panel = .projects } label: {
                     Text("Projects")
+                        .font(Fonts.mono(11))
                         .foregroundStyle(Palette.paper)
-                        .underline(color: Ink.muted)
                         .frame(minHeight: 44)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .frame(width: 76, alignment: .leading)
                 .accessibilityHint("opens your projects")
 
-                Button { store.panel = .projects } label: {
-                    HStack(alignment: .firstTextBaseline, spacing: 6) {
-                        Text(Self.short(store.currentProject.name)).foregroundStyle(Ink.muted)
-                            .lineLimit(1)
-                            .fixedSize()
-                        Text("/").foregroundStyle(Ink.muted)
-                        Text(store.currentScene.name).foregroundStyle(Palette.paper)
-                            .lineLimit(1)
-                            .layoutPriority(1)
-                    }
-                    .frame(minHeight: 44)
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("\(store.currentProject.name), \(store.currentScene.name)")
-                .accessibilityHint("opens your projects")
-                // Stops short of the compass.
-                .frame(maxWidth: 230, alignment: .leading)
-
-                Spacer(minLength: Space.m)
-
-                // Just the time: white for now, orange when the sun timeline is scrubbed.
-                // Tap to snap back to now.
-                Button { store.plannedMinutes = nil } label: {
-                    Text(Format.time(store.plannedMinutes == nil ? Date() : planned))
-                        .font(.osNum)
-                        .foregroundStyle(store.plannedMinutes == nil ? Palette.paper : Palette.sun)
-                        .frame(minHeight: 44)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .fixedSize()
-                .accessibilityHint("back to now")
-
-                Text("·").foregroundStyle(Ink.muted).padding(.horizontal, Space.xs)
+                Spacer(minLength: 0)
 
                 Button { store.panel = .kit } label: {
-                    Text(store.kit.label)
-                        .foregroundStyle(Palette.paper)
-                        .underline(color: Ink.muted)
+                    Text(store.kit.label.uppercased())
+                        .font(Fonts.mono(10))
+                        .tracking(0.6)
+                        .foregroundStyle(Ink.muted)
+                        .underline(color: Palette.nightRule)
                         .lineLimit(1)
                         .frame(minHeight: 44)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .frame(maxWidth: 120, alignment: .trailing)
+                .frame(maxWidth: 140, alignment: .trailing)
                 .accessibilityLabel("kit, \(store.kit.label)")
-            }
-            .font(.osData)
 
-            // Centred over the picture's window (which starts after the 76 pt column).
-            CompassTape(heading: heading, accuracy: headingAccuracy, sunAzimuth: sunAzimuth)
-                .frame(width: 150, height: 26)
-                .frame(maxWidth: .infinity)
-                .padding(.leading, 76)
-                .allowsHitTesting(false)
+                Text(Format.time(Date()))
+                    .font(Fonts.mono(10))
+                    .foregroundStyle(Ink.muted)
+                    .fixedSize()
+            }
         }
+    }
+
+    private var crumb: String {
+        var s = "\(Self.short(store.currentProject.name, max: 18)) / \(store.currentScene.name)"
+        if let heading { s += " · facing \(Bearing.facing(heading))" }
+        return s.uppercased()
     }
 
     /// A long project name, cut to fit beside the scene.
@@ -187,9 +165,8 @@ struct LeftRail: View {
                             Button { store.select(project: store.currentProjectID, scene: scene.id) } label: {
                                 HStack(alignment: .firstTextBaseline, spacing: 4) {
                                     Text(scene.name)
-                                        .font(.osDataSmall)
+                                        .font(Fonts.mono(10))
                                         .foregroundStyle(current ? Palette.paper : Ink.muted)
-                                        .underline(current, color: Palette.paper)
                                         .lineLimit(1)
                                         .truncationMode(.tail)
                                     Spacer(minLength: 2)
@@ -197,7 +174,7 @@ struct LeftRail: View {
                                         .font(.osNumTiny)
                                         .foregroundStyle(Ink.muted)
                                 }
-                                .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
+                                .frame(maxWidth: .infinity, minHeight: 26, alignment: .leading)
                                 .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
@@ -208,8 +185,8 @@ struct LeftRail: View {
                         }
                         Button { store.requestNewScene() } label: {
                             Text("+ Scene")
-                                .font(.osDataSmall)
-                                .foregroundStyle(Palette.paper)
+                                .font(Fonts.mono(10))
+                                .foregroundStyle(Ink.muted)
                                 .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
                                 .contentShape(Rectangle())
                         }
@@ -263,15 +240,18 @@ struct RailToggle: View {
 
     var body: some View {
         // HUD D: a word, bright and underlined when on, grey when off. No icons.
+        // Outline look: a tick box and the word, bright when on.
         Button(action: action) {
-            Text(label)
-                .font(.osData)
-                .foregroundStyle(on ? Palette.paper : Ink.muted)
-                .underline(on, color: Palette.paper)
-                .lineLimit(1)
-                .fixedSize()
-                .frame(minWidth: 44, minHeight: 30, alignment: .leading)
-                .contentShape(Rectangle())
+            HStack(spacing: 7) {
+                TickBox(on: on)
+                Text(label)
+                    .font(Fonts.mono(10))
+                    .foregroundStyle(on ? Palette.paper : Ink.muted)
+                    .lineLimit(1)
+                    .fixedSize()
+            }
+            .frame(minWidth: 44, minHeight: 28, alignment: .leading)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)
@@ -279,7 +259,7 @@ struct RailToggle: View {
     }
 }
 
-// MARK: - Right rail: lens, shutter, shot stack
+// MARK: - Right rail: the big lens number, the lens pills, shots and the shutter
 
 struct RightRail: View {
     @Environment(ScoutStore.self) private var store
@@ -287,130 +267,113 @@ struct RightRail: View {
     let onShutter: () -> Void
 
     var body: some View {
-        // Lens at the top, shots at the bottom, and the shutter centred in the room between
-        // them, lower down where the thumb rests (Elliot found it sat too high).
-        VStack(spacing: 6) {
-            // A little room above the lens wheel, so it sits nearer the thumb.
-            Spacer(minLength: 0).frame(maxHeight: 18)
-            LensWheel()
+        // Outline look, round 4: the lens as one big number you drag up or down, the kit's
+        // nearby focal lengths as pills under it, then Shots beside the shutter, iPhone style.
+        VStack(alignment: .trailing, spacing: 10) {
+            BigLens(vertical: true)
+            LensPills(vertical: true)
             Spacer(minLength: 0)
-            shutter
-            Spacer(minLength: 0)
-            // Down in line with the bottom bar, clear of the shutter.
-            ShotStack()
-                .padding(.bottom, 6)
-        }
-        .frame(maxHeight: .infinity)
-    }
-
-    private var shutter: some View {
-        VStack(spacing: 2) {
-            Button(action: onShutter) {
-                ZStack {
-                    Circle().strokeBorder(Palette.paper, lineWidth: 3).frame(width: 64, height: 64)
-                    Circle().fill(Palette.paper).frame(width: 48, height: 48)
-                        .scaleEffect(capturing ? 0.85 : 1)
-                }
-                .contentShape(Circle())
+            HStack(alignment: .center, spacing: 14) {
+                ShotStack()
+                Shutter(capturing: capturing, action: onShutter)
             }
-            .buttonStyle(.plain)
-            .disabled(capturing)
-            .accessibilityLabel("pin as shot \(store.nextShotNumber)")
-
-            (Text("Next ") + Text(store.nextShotNumber).font(.osNumSmall))
-                .font(.osDataSmall)
-                .foregroundStyle(Ink.muted)
         }
-        .animation(.easeOut(duration: 0.12), value: capturing)
+        .frame(maxHeight: .infinity, alignment: .top)
     }
 }
 
-/// Two stacked cards (the latest still on top) with the count in a paper badge.
-struct ShotStack: View {
+/// The outline shutter: a paper ring with a soft grey disc that dips when pressed.
+struct Shutter: View {
     @Environment(ScoutStore.self) private var store
+    let capturing: Bool
+    let action: () -> Void
 
     var body: some View {
-        let shots = store.currentScene.shots
-        return Button { store.showingShotList = true } label: {
-            ZStack(alignment: .topLeading) {
-                RoundedRectangle(cornerRadius: 4).strokeBorder(Ink.faint, lineWidth: 1)
-                    .frame(width: 32, height: 24).offset(x: 8, y: 4)
-                Group {
-                    if let last = shots.last {
-                        ShotThumb(shot: last)
-                    } else {
-                        Color(hex: 0x2B2B28)
-                    }
-                }
-                .frame(width: 32, height: 24)
-                .clipShape(RoundedRectangle(cornerRadius: 4))
-                .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(Palette.graphite, lineWidth: 1))
-                .offset(x: 4, y: 10)
-                Text("\(shots.count)")
-                    .font(.osNumSmall)
-                    .foregroundStyle(Palette.ink)
-                    .padding(.horizontal, 4)
-                    .frame(minWidth: 18, minHeight: 18)
-                    .background(Palette.paper, in: Capsule())
-                    .offset(x: 26, y: 24)
+        Button(action: action) {
+            ZStack {
+                Circle().strokeBorder(Palette.paper, lineWidth: 2).frame(width: 58, height: 58)
+                Circle().fill(Color(hex: 0xC9C8C3)).frame(width: 46, height: 46)
+                    .scaleEffect(capturing ? 0.88 : 1)
             }
-            .frame(width: 44, height: 44, alignment: .topLeading)
-            .contentShape(Rectangle())
+            .frame(width: 60, height: 60)
+            .contentShape(Circle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("shot list, \(shots.count) shots in this scene")
+        .disabled(capturing)
+        .animation(.easeOut(duration: 0.12), value: capturing)
+        .accessibilityLabel("take shot \(store.nextShotNumber)")
     }
 }
 
-/// Up and down step through the kit's focal lengths. Tap the big number to go up
-/// (wrapping back to the widest), tap the arrows, or drag. Dragging steps once per notch
-/// as you move, not just when you let go.
-struct LensWheel: View {
+/// The latest still in a small rounded frame with "Shots 11" under it. Opens the shot list.
+struct ShotStack: View {
+    @Environment(ScoutStore.self) private var store
+    /// Upright: the label sits beside the still, underlined.
+    var beside = false
+
+    var body: some View {
+        let shots = store.currentProject.scenes.reduce(0) { $0 + $1.shots.count }
+        let last = store.currentScene.shots.last ?? store.currentProject.scenes.flatMap(\.shots).last
+        return Button { store.showingShotList = true } label: {
+            let thumb = Group {
+                if let last { ShotThumb(shot: last) } else { Color(hex: 0x1A1A19) }
+            }
+            .frame(width: beside ? 42 : 46, height: beside ? 28 : 31)
+            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(Outline.line, lineWidth: 1))
+
+            Group {
+                if beside {
+                    HStack(spacing: 10) {
+                        thumb
+                        Text("SHOTS · \(shots)").font(Fonts.mono(10)).tracking(0.6)
+                            .foregroundStyle(Palette.paper).underline(color: Palette.paper)
+                    }
+                } else {
+                    VStack(spacing: 4) {
+                        thumb
+                        Text("SHOTS \(shots)").font(Fonts.mono(8)).tracking(0.6).foregroundStyle(Palette.paper)
+                    }
+                }
+            }
+            .frame(minWidth: 44, minHeight: 44)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(OPressRing())
+        .accessibilityLabel("shot list, \(shots) shots")
+    }
+}
+
+/// "24 mm" big. Drag up (or right, upright) for a longer lens, down for wider; tap for the next.
+struct BigLens: View {
     @Environment(ScoutStore.self) private var store
     @Environment(CameraController.self) private var camera
+    /// Landscape drags up and down; upright, left and right.
+    var vertical = true
     @State private var dragNotches = 0
 
     var body: some View {
-        let focals = store.focalLengths
-        let i = focals.firstIndex { $0 >= store.lensMM } ?? 0
-        let next = i + 1 < focals.count ? focals[i + 1] : nil
-        let prev = i > 0 ? focals[i - 1] : nil
-
-        return VStack(spacing: 0) {
-            arrow("chevron.up", delta: 1, enabled: next != nil)
-            Text(next.map(Format.mm) ?? " ").font(.osNumSmall).foregroundStyle(Ink.faint)
-
-            Button { stepUpWrapping() } label: {
-                VStack(spacing: 0) {
-                    Text(Format.mm(store.lensMM)).font(Fonts.mono(20)).foregroundStyle(Palette.paper)
-                    // "mm" and the phone's zoom on one line, so the zoom doesn't read as the
-                    // next focal length. The zoom greys out when the crop gets soft.
-                    HStack(spacing: 4) {
-                        Text("mm").foregroundStyle(Ink.muted)
-                        Text(camera.lensLabel)
-                            .font(.osNumSmall)
-                            .foregroundStyle(camera.cropIsSoft ? Ink.faint : Palette.paper.opacity(0.8))
-                            .padding(.horizontal, 4)
-                            .overlay(Capsule().strokeBorder(Palette.nightRule, lineWidth: 1))
-                    }
-                    .font(.osDataSmall)
-                    .padding(.bottom, 2)
+        Group {
+            if vertical {
+                VStack(alignment: .trailing, spacing: 2) {
+                    number
+                    unit
                 }
-                .frame(width: 84)
-                .contentShape(Rectangle())
+            } else {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    number
+                    unit
+                }
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel("lens \(Format.mm(store.lensMM)) millimetres, iphone \(camera.readout)")
-            .accessibilityHint("tap for the next lens")
-
-            Text(prev.map(Format.mm) ?? " ").font(.osNumSmall).foregroundStyle(Ink.faint)
-            arrow("chevron.down", delta: -1, enabled: prev != nil)
         }
+        .padding(.horizontal, 4)
         .contentShape(Rectangle())
-        .simultaneousGesture(
-            DragGesture(minimumDistance: 8)
+        .onTapGesture { stepUpWrapping() }
+        .gesture(
+            DragGesture(minimumDistance: 6)
                 .onChanged { v in
-                    let notches = Int((-v.translation.height / 28).rounded(.towardZero))
+                    let d = vertical ? -v.translation.height : -v.translation.width
+                    let notches = Int((d / 22).rounded(.towardZero))
                     if notches != dragNotches {
                         store.stepLens(notches - dragNotches)
                         dragNotches = notches
@@ -418,21 +381,31 @@ struct LensWheel: View {
                 }
                 .onEnded { _ in dragNotches = 0 }
         )
-        .sensoryFeedback(.selection, trigger: store.focalLengths.lastIndex { $0 <= store.lensMM + 0.01 })
+        .sensoryFeedback(.selection, trigger: store.lensMM)
+        .accessibilityElement()
+        .accessibilityLabel("lens \(Format.mm(store.lensMM)) millimetres")
+        .accessibilityAdjustableAction { store.stepLens($0 == .increment ? 1 : -1) }
     }
 
-    private func arrow(_ icon: String, delta: Int, enabled: Bool) -> some View {
-        Button { store.stepLens(delta) } label: {
-            Image(systemName: icon)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(Ink.muted)
-                .opacity(enabled ? 1 : 0.3)
-                .frame(width: 44, height: 30)
-                .contentShape(Rectangle())
+    private var number: some View {
+        Text(Format.mm(store.lensMM))
+            .font(.osSans(vertical ? 46 : 40))
+            .tracking(-1.2)
+            .foregroundStyle(Palette.paper)
+            .lineLimit(1)
+            .fixedSize()
+            .contentTransition(.numericText())
+            .animation(.snappy(duration: 0.2), value: store.lensMM)
+    }
+
+    private var unit: some View {
+        HStack(spacing: 6) {
+            // The phone's own zoom, greyed when the crop gets soft.
+            Text(camera.lensLabel)
+                .font(Fonts.mono(9))
+                .foregroundStyle(camera.cropIsSoft ? Palette.nightRule : Ink.muted)
+            Text("MM").font(Fonts.mono(12)).tracking(0.6).foregroundStyle(Ink.muted)
         }
-        .buttonStyle(.plain)
-        .disabled(!enabled)
-        .accessibilityLabel(delta > 0 ? "longer lens" : "wider lens")
     }
 
     private func stepUpWrapping() {
@@ -445,145 +418,195 @@ struct LensWheel: View {
     }
 }
 
-// MARK: - Bottom bar: aspect strip, time + light, sun timeline
+/// Five of the kit's focal lengths around the one in use, as small pills. Tap to jump.
+struct LensPills: View {
+    @Environment(ScoutStore.self) private var store
+    var vertical = true
+
+    var body: some View {
+        let layout = vertical ? AnyLayout(VStackLayout(alignment: .trailing, spacing: 5)) : AnyLayout(HStackLayout(spacing: 6))
+        layout {
+            ForEach(window, id: \.self) { f in
+                let on = abs(f - store.lensMM) < 0.01
+                Button {
+                    store.lensMM = f
+                    store.save()
+                } label: {
+                    Text(Format.mm(f))
+                        .font(Fonts.mono(10))
+                        .foregroundStyle(on ? Sheet.bg : Palette.paper)
+                        .frame(minWidth: 34, minHeight: 22)
+                        .padding(.horizontal, 6)
+                        .background(on ? Sheet.text : .clear, in: Capsule())
+                        .overlay(Capsule().strokeBorder(on ? Sheet.text : Outline.line, lineWidth: 1))
+                        .padding(4)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(OPressRing())
+                .accessibilityLabel("\(Format.mm(f)) millimetre lens")
+                .accessibilityAddTraits(on ? .isSelected : [])
+            }
+        }
+        .animation(.snappy(duration: 0.2), value: window)
+    }
+
+    private var window: [Double] {
+        let focals = store.focalLengths
+        guard focals.count > 5 else { return focals }
+        let i = focals.firstIndex { $0 >= store.lensMM - 0.01 } ?? 0
+        let start = max(0, min(focals.count - 5, i - 2))
+        return Array(focals[start..<(start + 5)])
+    }
+}
+
+// MARK: - Under the frame: ratio pills, the light now, and the day's line
 
 struct BottomBar: View {
     @Environment(ScoutStore.self) private var store
+    @Environment(LocationService.self) private var location
+    @Environment(MotionService.self) private var motion
     let sunDay: SunDay?
     let planned: Date
     let sun: SunPosition
 
     var body: some View {
-        let comps = Calendar.current.dateComponents([.hour, .minute], from: planned)
-        let hour = Double(comps.hour ?? 12) + Double(comps.minute ?? 0) / 60
-        let light = LightPhase.from(elevation: sun.elevation, localHour: hour)
-
-        HStack(spacing: Space.m) {
-            // All the chips when they fit; only a long custom list scrolls (with a fade).
-            ViewThatFits(in: .horizontal) {
-                aspectChips
-                FadingHScroll { aspectChips }
-            }
-            .frame(maxWidth: 260, alignment: .leading)
-            .fixedSize(horizontal: false, vertical: true)
-            .layoutPriority(1)
-
-            // Time at the chosen hour, the sun's height, and the light.
-            VStack(alignment: .leading, spacing: 3) {
-                HStack(alignment: .firstTextBaseline, spacing: Space.xs) {
-                    Text(Format.time(planned)).font(Fonts.mono(13)).foregroundStyle(Palette.paper)
-                    (Text("Sun ") + Text("\(Int(sun.elevation.rounded()))°").font(.osNumSmall)).font(.osDataSmall).foregroundStyle(Ink.muted)
+        VStack(spacing: 4) {
+            HStack(spacing: Space.s) {
+                ViewThatFits(in: .horizontal) {
+                    RatioPills()
+                    FadingHScroll { RatioPills() }
                 }
-                HStack(spacing: 6) {
-                    LightDot(golden: light == .goldenHour, size: 6)
-                    Text(light.label).font(.osData).foregroundStyle(Ink.soft).lineLimit(1)
-                }
+                .layoutPriority(1)
+                Spacer(minLength: 0)
+                LightNow(sun: sun, sunDay: sunDay, planned: planned)
             }
-            .frame(width: 112, alignment: .leading)
-            .fixedSize()
-
             SunTimeline(sunDay: sunDay, planned: planned)
         }
     }
+}
 
-    private var aspectChips: some View {
-        HStack(spacing: Space.xxs) {
-            ForEach(store.aspectStrip) { a in
-                // Tap the selected ratio again to drop the frame lines and see the full frame.
-                aspectChip(a.label, selected: a == store.aspect) {
+/// The ratio pills and a "+" for your own. Tap the picked one again to see the whole frame.
+struct RatioPills: View {
+    @Environment(ScoutStore.self) private var store
+    var ratios: [AspectRatio]? = nil
+
+    var body: some View {
+        HStack(spacing: 7) {
+            ForEach(ratios ?? store.aspectStrip) { a in
+                OPill(label: a.label, on: a == store.aspect) {
                     store.setAspect(a == store.aspect ? .full : a)
                 }
             }
-            Button { store.showingCustomAspect = true } label: {
-                Image(systemName: "plus")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(Palette.paper)
-                    .frame(width: 28, height: 28)
-                    .overlay(Circle().strokeBorder(Palette.nightRule, lineWidth: 1))
-                    .padding(.vertical, 8)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("custom aspect")
+            OPill(label: "+") { store.showingCustomAspect = true }
+                .accessibilityLabel("more frame shapes")
         }
-    }
-
-    private func aspectChip(_ label: String, selected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(label)
-                .font(.osData)
-                .foregroundStyle(selected ? Palette.ink : Palette.paper)
-                .padding(.horizontal, 8)
-                .frame(height: 28)
-                .background(selected ? Palette.paper : .clear, in: Capsule())
-                .overlay(Capsule().strokeBorder(selected ? .clear : Palette.nightRule, lineWidth: 1))
-                .padding(.vertical, 8)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(selected ? .isSelected : [])
-    }
-
-    /// "+2h10", "−45m", "now".
-    static func offset(from now: Date, to date: Date) -> String {
-        let minutes = Int((date.timeIntervalSince(now) / 60).rounded())
-        if minutes == 0 { return "Now" }
-        let sign = minutes > 0 ? "+" : "−"
-        let m = abs(minutes)
-        return m < 60 ? "\(sign)\(m)m" : "\(sign)\(m / 60)h\(String(format: "%02d", m % 60))"
     }
 }
 
-/// Drag to pick a time of day: a hairline track, golden hour as a soft orange band, an
-/// orange thumb, hours underneath. Double-tap to go back to now.
+/// "NOW · SIDE LIT · LEFT", orange in golden hour, with "↺ Now" once the time is moved.
+struct LightNow: View {
+    @Environment(ScoutStore.self) private var store
+    @Environment(LocationService.self) private var location
+    @Environment(MotionService.self) private var motion
+    let sun: SunPosition
+    let sunDay: SunDay?
+    let planned: Date
+
+    var body: some View {
+        let moved = store.plannedMinutes != nil
+        let golden = sunDay?.goldenWindows.contains { $0.contains(planned) } ?? false
+        HStack(spacing: 10) {
+            Text(((moved ? "At \(Format.time(planned))" : "Now") + " · " + read).uppercased())
+                .font(Fonts.mono(10))
+                .tracking(0.6)
+                .foregroundStyle(golden ? Palette.sun : Palette.paper)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+            if moved {
+                Button { store.plannedMinutes = nil } label: {
+                    Text("↺ NOW").font(Fonts.mono(10)).tracking(0.6).foregroundStyle(Ink.muted)
+                        .underline(color: Palette.nightRule)
+                        .frame(minHeight: 44).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("back to now")
+            }
+        }
+    }
+
+    private var read: String {
+        guard sun.elevation > -1 else { return "Sun down" }
+        guard let h = motion.heading ?? location.heading else { return "Sun \(Int(sun.elevation.rounded()))° up" }
+        return LightClass.readShort(rel: LightRead.rel(sunAzimuth: sun.azimuth, heading: h))
+    }
+}
+
+/// The day as one line (Elliot's round 4): sunrise and sunset ticked at the ends, golden hour
+/// in orange, a fixed white NOW mark with the real time, and the orange sun you drag. Its
+/// time shows above it once moved. Double-tap to go back to now.
 struct SunTimeline: View {
     @Environment(ScoutStore.self) private var store
     let sunDay: SunDay?
     let planned: Date
 
     var body: some View {
-        let range = hourRange
-        let span = Double(range.upperBound - range.lowerBound) * 60
+        let (lo, hi) = range
+        let span = max(hi - lo, 60)
 
         GeometryReader { geo in
             let w = geo.size.width
-            let x = { (minutes: Double) in CGFloat((minutes - Double(range.lowerBound) * 60) / span) * w }
+            let x = { (m: Double) in CGFloat((m - lo) / span) * w }
+            let now = minutes(of: Date())
+            let at = minutes(of: planned)
+            let moved = store.plannedMinutes != nil
 
             ZStack(alignment: .topLeading) {
-                ForEach(goldenSpans, id: \.self) { s in
-                    let x0 = max(0, x(s.lowerBound))
-                    let x1 = min(w, x(s.upperBound))
+                Rectangle().fill(Outline.line).frame(width: w, height: 1).offset(y: 16)
+
+                ForEach(goldenSpans, id: \.self) { g in
+                    let x0 = max(0, x(g.lowerBound)), x1 = min(w, x(g.upperBound))
                     if x1 > x0 {
-                        RoundedRectangle(cornerRadius: 3).fill(Palette.sun.opacity(0.35))
-                            .frame(width: x1 - x0, height: 14)
-                            .offset(x: x0, y: 2)
+                        Rectangle().fill(Palette.sun.opacity(0.55)).frame(width: x1 - x0, height: 3).offset(x: x0, y: 15)
                     }
                 }
 
-                Rectangle().fill(Palette.paper.opacity(0.5)).frame(height: 1).offset(y: 9)
-
-                ForEach(Array(stride(from: range.lowerBound, through: range.upperBound, by: 3)), id: \.self) { h in
-                    Text(String(format: "%02d", h))
-                        .font(.osNumTiny)
-                        .foregroundStyle(Ink.tick)
-                        .fixedSize()
-                        .position(x: min(max(x(Double(h) * 60), 6), w - 6), y: 28)
+                if let rise = sunDay?.sunrise, let set = sunDay?.sunset {
+                    ForEach([minutes(of: rise), minutes(of: set)], id: \.self) { m in
+                        Rectangle().fill(Outline.line).frame(width: 1, height: 9).offset(x: x(m), y: 12)
+                        if abs(x(m) - x(now)) > 54 {
+                            Text(Format.time(at: m)).font(Fonts.mono(8)).foregroundStyle(Ink.muted)
+                                .fixedSize().position(x: min(max(x(m), 14), w - 14), y: 31)
+                        }
+                    }
                 }
 
-                let mx = min(max(x(minutes(of: planned)), 8), w - 8)
-                Circle().fill(Palette.sun).frame(width: 16, height: 16).position(x: mx, y: 9)
+                // NOW: fixed, white, with the real time.
+                if now >= lo && now <= hi {
+                    Rectangle().fill(Palette.paper).frame(width: 1.5, height: 17).offset(x: x(now) - 0.75, y: 8)
+                    Text("NOW \(Format.time(Date()))").font(Fonts.mono(8)).tracking(0.5).foregroundStyle(Palette.paper)
+                        .fixedSize().position(x: min(max(x(now), 30), w - 30), y: 31)
+                }
+
+                let sx = min(max(x(at), 7), w - 7)
+                Circle().fill(Palette.sun).frame(width: 14, height: 14)
+                    .background(Circle().fill(Palette.sun.opacity(0.18)).frame(width: 22, height: 22))
+                    .position(x: sx, y: 16)
+                if moved {
+                    Text(Format.time(planned)).font(Fonts.mono(9)).foregroundStyle(Palette.sun)
+                        .fixedSize().position(x: min(max(sx, 18), w - 18), y: 2)
+                }
             }
-            .frame(width: w, height: 44, alignment: .topLeading)
+            .frame(width: w, height: 38, alignment: .topLeading)
             .contentShape(Rectangle())
             .gesture(
                 DragGesture(minimumDistance: 0).onChanged { v in
-                    let fraction = min(max(Double(v.location.x / max(w, 1)), 0), 1)
-                    store.plannedMinutes = (Double(range.lowerBound) * 60 + fraction * span).rounded()
+                    let f = min(max(Double(v.location.x / max(w, 1)), 0), 1)
+                    store.plannedMinutes = ((lo + f * span) / 5).rounded() * 5
                 }
             )
             .onTapGesture(count: 2) { store.plannedMinutes = nil }
         }
-        .frame(height: 44)
+        .frame(height: 38)
         .accessibilityElement()
         .accessibilityLabel("time of day")
         .accessibilityValue(Format.time(planned))
@@ -593,13 +616,10 @@ struct SunTimeline: View {
         }
     }
 
-    /// Hours shown: from an hour before sunrise to an hour after sunset, or 06–21.
-    private var hourRange: ClosedRange<Int> {
-        let cal = Calendar.current
-        guard let rise = sunDay?.sunrise, let set = sunDay?.sunset else { return 6...21 }
-        let start = max(0, cal.component(.hour, from: rise) - 1)
-        let end = min(24, cal.component(.hour, from: set) + 2)
-        return end - start >= 6 ? start...end : 6...21
+    /// An hour before sunrise to an hour after sunset, in minutes; 06:00–21:00 without a sun day.
+    private var range: (Double, Double) {
+        guard let rise = sunDay?.sunrise, let set = sunDay?.sunset else { return (360, 1260) }
+        return (max(0, minutes(of: rise) - 60), min(1440, minutes(of: set) + 60))
     }
 
     private var goldenSpans: [ClosedRange<Double>] {

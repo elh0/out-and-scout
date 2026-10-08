@@ -169,34 +169,31 @@ struct ViewfinderView: View {
                 sunAzimuth: sun.azimuth,
                 planned: planned
             )
-            .frame(height: 44)
-            // Lines "Projects" up over the left column and the names over the window.
-            .padding(.leading, Space.s)
-            .padding(.trailing, Space.m)
+            .frame(height: 40)
+            .padding(.horizontal, Space.l)
 
-            HStack(spacing: Space.s) {
+            HStack(alignment: .top, spacing: Space.m) {
                 LeftRail()
-                    .frame(width: 64)
-                    .padding(.leading, Space.s)
+                    .frame(width: 96)
+                    .padding(.leading, Space.l)
 
-                VStack(spacing: 0) {
+                VStack(spacing: 6) {
                     ViewfinderFrame(sun: sun, sunDay: sunDay, planned: planned, frameFraction: $frameFraction)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .clipped()
-                        // No edge on the window itself: only the ratio's frame line shows.
 
                     BottomBar(sunDay: sunDay, planned: planned, sun: sun)
-                        .frame(height: 52)
                 }
 
                 RightRail(capturing: capturing) {
                     Task { await pin() }
                 }
-                .frame(width: 104)
-                .padding(.trailing, Space.m)
+                .frame(width: 128)
+                .padding(.trailing, Space.l)
             }
         }
-        .padding(.vertical, Space.xs)
+        .padding(.top, 4)
+        .padding(.bottom, Space.xs)
         .background(Sheet.bg.ignoresSafeArea())
         // The keyboard slides over the viewfinder rather than shoving it off the top.
         .ignoresSafeArea(.keyboard)
@@ -362,6 +359,13 @@ enum Bearing {
         if d > 180 { d -= 360 }
         if d < -180 { d += 360 }
         return d
+    }
+
+    /// "south-west", for "facing south-west".
+    static func facing(_ heading: Double) -> String {
+        let names = ["north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west"]
+        let i = Int(((heading.truncatingRemainder(dividingBy: 360) + 360).truncatingRemainder(dividingBy: 360) / 45).rounded()) % 8
+        return names[i]
     }
 }
 

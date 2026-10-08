@@ -58,8 +58,8 @@ struct LayoutSwitch: View {
         let target = mode.portrait ? "Landscape" : "Portrait"
         Button { mode.set(portrait: !mode.portrait) } label: {
             // HUD D, both layouts: a grey word like the toggles.
-            Text(target)
-                .font(.osData)
+            Text("↻ " + target)
+                .font(Fonts.mono(10))
                 .foregroundStyle(Palette.nightMuted)
                 .lineLimit(1)
                 .fixedSize()

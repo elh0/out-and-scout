@@ -24,23 +24,11 @@ struct ViewfinderFrame: View {
     var clear = EdgeInsets()
 
 
-    /// "¾ back, sun left" from the camera's heading and the sun at the planned time; nil
-    /// without a compass or once the sun is down.
-    private var liveRead: String? {
-        guard sun.elevation > -1, let heading = motion.heading ?? location.heading else { return nil }
-        return LightClass.read(rel: LightRead.rel(sunAzimuth: sun.azimuth, heading: heading))
-    }
-
-    /// The frame's top-right label: the light read in orange, then (upright) the sun's height,
-    /// or the moon after sunset.
-    private var cornerLabel: Text? {
-        let height = portrait ? (sun.elevation > 0 ? "\(Int(sun.elevation.rounded()))° up" : "Moon · \(moon.summary)") : nil
-        switch (liveRead, height) {
-        case let (read?, h?): return Text(read).foregroundColor(Palette.sun) + Text(" · " + h).foregroundColor(Palette.paper)
-        case let (read?, nil): return Text(read).foregroundColor(Palette.sun)
-        case let (nil, h?): return Text(sun.elevation > 0 ? "Sun " + h : h).foregroundColor(Palette.paper)
-        default: return nil
-        }
+    /// The light chip in the frame's bottom-left corner: "Side lit, sun on the left".
+    private var chipText: String {
+        if sun.elevation <= -1 { return "Sun down · \(moon.phaseName.lowercased())" }
+        guard let heading = motion.heading ?? location.heading else { return "Sun \(Int(sun.elevation.rounded()))° up" }
+        return LightClass.readLong(rel: LightRead.rel(sunAzimuth: sun.azimuth, heading: heading))
     }
 
     /// The moon at the planned time, for after sunset.
@@ -107,29 +95,27 @@ struct ViewfinderFrame: View {
                     )
                 }
 
-                // Ratio and lens in the frame's bottom-left corner, like the v3c prototype.
-                // Time and bearing live in the top bar now.
-                Text("\(store.aspect.display) · \(Format.mm(store.lensMM))mm")
-                    .font(.osNumSmall)
-                    .foregroundStyle(Palette.paper.opacity(0.7))
-                    .fixedSize()
-                    // E2: kept inside the open space, so the ratio row never covers it.
-                    .offset(x: fullBleed ? max(frame.minX + Space.xs, clear.leading) : frame.minX + Space.xs,
-                            y: fullBleed ? min(frame.maxY - 20, size.height - clear.bottom - 16) : frame.maxY - 20)
-
-                // The light as it falls on this shot, live from where the camera points
-                // (Elliot, 6 Oct 2026): "¾ back, sun left", top-right of the frame. Upright it
-                // carries the sun's height too; after sunset, the moon.
-                if let label = cornerLabel {
-                    label
-                        .font(.osDataSmall)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(Palette.night.opacity(0.72), in: RoundedRectangle(cornerRadius: 4))
-                        .fixedSize()
-                        .frame(width: frame.width - 16, alignment: .trailing)
-                        .offset(x: frame.minX + 8, y: frame.minY + 8)
+                // Outline look: the frame is a white window, and the light as it falls on this
+                // shot sits in its bottom-left corner as a small chip.
+                if !fullBleed {
+                    Rectangle()
+                        .strokeBorder(Palette.paper, lineWidth: 2)
+                        .frame(width: frame.width, height: frame.height)
+                        .offset(x: frame.minX, y: frame.minY)
+                        .allowsHitTesting(false)
                 }
+                Text(chipText.uppercased())
+                    .font(Fonts.mono(9))
+                    .tracking(0.6)
+                    .foregroundStyle(Palette.paper)
+                    .lineLimit(1)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(Sheet.bg.opacity(0.82), in: Capsule())
+                    .overlay(Capsule().strokeBorder(Outline.line, lineWidth: 1))
+                    .fixedSize()
+                    .offset(x: frame.minX + 8, y: frame.maxY - 30)
+                    .allowsHitTesting(false)
 
                 // Honest about the phone's limit: say how wide it can really go here.
                 if camera.isTooWide, camera.status == .running {

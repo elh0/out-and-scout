@@ -37,6 +37,31 @@ enum LightClass: Int, CaseIterable {
         }
     }
 
+    /// "¾ backlit", the outline look's name for it.
+    var title: String {
+        switch self {
+        case .backlit: return "Backlit"
+        case .threeQuarterBack: return "¾ backlit"
+        case .side: return "Side lit"
+        case .threeQuarterFront: return "¾ front lit"
+        case .front: return "Front lit"
+        }
+    }
+
+    /// "Side lit, sun on the left"; "Backlit" when the sun is straight behind or in front.
+    static func readLong(rel: Double) -> String {
+        let k = of(rel: rel), a = abs(rel)
+        guard a > 8, a < 172 else { return k.title }
+        return "\(k.title), sun on the \(rel > 0 ? "right" : "left")"
+    }
+
+    /// "Side lit · left"
+    static func readShort(rel: Double) -> String {
+        let k = of(rel: rel), a = abs(rel)
+        guard a > 8, a < 172 else { return k.title }
+        return "\(k.title) · \(rel > 0 ? "right" : "left")"
+    }
+
     /// "¾B", for the day strip.
     var letter: String {
         switch self {
