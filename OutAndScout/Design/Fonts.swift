@@ -15,7 +15,11 @@ enum Fonts {
         }
     }
 
+    /// iPad sets every size a quarter bigger, so the phone layouts read at iPad distance.
+    static let scale: CGFloat = UIDevice.current.userInterfaceIdiom == .pad ? 1.25 : 1
+
     static func sans(_ size: CGFloat, _ weight: Font.Weight) -> Font {
+        let size = size * scale
         let name = weight == .medium ? "Geist-Medium" : "Geist-Regular"
         if UIFont(name: name, size: size) != nil {
             return .custom(name, fixedSize: size)
@@ -24,6 +28,7 @@ enum Fonts {
     }
 
     static func mono(_ size: CGFloat) -> Font {
+        let size = size * scale
         if UIFont(name: "GeistMono-Regular", size: size) != nil {
             return .custom("GeistMono-Regular", fixedSize: size)
         }

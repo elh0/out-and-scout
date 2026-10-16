@@ -80,7 +80,7 @@ struct OPill: View {
         .accessibilityAddTraits(on ? .isSelected : [])
     }
 
-    private var height: CGFloat { size == .small ? 22 : size == .big ? 34 : 26 }
+    private var height: CGFloat { (size == .small ? 22 : size == .big ? 34 : 26) * Fonts.scale }
 }
 
 /// Pressed: a soft ring and a touch of fade, like the prototype's hover ring.
