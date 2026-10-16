@@ -211,7 +211,7 @@ struct ViewfinderView: View {
                         .transition(.opacity)
                     }
                 }
-                .frame(width: hudHidden ? 72 : 128)
+                .frame(width: hudHidden ? 72 : 100)
                 .padding(.trailing, Space.l)
             }
         }

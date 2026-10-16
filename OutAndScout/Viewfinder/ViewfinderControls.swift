@@ -330,20 +330,124 @@ struct RightRail: View {
     @Environment(ScoutStore.self) private var store
     let capturing: Bool
     let onShutter: () -> Void
+    @State private var ladderOpen = false
 
     var body: some View {
-        // Outline look, round 4: the lens as one big number you drag up or down, the kit's
-        // nearby focal lengths as pills under it, then Shots beside the shutter, iPhone style.
-        VStack(alignment: .trailing, spacing: 10) {
-            BigLens(vertical: true)
-            LensPills(vertical: true)
-            Spacer(minLength: 0)
-            HStack(alignment: .center, spacing: 14) {
-                ShotStack()
-                Shutter(capturing: capturing, action: onShutter)
+        // Option 1 (Elliot, 16 Oct 2026): one centre line. The lens at the top (drag to step,
+        // tap for the whole kit), the shutter in the middle where the thumb sits, and the last
+        // shot as a square under it with the count on its corner.
+        ZStack {
+            Shutter(capturing: capturing, action: onShutter)
+            VStack(spacing: 0) {
+                LensChip(open: $ladderOpen)
+                Spacer(minLength: 0)
+                ShotStack(square: true)
             }
         }
-        .frame(maxHeight: .infinity, alignment: .top)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        // The ladder opens beside the column, over the edge of the picture.
+        .overlay(alignment: .topLeading) {
+            if ladderOpen {
+                LensLadder { ladderOpen = false }
+                    .alignmentGuide(.leading) { $0.width + 6 }
+                    .transition(.opacity.combined(with: .offset(x: 6)))
+            }
+        }
+        .animation(.snappy(duration: 0.2), value: ladderOpen)
+        .onChange(of: store.panel) { ladderOpen = false }
+    }
+}
+
+/// "35 MM ▾": the lens in use. Drag up for longer, down for wider; tap for the ladder.
+struct LensChip: View {
+    @Environment(ScoutStore.self) private var store
+    @Environment(CameraController.self) private var camera
+    @Binding var open: Bool
+    @State private var dragNotches = 0
+
+    var body: some View {
+        VStack(spacing: 2) {
+            HStack(alignment: .firstTextBaseline, spacing: 3) {
+                Text(Format.mm(store.lensMM))
+                    .font(.osSans(30))
+                    .tracking(-1)
+                    .foregroundStyle(Palette.paper)
+                    .lineLimit(1)
+                    .fixedSize()
+                    .contentTransition(.numericText())
+                    .animation(.snappy(duration: 0.2), value: store.lensMM)
+                Text(open ? "MM ▴" : "MM ▾").font(Fonts.mono(9)).tracking(0.6).foregroundStyle(Ink.muted)
+            }
+            // The phone's own zoom, greyed when the crop gets soft.
+            Text(camera.lensLabel)
+                .font(Fonts.mono(8))
+                .foregroundStyle(camera.cropIsSoft ? Palette.nightRule : Ink.muted)
+        }
+        .frame(minWidth: 64, minHeight: 44)
+        .contentShape(Rectangle())
+        .onTapGesture { open.toggle() }
+        .gesture(
+            DragGesture(minimumDistance: 6)
+                .onChanged { v in
+                    let notches = Int((-v.translation.height / 22).rounded(.towardZero))
+                    if notches != dragNotches {
+                        store.stepLens(notches - dragNotches)
+                        dragNotches = notches
+                    }
+                }
+                .onEnded { _ in dragNotches = 0 }
+        )
+        .sensoryFeedback(.selection, trigger: store.lensMM)
+        .accessibilityElement()
+        .accessibilityLabel("lens \(Format.mm(store.lensMM)) millimetres")
+        .accessibilityHint("opens every lens in the kit")
+        .accessibilityAddTraits(.isButton)
+        .accessibilityAction { open.toggle() }
+        .accessibilityAdjustableAction { store.stepLens($0 == .increment ? 1 : -1) }
+    }
+}
+
+/// Every lens in the kit, wide at the top, a dot on the one in use. Tap one to switch.
+struct LensLadder: View {
+    @Environment(ScoutStore.self) private var store
+    let done: () -> Void
+
+    var body: some View {
+        ScrollViewReader { proxy in
+            ScrollView(showsIndicators: false) {
+                VStack(spacing: 0) {
+                    ForEach(store.focalLengths, id: \.self) { f in
+                        let on = abs(f - store.lensMM) < 0.01
+                        Button {
+                            store.lensMM = f
+                            store.save()
+                            done()
+                        } label: {
+                            HStack(spacing: 6) {
+                                Circle().fill(on ? Palette.paper : .clear).frame(width: 4, height: 4)
+                                Text(Format.mm(f))
+                                    .font(Fonts.mono(11))
+                                    .foregroundStyle(on ? Palette.paper : Ink.muted)
+                                    .frame(minWidth: 24, alignment: .trailing)
+                            }
+                            .frame(minWidth: 44, minHeight: 28)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(OPressRing())
+                        .accessibilityLabel("\(Format.mm(f)) millimetre lens")
+                        .accessibilityAddTraits(on ? .isSelected : [])
+                        .id(f)
+                    }
+                }
+                .padding(.vertical, 6)
+                .padding(.horizontal, 10)
+            }
+            .onAppear { proxy.scrollTo(store.lensMM, anchor: .center) }
+        }
+        .frame(maxHeight: 290)
+        .fixedSize(horizontal: true, vertical: false)
+        .background(Outline.card, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Outline.line, lineWidth: 1))
     }
 }
 
@@ -375,6 +479,8 @@ struct ShotStack: View {
     @Environment(ScoutStore.self) private var store
     /// Upright: the label sits beside the still, underlined.
     var beside = false
+    /// Landscape: a square still with the count on its corner, like the Camera app.
+    var square = false
 
     var body: some View {
         let shots = store.currentProject.scenes.reduce(0) { $0 + $1.shots.count }
@@ -388,7 +494,23 @@ struct ShotStack: View {
             .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(Outline.line, lineWidth: 1))
 
             Group {
-                if beside {
+                if square {
+                    Group {
+                        if let last { ShotThumb(shot: last) } else { Color(hex: 0x1A1A19) }
+                    }
+                    .frame(width: 44, height: 44)
+                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(Outline.line, lineWidth: 1))
+                    .overlay(alignment: .topTrailing) {
+                        Text("\(shots)")
+                            .font(Fonts.mono(9))
+                            .foregroundStyle(Sheet.bg)
+                            .padding(.horizontal, 5)
+                            .frame(minWidth: 18, minHeight: 18)
+                            .background(Sheet.text, in: Capsule())
+                            .offset(x: 6, y: -6)
+                    }
+                } else if beside {
                     HStack(spacing: 10) {
                         thumb
                         Text("SHOTS · \(shots)").font(Fonts.mono(10)).tracking(0.6)
