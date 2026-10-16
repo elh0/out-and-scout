@@ -152,6 +152,9 @@ struct ProjectsPanel: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+
+            // TestFlight builds only.
+            FoundingTesterCard()
         }
         // Prototype: 380 from the screen edge (336 plus the ~47 safe area), clear of the notch on the left, ink to every edge.
         .padding(.top, 18)

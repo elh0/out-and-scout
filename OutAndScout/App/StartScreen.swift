@@ -86,6 +86,10 @@ struct StartScreen: View {
                 }
 
                 ForEach(projects) { p in row(p) }
+
+                // TestFlight builds only, until closed once.
+                FoundingTesterCard(dismissible: true)
+                    .padding(.top, Space.m)
             }
         }
     }

@@ -225,6 +225,8 @@ struct RootView: View {
                 }
             }
             #endif
+            // Remember founding testers (TestFlight installs) for the launch reward.
+            Task { await FoundingTester.markIfBeta() }
             await camera.start()
             location.start()
             motion.start()
