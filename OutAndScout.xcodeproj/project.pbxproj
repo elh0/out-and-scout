@@ -185,10 +185,11 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = CF8HY3UXL4;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Out & Scout";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "The viewfinder uses the camera to frame shots.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save your stills to Photos, cropped to their frame lines.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Names each scene after the street you're on, tags shots with where they were taken, works out the sun for that spot, and (if you turn it on) gets the weather forecast there.";
@@ -222,10 +223,11 @@
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = CF8HY3UXL4;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = "Out & Scout";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "The viewfinder uses the camera to frame shots.";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save your stills to Photos, cropped to their frame lines.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Names each scene after the street you're on, tags shots with where they were taken, works out the sun for that spot, and (if you turn it on) gets the weather forecast there.";
