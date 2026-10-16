@@ -17,6 +17,8 @@ struct ViewfinderView: View {
     @State private var sunDay: SunDay?
     @State private var frameFraction: Double = 1
     @State private var capturing = false
+    /// Landscape: everything but the frame, the lens and the shutter tucked away.
+    @State private var hudHidden = false
 
     var body: some View {
         let planned = store.plannedDate()
@@ -153,10 +155,12 @@ struct ViewfinderView: View {
     /// with soft shade at the top, bottom and right edges so the type stays readable.
     /// Taps that miss a control fall through to the viewfinder (focus, pinch, AE/AF lock).
     private func landscapeLayout(sun: SunPosition, planned: Date) -> some View {
-        // HUD D, "Framed" (Elliot, 6 Oct 2026): the picture lives in one fixed window, the
-        // ratio frame always fitted whole inside it and everything outside the frame dark,
-        // so you know exactly what's in shot. The controls sit on ink around the window,
-        // never over the picture.
+        // HUD D, "Framed" (Elliot, 6 Oct 2026): the picture lives in one fixed window and the
+        // controls sit on ink around it, never over the picture.
+        // Folded (Elliot, 16 Oct 2026): the ratios, scenes, toggles and the day's line fold
+        // into small buttons so the frame gets the room, and Hide tucks the rest away too.
+        // The picture's own gestures (tap to focus, pinch for the lens, hold to lock) stay as
+        // they are; hiding is only ever a button.
         VStack(spacing: 0) {
             TopBar(
                 heading: motion.heading ?? location.heading,
@@ -164,26 +168,50 @@ struct ViewfinderView: View {
                 sunAzimuth: sun.azimuth,
                 planned: planned
             )
-            .frame(height: 40)
+            .frame(height: hudHidden ? 0 : 36)
+            .opacity(hudHidden ? 0 : 1)
+            .clipped()
             .padding(.horizontal, Space.l)
 
-            HStack(alignment: .top, spacing: Space.m) {
-                LeftRail()
-                    .frame(width: 96)
-                    .padding(.leading, Space.l)
+            HStack(alignment: .top, spacing: Space.s) {
+                FoldedLeftRail()
+                    .frame(width: hudHidden ? 0 : 44 * Fonts.scale)
+                    .opacity(hudHidden ? 0 : 1)
+                    .clipped()
+                    .padding(.leading, hudHidden ? 0 : Space.m)
 
-                VStack(spacing: 6) {
-                    ViewfinderFrame(sun: sun, sunDay: sunDay, planned: planned, frameFraction: $frameFraction)
+                VStack(spacing: 4) {
+                    ViewfinderFrame(sun: sun, sunDay: sunDay, planned: planned, frameFraction: $frameFraction, lightChip: false)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .clipped()
 
-                    BottomBar(sunDay: sunDay, planned: planned, sun: sun)
+                    if !hudHidden {
+                        FoldedBottomBar(sunDay: sunDay, planned: planned, sun: sun) { setHidden(true) }
+                            .transition(.opacity)
+                    }
                 }
 
-                RightRail(capturing: capturing) {
-                    Task { await pin() }
+                Group {
+                    if hudHidden {
+                        VStack(spacing: Space.s) {
+                            Text("\(Int(store.lensMM.rounded()))MM")
+                                .font(Fonts.mono(10))
+                                .tracking(0.6)
+                                .foregroundStyle(Palette.paper)
+                            Shutter(capturing: capturing) { Task { await pin() } }
+                            OPill(label: "Show", size: .small, caps: true) { setHidden(false) }
+                                .accessibilityLabel("show the controls")
+                        }
+                        .frame(maxHeight: .infinity)
+                        .transition(.opacity)
+                    } else {
+                        RightRail(capturing: capturing) {
+                            Task { await pin() }
+                        }
+                        .transition(.opacity)
+                    }
                 }
-                .frame(width: 128)
+                .frame(width: hudHidden ? 72 : 128)
                 .padding(.trailing, Space.l)
             }
         }
@@ -192,6 +220,10 @@ struct ViewfinderView: View {
         .background(Sheet.bg.ignoresSafeArea())
         // The keyboard slides over the viewfinder rather than shoving it off the top.
         .ignoresSafeArea(.keyboard)
+    }
+
+    private func setHidden(_ hidden: Bool) {
+        withAnimation(.snappy(duration: 0.3)) { hudHidden = hidden }
     }
 
     // MARK: Overlays (cards and panels slide over the Viewfinder, never replace it)

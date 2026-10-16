@@ -22,6 +22,8 @@ struct ViewfinderFrame: View {
     /// Full bleed: the space the controls take at each edge. The frame no longer shrinks to
     /// fit inside it (that made wide lenses look tight); notices sit inside it.
     var clear = EdgeInsets()
+    /// The light chip in the frame's corner. Off where the bar under the frame already says it.
+    var lightChip = true
 
 
     /// The light chip in the frame's bottom-left corner: "Side lit, sun on the left".
@@ -36,6 +38,8 @@ struct ViewfinderFrame: View {
         MoonCalculator.info(at: planned, latitude: location.coordinate.latitude, longitude: location.coordinate.longitude)
     }
 
+    /// The grey-edge note is up.
+    @State private var greyNotice = false
     @State private var focusPoint: CGPoint?
     @State private var focusShownAt = Date.distantPast
     /// The lens when the pinch began.
@@ -104,21 +108,25 @@ struct ViewfinderFrame: View {
                         .offset(x: frame.minX, y: frame.minY)
                         .allowsHitTesting(false)
                 }
-                Text(chipText.uppercased())
-                    .font(Fonts.mono(9))
-                    .tracking(0.6)
-                    .foregroundStyle(Palette.paper)
-                    .lineLimit(1)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(Sheet.bg.opacity(0.82), in: Capsule())
-                    .overlay(Capsule().strokeBorder(Outline.line, lineWidth: 1))
-                    .fixedSize()
-                    .offset(x: frame.minX + 8, y: frame.maxY - 30)
-                    .allowsHitTesting(false)
+                if lightChip {
+                    Text(chipText.uppercased())
+                        .font(Fonts.mono(9))
+                        .tracking(0.6)
+                        .foregroundStyle(Palette.paper)
+                        .lineLimit(1)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 5)
+                        .background(Sheet.bg.opacity(0.82), in: Capsule())
+                        .overlay(Capsule().strokeBorder(Outline.line, lineWidth: 1))
+                        .fixedSize()
+                        .offset(x: frame.minX + 8, y: frame.maxY - 30)
+                        .allowsHitTesting(false)
+                }
 
                 // Honest about the phone's limit: say how wide it can really go here.
-                if camera.isTooWide, camera.status == .running {
+                // Shown for a few seconds each time the lens goes wider than the phone, then
+                // it fades, so it never sits on the picture (Elliot, 16 Oct 2026).
+                if greyNotice, camera.isTooWide, camera.status == .running {
                     Text("Grey edge: outside what the iPhone sees · it reaches ≈ \(widestFocal(size: size, frame: frame))mm")
                         .font(.osDataSmall)
                         .foregroundStyle(Palette.paper)
@@ -183,6 +191,12 @@ struct ViewfinderFrame: View {
                 syncLens(size: size, frame: frame)
             }
             .onChange(of: camera.status) { syncLens(size: size, frame: frame) }
+            .task(id: camera.isTooWide && camera.status == .running) {
+                guard camera.isTooWide, camera.status == .running else { greyNotice = false; return }
+                withAnimation(.easeOut(duration: 0.2)) { greyNotice = true }
+                guard (try? await Task.sleep(for: .seconds(4))) != nil else { return }
+                withAnimation(.easeOut(duration: 0.6)) { greyNotice = false }
+            }
         }
     }
 

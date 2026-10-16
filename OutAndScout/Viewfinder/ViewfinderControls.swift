@@ -145,6 +145,8 @@ struct CompassTape: View {
 
 struct LeftRail: View {
     @Environment(ScoutStore.self) private var store
+    /// The folded rail shows the toggles in their own pop-up.
+    var toggles = true
     /// The scene the "delete scene" dialog is asking about.
     @State private var deletingScene: ScoutScene?
 
@@ -204,13 +206,9 @@ struct LeftRail: View {
                 .onChange(of: store.currentSceneID) { proxy.scrollTo(store.currentSceneID, anchor: .center) }
             }
 
-            Spacer(minLength: Space.xs)
-            VStack(alignment: .leading, spacing: 0) {
-                RailToggle(symbol: "sun.horizon", label: "Sun Path", on: store.overlays.sunPath) { store.toggle(\.sunPath) }
-                RailToggle(symbol: "grid", label: "Grid", on: store.overlays.grid) { store.toggle(\.grid) }
-                RailToggle(symbol: "level", label: "Level", on: store.overlays.level) { store.toggle(\.level) }
-                // Portrait layout, picked by hand rather than by tilting the phone.
-                LayoutSwitch(vertical: true)
+            if toggles {
+                Spacer(minLength: Space.xs)
+                RailToggles()
             }
         }
         .padding(.top, 2)
@@ -228,6 +226,84 @@ struct LeftRail: View {
         } message: { scene in
             Text("Its \(ShotListView.shots(scene.shots.count)) go too, stills included. This can't be undone.")
         }
+    }
+}
+
+/// Sun path, grid and level, then the layout switch.
+struct RailToggles: View {
+    @Environment(ScoutStore.self) private var store
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            RailToggle(symbol: "sun.horizon", label: "Sun Path", on: store.overlays.sunPath) { store.toggle(\.sunPath) }
+            RailToggle(symbol: "grid", label: "Grid", on: store.overlays.grid) { store.toggle(\.grid) }
+            RailToggle(symbol: "level", label: "Level", on: store.overlays.level) { store.toggle(\.level) }
+            // Portrait layout, picked by hand rather than by tilting the phone.
+            LayoutSwitch(vertical: true)
+        }
+    }
+}
+
+// MARK: - Folded left rail (Elliot, 16 Oct 2026: a bigger frame)
+
+/// The left rail folded to two round buttons: the scene you're on (tap for the scenes) at
+/// the top, and "···" for sun path, grid and level at the bottom. Each opens a small pop-up.
+struct FoldedLeftRail: View {
+    @Environment(ScoutStore.self) private var store
+    @State private var scenesOpen = false
+    @State private var togglesOpen = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            RoundButton(label: sceneNumber) { scenesOpen = true }
+                .accessibilityLabel("scenes, on \(store.currentScene.name)")
+                .popover(isPresented: $scenesOpen, arrowEdge: .leading) {
+                    LeftRail(toggles: false)
+                        .frame(width: 200 * Fonts.scale, height: min(56 + 26 * CGFloat(store.currentProject.scenes.count), 260) * Fonts.scale)
+                        .padding(Space.s)
+                        .foregroundStyle(Palette.paper)
+                        .presentationCompactAdaptation(.popover)
+                        .presentationBackground(Outline.card)
+                }
+            Spacer(minLength: Space.xs)
+            RoundButton(label: "···") { togglesOpen = true }
+                .accessibilityLabel("sun path, grid and level")
+                .popover(isPresented: $togglesOpen, arrowEdge: .leading) {
+                    RailToggles()
+                        .padding(Space.s)
+                        .presentationCompactAdaptation(.popover)
+                        .presentationBackground(Outline.card)
+                }
+        }
+        .padding(.top, 2)
+        .padding(.bottom, Space.xs)
+        // Picking a scene closes the list.
+        .onChange(of: store.currentSceneID) { scenesOpen = false }
+    }
+
+    /// "01", the open scene's place in the project.
+    private var sceneNumber: String {
+        let i = store.currentProject.scenes.firstIndex { $0.id == store.currentSceneID } ?? 0
+        return String(format: "%02d", i + 1)
+    }
+}
+
+/// A hairline circle with a few characters in it.
+struct RoundButton: View {
+    let label: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(label)
+                .font(Fonts.mono(10))
+                .foregroundStyle(Palette.paper)
+                .frame(width: 34 * Fonts.scale, height: 34 * Fonts.scale)
+                .overlay(Circle().strokeBorder(Outline.line, lineWidth: 1))
+                .frame(minWidth: 44, minHeight: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(OPressRing())
     }
 }
 
@@ -462,29 +538,38 @@ struct LensPills: View {
     }
 }
 
-// MARK: - Under the frame: ratio pills, the light now, and the day's line
+// MARK: - Under the frame: the ratio chip, the light now, the day's line and Hide
 
-struct BottomBar: View {
+/// The bottom bar folded to one line (Elliot, 16 Oct 2026): the ratio as one chip that opens
+/// the rest, the light now, the day's line without its labels, and Hide.
+struct FoldedBottomBar: View {
     @Environment(ScoutStore.self) private var store
-    @Environment(LocationService.self) private var location
-    @Environment(MotionService.self) private var motion
     let sunDay: SunDay?
     let planned: Date
     let sun: SunPosition
+    let hide: () -> Void
+    @State private var ratiosOpen = false
 
     var body: some View {
-        VStack(spacing: 4) {
-            HStack(spacing: Space.s) {
-                ViewThatFits(in: .horizontal) {
+        HStack(spacing: Space.s) {
+            OPill(label: (store.aspect.isFull ? "Full" : store.aspect.label) + " ▾", size: .small) { ratiosOpen = true }
+                .accessibilityLabel("frame shape, \(store.aspect.label)")
+                .popover(isPresented: $ratiosOpen, arrowEdge: .bottom) {
                     RatioPills()
-                    FadingHScroll { RatioPills() }
+                        .padding(.horizontal, Space.s)
+                        .presentationCompactAdaptation(.popover)
+                        .presentationBackground(Outline.card)
                 }
+            LightNow(sun: sun, sunDay: sunDay, planned: planned)
                 .layoutPriority(1)
-                Spacer(minLength: 0)
-                LightNow(sun: sun, sunDay: sunDay, planned: planned)
-            }
-            SunTimeline(sunDay: sunDay, planned: planned)
+            SunTimeline(sunDay: sunDay, planned: planned, compact: true)
+                .frame(minWidth: 80)
+            OPill(label: "Hide", size: .small, caps: true, action: hide)
+                .accessibilityLabel("hide the controls")
         }
+        .frame(height: 30 * Fonts.scale)
+        .onChange(of: store.aspect) { ratiosOpen = false }
+        .onChange(of: store.showingCustomAspect) { if store.showingCustomAspect { ratiosOpen = false } }
     }
 }
 
@@ -551,6 +636,8 @@ struct SunTimeline: View {
     @Environment(ScoutStore.self) private var store
     let sunDay: SunDay?
     let planned: Date
+    /// One thin line with no times under it, for the folded bar; still drags.
+    var compact = false
 
     var body: some View {
         let (lo, hi) = range
@@ -562,21 +649,23 @@ struct SunTimeline: View {
             let now = minutes(of: Date())
             let at = minutes(of: planned)
             let moved = store.plannedMinutes != nil
+            // The line's height in the strip.
+            let ly: CGFloat = compact ? 12 : 16
 
             ZStack(alignment: .topLeading) {
-                Rectangle().fill(Outline.line).frame(width: w, height: 1).offset(y: 16)
+                Rectangle().fill(Outline.line).frame(width: w, height: 1).offset(y: ly)
 
                 ForEach(goldenSpans, id: \.self) { g in
                     let x0 = max(0, x(g.lowerBound)), x1 = min(w, x(g.upperBound))
                     if x1 > x0 {
-                        Rectangle().fill(Palette.sun.opacity(0.55)).frame(width: x1 - x0, height: 3).offset(x: x0, y: 15)
+                        Rectangle().fill(Palette.sun.opacity(0.55)).frame(width: x1 - x0, height: 3).offset(x: x0, y: ly - 1)
                     }
                 }
 
                 if let rise = sunDay?.sunrise, let set = sunDay?.sunset {
                     ForEach([minutes(of: rise), minutes(of: set)], id: \.self) { m in
-                        Rectangle().fill(Outline.line).frame(width: 1, height: 9).offset(x: x(m), y: 12)
-                        if abs(x(m) - x(now)) > 54 {
+                        Rectangle().fill(Outline.line).frame(width: 1, height: 9).offset(x: x(m), y: ly - 4)
+                        if !compact && abs(x(m) - x(now)) > 54 {
                             Text(Format.time(at: m)).font(Fonts.mono(8)).foregroundStyle(Ink.muted)
                                 .fixedSize().position(x: min(max(x(m), 14), w - 14), y: 31)
                         }
@@ -585,21 +674,23 @@ struct SunTimeline: View {
 
                 // NOW: fixed, white, with the real time.
                 if now >= lo && now <= hi {
-                    Rectangle().fill(Palette.paper).frame(width: 1.5, height: 17).offset(x: x(now) - 0.75, y: 8)
-                    Text("NOW \(Format.time(Date()))").font(Fonts.mono(8)).tracking(0.5).foregroundStyle(Palette.paper)
-                        .fixedSize().position(x: min(max(x(now), 30), w - 30), y: 31)
+                    Rectangle().fill(Palette.paper).frame(width: 1.5, height: 17).offset(x: x(now) - 0.75, y: ly - 8)
+                    if !compact {
+                        Text("NOW \(Format.time(Date()))").font(Fonts.mono(8)).tracking(0.5).foregroundStyle(Palette.paper)
+                            .fixedSize().position(x: min(max(x(now), 30), w - 30), y: 31)
+                    }
                 }
 
                 let sx = min(max(x(at), 7), w - 7)
                 Circle().fill(Palette.sun).frame(width: 14, height: 14)
                     .background(Circle().fill(Palette.sun.opacity(0.18)).frame(width: 22, height: 22))
-                    .position(x: sx, y: 16)
-                if moved {
+                    .position(x: sx, y: ly)
+                if moved && !compact {
                     Text(Format.time(planned)).font(Fonts.mono(9)).foregroundStyle(Palette.sun)
                         .fixedSize().position(x: min(max(sx, 18), w - 18), y: 2)
                 }
             }
-            .frame(width: w, height: 38, alignment: .topLeading)
+            .frame(width: w, height: compact ? 24 : 38, alignment: .topLeading)
             .contentShape(Rectangle())
             .gesture(
                 DragGesture(minimumDistance: 0).onChanged { v in
@@ -609,7 +700,7 @@ struct SunTimeline: View {
             )
             .onTapGesture(count: 2) { store.plannedMinutes = nil }
         }
-        .frame(height: 38)
+        .frame(height: compact ? 24 : 38)
         .accessibilityElement()
         .accessibilityLabel("time of day")
         .accessibilityValue(Format.time(planned))
