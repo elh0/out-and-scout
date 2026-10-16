@@ -673,6 +673,18 @@ enum ThumbCache {
         return thumb
     }
 
+    /// A sharper copy for big panes (the iPad shot list), 1400 px wide, kept like the thumbs.
+    static func large(for shot: Shot) -> UIImage? {
+        guard let url = ScoutStore.photoURL(for: shot) else { return nil }
+        let key = ("L" + url.lastPathComponent) as NSString
+        if let hit = cache.object(forKey: key) { return hit }
+        guard let full = UIImage(contentsOfFile: url.path) else { return nil }
+        let size = full.size.width > 1400 ? CGSize(width: 1400, height: 1400 * full.size.height / full.size.width) : full.size
+        let big = full.preparingThumbnail(of: size) ?? full
+        cache.setObject(big, forKey: key)
+        return big
+    }
+
     static func full(for shot: Shot) -> UIImage? {
         guard let url = ScoutStore.photoURL(for: shot) else { return nil }
         return UIImage(contentsOfFile: url.path)

@@ -18,7 +18,8 @@ struct StartScreen: View {
             let portrait = geo.size.height > geo.size.width
             ZStack(alignment: .topLeading) {
                 Sheet.bg.ignoresSafeArea()
-                if portrait {
+                // iPad is wide enough for the list beside the card either way up.
+                if portrait && !LayoutMode.isPad {
                     VStack(alignment: .leading, spacing: Space.m) {
                         Wordmark(size: 20).padding(.top, Space.l)
                         if let p = selected { preview(p, compact: true) }
@@ -31,11 +32,11 @@ struct StartScreen: View {
                             Wordmark(size: 20).padding(.top, 6)
                             list
                         }
-                        .frame(width: min(280, geo.size.width * 0.36))
+                        .frame(width: min(280 * Fonts.scale, geo.size.width * 0.36))
                         if let p = selected { preview(p, compact: false) }
                     }
-                    .padding(.horizontal, Space.s)
-                    .padding(.vertical, Space.m)
+                    .padding(.horizontal, LayoutMode.isPad ? Space.xl : Space.s)
+                    .padding(.vertical, LayoutMode.isPad ? Space.xl : Space.m)
                 }
             }
         }
@@ -124,7 +125,7 @@ struct StartScreen: View {
             HStack(alignment: .top, spacing: Space.m) {
                 still(of: p)
                     .aspectRatio(16 / 9, contentMode: .fit)
-                    .frame(maxWidth: compact ? 140 : 250)
+                    .frame(maxWidth: compact ? 140 : LayoutMode.isPad ? 440 : 250)
                     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
                 VStack(alignment: .leading, spacing: 0) {
                     Text(p.name).font(.osSans(compact ? 17 : 20)).lineLimit(2)

@@ -26,7 +26,7 @@ struct ShotListView: View {
             Sheet.bg.ignoresSafeArea()
 
             Group {
-                if portrait { portraitOutline } else { landscapeList }
+                if LayoutMode.isPad { padSplit } else if portrait { portraitOutline } else { landscapeList }
             }
             .foregroundStyle(Sheet.text)
             .confirmationDialog("Delete shot \(selected?.shot.number ?? "")?", isPresented: $confirmDelete, titleVisibility: .visible, presenting: selected?.shot) { shot in
@@ -208,29 +208,7 @@ struct ShotListView: View {
     /// then calm rows. Tap a row to open it in place, again to close.
     private var landscapeList: some View {
         VStack(spacing: 0) {
-            ZStack {
-                HStack(spacing: 4) {
-                    EditableName(text: project.name, font: Fonts.mono(11), color: Sheet.text, title: "Rename Project") {
-                        store.renameProject(project.id, to: $0)
-                    }
-                    Text("/ SHOT LIST").font(Fonts.mono(11)).tracking(0.6).foregroundStyle(Sheet.muted).fixedSize()
-                }
-                .padding(.horizontal, 190)
-                HStack(spacing: 8) {
-                    Button {
-                        store.showingShotList = false
-                        store.panel = .projects
-                    } label: {
-                        Text("Projects").font(Fonts.mono(11)).frame(minHeight: 44).contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    Spacer()
-                    OPill(label: "Weather", caps: true) { showingWeather = true }
-                    OPill(label: "Export", on: true, caps: true) { store.showingExport = true }
-                        .disabled(visible.isEmpty)
-                }
-            }
-            .frame(height: 44)
+            topBar
 
             HStack(alignment: .top, spacing: Space.m) {
                 sceneColumn
@@ -249,6 +227,33 @@ struct ShotListView: View {
             }
         }
         .padding(.horizontal, Space.l)
+    }
+
+    /// Projects, "PROJECT / SHOT LIST", Weather and Export.
+    private var topBar: some View {
+        ZStack {
+            HStack(spacing: 4) {
+                EditableName(text: project.name, font: Fonts.mono(11), color: Sheet.text, title: "Rename Project") {
+                    store.renameProject(project.id, to: $0)
+                }
+                Text("/ SHOT LIST").font(Fonts.mono(11)).tracking(0.6).foregroundStyle(Sheet.muted).fixedSize()
+            }
+            .padding(.horizontal, 190)
+            HStack(spacing: 8) {
+                Button {
+                    store.showingShotList = false
+                    store.panel = .projects
+                } label: {
+                    Text("Projects").font(Fonts.mono(11)).frame(minHeight: 44).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                Spacer()
+                OPill(label: "Weather", caps: true) { showingWeather = true }
+                OPill(label: "Export", on: true, caps: true) { store.showingExport = true }
+                    .disabled(visible.isEmpty)
+            }
+        }
+        .frame(height: 44)
     }
 
     /// SCENES: All, each scene with its count, Edit; "← Camera" at the bottom.
@@ -303,6 +308,76 @@ struct ShotListView: View {
         .accessibilityAddTraits(on ? .isSelected : [])
     }
 
+    /// iPad, either way up: the scenes, the list with the day's arc, and the picked shot
+    /// large beside it with everything about it, so the screen is used edge to edge.
+    private var padSplit: some View {
+        VStack(spacing: 0) {
+            topBar
+            HStack(alignment: .top, spacing: Space.l) {
+                sceneColumn
+                    .frame(width: 104 * Fonts.scale)
+                VStack(alignment: .leading, spacing: 6) {
+                    ShotArc(shots: visible.map(\.shot), selected: selected?.shot.id) { selectedID = $0.id }
+                        .frame(height: 44 * Fonts.scale)
+                    HStack {
+                        Text("\(Self.shots(visible.count))".uppercased())
+                        Spacer()
+                        Text("TAP A SHOT TO SEE IT")
+                    }
+                    .font(Fonts.mono(9)).tracking(0.6).foregroundStyle(Sheet.muted)
+                    rows(wide: false, inPlace: false)
+                }
+                .frame(maxWidth: .infinity)
+                Sheet.rule.frame(width: 1)
+                detailPane
+                    .frame(maxWidth: .infinity)
+            }
+        }
+        .padding(.horizontal, Space.xl)
+    }
+
+    /// The picked shot, big: its still (tap for full screen), number and caption, then the
+    /// same details a row shows when opened on the phone.
+    private var detailPane: some View {
+        ScrollView(showsIndicators: false) {
+            if let item = selected {
+                let shot = item.shot
+                VStack(alignment: .leading, spacing: 10) {
+                    Color(hex: 0x2B2B28)
+                        .overlay {
+                            if let image = ThumbCache.large(for: shot) {
+                                Image(uiImage: image).resizable().scaledToFill()
+                            }
+                        }
+                        .aspectRatio(16 / 9, contentMode: .fit)
+                        .frame(maxWidth: .infinity)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Sheet.rule, lineWidth: 1))
+                        .onTapGesture { enlarged = shot }
+                        .accessibilityAddTraits(.isButton)
+                        .accessibilityHint("see it full screen")
+                    HStack(alignment: .firstTextBaseline, spacing: 12) {
+                        Text(shot.number).font(.osSans(22)).foregroundStyle(Sheet.text)
+                        EditableName(text: shot.caption, font: .osSans(18), color: Sheet.text, lineLimit: 3, emptyLabel: "Untitled", title: "Edit Caption", pencil: true) {
+                            store.setCaption(shot.id, to: $0)
+                        }
+                        .id("padcap" + shot.id.uuidString)
+                    }
+                    Text("\(item.scene.name) · \(Format.mm(shot.lensMM))mm · \(Format.time(shot.plannedTime))".uppercased())
+                        .font(Fonts.mono(9)).tracking(0.6)
+                        .foregroundStyle(shot.isGolden ? Palette.sun : Sheet.muted)
+                    openDetails(item)
+                }
+                .padding(.vertical, Space.s)
+            } else {
+                Text("NO SHOTS YET. PRESS THE SHUTTER ON THE CAMERA.")
+                    .font(Fonts.mono(10)).tracking(0.6).foregroundStyle(Sheet.muted)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, 14)
+            }
+        }
+    }
+
     /// Upright: Camera and Weather / Export on top, the project, scene pills, the arc, rows.
     private var portraitOutline: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -340,7 +415,7 @@ struct ShotListView: View {
 
     // MARK: Rows
 
-    private func rows(wide: Bool) -> some View {
+    private func rows(wide: Bool, inPlace: Bool = true) -> some View {
         ScrollViewReader { proxy in
             ScrollView(showsIndicators: false) {
                 LazyVStack(spacing: 0) {
@@ -351,7 +426,7 @@ struct ShotListView: View {
                             .padding(.vertical, 14)
                     }
                     ForEach(visible) { item in
-                        row(item, wide: wide).id(item.id)
+                        row(item, wide: wide, inPlace: inPlace).id(item.id)
                     }
                     Color.clear.frame(height: 30)
                 }
@@ -363,15 +438,17 @@ struct ShotListView: View {
         }
     }
 
-    private func row(_ item: Item, wide: Bool) -> some View {
+    /// `inPlace` false (iPad): a tap picks the shot for the pane beside, instead of opening it here.
+    private func row(_ item: Item, wide: Bool, inPlace: Bool = true) -> some View {
         let shot = item.shot
-        let open = openID == shot.id
+        let open = inPlace && openID == shot.id
+        let picked = !inPlace && selected?.shot.id == shot.id
         return HStack(alignment: .top, spacing: 14) {
             ShotThumb(shot: shot)
                 .frame(width: open ? 128 : 52, height: open ? 72 : 30)
                 .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 4, style: .continuous).strokeBorder(open ? Sheet.text : Sheet.rule, lineWidth: 1))
-                .onTapGesture { if open { enlarged = shot } else { toggle(shot) } }
+                .onTapGesture { if open { enlarged = shot } else if inPlace { toggle(shot) } else { selectedID = shot.id } }
                 .accessibilityAddTraits(.isButton)
                 .accessibilityHint(open ? "see it full screen" : "open")
             Text(shot.number).font(Fonts.mono(11)).foregroundStyle(Sheet.text).frame(width: 26, alignment: .leading).padding(.top, 3)
@@ -403,12 +480,16 @@ struct ShotListView: View {
                     .lineLimit(1).minimumScaleFactor(0.8)
                     .frame(width: 124, alignment: .leading).padding(.top, 3)
             }
-            Text(open ? "–" : "+").font(Fonts.mono(13)).foregroundStyle(Sheet.muted).frame(width: 14).padding(.top, 1)
+            if inPlace {
+                Text(open ? "–" : "+").font(Fonts.mono(13)).foregroundStyle(Sheet.muted).frame(width: 14).padding(.top, 1)
+            }
         }
         .padding(.vertical, 9)
+        .padding(.horizontal, picked ? 8 : 0)
+        .background(picked ? Sheet.text.opacity(0.07) : .clear, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
         .overlay(alignment: .top) { Sheet.rule.frame(height: 1) }
         .contentShape(Rectangle())
-        .onTapGesture { toggle(shot) }
+        .onTapGesture { if inPlace { toggle(shot) } else { selectedID = shot.id } }
         .contextMenu {
             Button("Delete \(shot.number)", systemImage: "trash", role: .destructive) {
                 selectedID = shot.id

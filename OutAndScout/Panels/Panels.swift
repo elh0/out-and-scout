@@ -14,7 +14,8 @@ struct SidePanel<Content: View>: View {
         }
         .padding(Space.l)
         // Upright the screen is narrower than the panel, so it takes the full width instead.
-        .frame(width: portrait ? nil : width)
+        // iPad keeps it a side panel either way up, scaled with the type.
+        .frame(width: portrait && !LayoutMode.isPad ? nil : width * Fonts.scale)
         .frame(maxHeight: .infinity, alignment: .top)
         .keyboardPadding()
         // E: square edge, a hairline where the panel meets the viewfinder.
