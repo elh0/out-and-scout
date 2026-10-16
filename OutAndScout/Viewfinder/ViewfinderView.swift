@@ -161,62 +161,47 @@ struct ViewfinderView: View {
         // into small buttons so the frame gets the room, and Hide tucks the rest away too.
         // The picture's own gestures (tap to focus, pinch for the lens, hold to lock) stay as
         // they are; hiding is only ever a button.
-        VStack(spacing: 0) {
-            TopBar(
-                heading: motion.heading ?? location.heading,
-                headingAccuracy: location.headingAccuracy,
-                sunAzimuth: sun.azimuth,
-                planned: planned
-            )
-            .frame(height: hudHidden ? 0 : 36)
-            .opacity(hudHidden ? 0 : 1)
-            .clipped()
-            .padding(.horizontal, Space.l)
-
-            HStack(alignment: .top, spacing: Space.s) {
-                FoldedLeftRail()
-                    .frame(width: hudHidden ? 0 : 44 * Fonts.scale)
-                    .opacity(hudHidden ? 0 : 1)
-                    .clipped()
-                    .padding(.leading, hudHidden ? 0 : Space.m)
-
-                VStack(spacing: 4) {
-                    ViewfinderFrame(sun: sun, sunDay: sunDay, planned: planned, frameFraction: $frameFraction, lightChip: false)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .clipped()
-
-                    if !hudHidden {
-                        FoldedBottomBar(sunDay: sunDay, planned: planned, sun: sun) { setHidden(true) }
-                            .transition(.opacity)
-                    }
-                }
-
-                Group {
-                    if hudHidden {
-                        VStack(spacing: Space.s) {
-                            Text("\(Int(store.lensMM.rounded()))MM")
-                                .font(Fonts.mono(10))
-                                .tracking(0.6)
-                                .foregroundStyle(Palette.paper)
-                            Shutter(capturing: capturing) { Task { await pin() } }
-                            OPill(label: "Show", caps: true) { setHidden(false) }
-                                .accessibilityLabel("show the controls")
-                        }
-                        .frame(maxHeight: .infinity)
-                        .transition(.opacity)
-                    } else {
-                        RightRail(capturing: capturing) {
-                            Task { await pin() }
-                        }
-                        .transition(.opacity)
-                    }
-                }
-                .frame(width: hudHidden ? 72 : 100)
-                .padding(.trailing, Space.l)
+        // The grid (16 Oct 2026): two equal rails with the frame centred between them, and
+        // three rows (top line, frame, bottom line) the rails share, so the scene and lens sit
+        // on the top line, the shutter on the frame's centre, and ··· and the last shot on the
+        // bottom line.
+        HStack(spacing: VFGrid.gutter) {
+            VStack(spacing: VFGrid.rowGap) {
+                SceneButton().frame(height: VFGrid.row)
+                Spacer(minLength: 0)
+                TogglesButton().frame(height: VFGrid.row)
             }
+            .frame(width: hudHidden ? 0 : VFGrid.rail)
+            .opacity(hudHidden ? 0 : 1)
+            .allowsHitTesting(!hudHidden)
+
+            VStack(spacing: hudHidden ? 0 : VFGrid.rowGap) {
+                TopBar(
+                    heading: motion.heading ?? location.heading,
+                    headingAccuracy: location.headingAccuracy,
+                    sunAzimuth: sun.azimuth,
+                    planned: planned
+                )
+                .frame(height: hudHidden ? 0 : VFGrid.row)
+                .opacity(hudHidden ? 0 : 1)
+                .clipped()
+
+                ViewfinderFrame(sun: sun, sunDay: sunDay, planned: planned, frameFraction: $frameFraction, lightChip: false)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .clipped()
+
+                if !hudHidden {
+                    FoldedBottomBar(sunDay: sunDay, planned: planned, sun: sun) { setHidden(true) }
+                        .frame(height: VFGrid.row)
+                        .transition(.opacity)
+                }
+            }
+
+            RightRail(capturing: capturing, hidden: hudHidden, onShutter: { Task { await pin() } }, show: { setHidden(false) })
+                .frame(width: VFGrid.rail)
         }
-        .padding(.top, 4)
-        .padding(.bottom, Space.xs)
+        .padding(.horizontal, VFGrid.gutter)
+        .padding(.vertical, 4)
         .background(Sheet.bg.ignoresSafeArea())
         // The keyboard slides over the viewfinder rather than shoving it off the top.
         .ignoresSafeArea(.keyboard)

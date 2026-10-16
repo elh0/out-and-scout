@@ -18,6 +18,16 @@ private enum Ink {
 
 // MARK: - Top bar: project / scene, + scene, compass, clock, kit
 
+/// The landscape viewfinder's grid (Elliot, 16 Oct 2026: "the spacing feels off"). Two equal
+/// rails with the frame centred between them; three rows (top line, frame, bottom line) that
+/// the rails share, so every control sits on a row. One gutter throughout.
+enum VFGrid {
+    static var rail: CGFloat { 64 * Fonts.scale }
+    static var row: CGFloat { 32 * Fonts.scale }
+    static let gutter: CGFloat = 12
+    static let rowGap: CGFloat = 8
+}
+
 struct TopBar: View {
     @Environment(ScoutStore.self) private var store
     let heading: Double?
@@ -26,8 +36,8 @@ struct TopBar: View {
     let planned: Date
 
     var body: some View {
-        // Outline look, round 4: Projects on the left, "PROJECT / SCENE · FACING SOUTH-WEST"
-        // in grey caps in the middle, the kit (underlined, tap to change) and the time on the right.
+        // One style for the whole line, grey caps; only Projects is bright, as it's a button.
+        // It spans the frame, so it starts and ends where the picture does.
         ZStack {
             Text(crumb)
                 .font(Fonts.mono(10))
@@ -35,38 +45,39 @@ struct TopBar: View {
                 .foregroundStyle(Ink.muted)
                 .lineLimit(1)
                 .truncationMode(.middle)
-                .padding(.horizontal, 170)
+                .padding(.horizontal, 110 * Fonts.scale)
                 .accessibilityLabel(crumb.lowercased())
 
-            HStack(alignment: .firstTextBaseline, spacing: Space.m) {
+            HStack(spacing: Space.s) {
                 Button { store.panel = .projects } label: {
-                    Text("Projects")
-                        .font(Fonts.mono(11))
+                    Text("PROJECTS")
+                        .font(Fonts.mono(10))
+                        .tracking(0.6)
                         .foregroundStyle(Palette.paper)
                         .frame(minHeight: 44)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Projects")
                 .accessibilityHint("opens your projects")
 
                 Spacer(minLength: 0)
 
                 Button { store.panel = .kit } label: {
-                    Text(store.kit.label.uppercased())
+                    Text(store.kit.camera.name.uppercased())
                         .font(Fonts.mono(10))
                         .tracking(0.6)
                         .foregroundStyle(Ink.muted)
-                        .underline(color: Palette.nightRule)
                         .lineLimit(1)
-                        .frame(minHeight: 44)
+                        .frame(maxWidth: 90 * Fonts.scale, minHeight: 44, alignment: .trailing)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .frame(maxWidth: 110, alignment: .trailing)
                 .accessibilityLabel("kit, \(store.kit.label)")
 
                 Text(Format.time(Date()))
                     .font(Fonts.mono(10))
+                    .tracking(0.6)
                     .foregroundStyle(Ink.muted)
                     .fixedSize()
             }
@@ -246,28 +257,13 @@ struct RailToggles: View {
 
 // MARK: - Folded left rail (Elliot, 16 Oct 2026: a bigger frame)
 
-/// The left rail folded to two round buttons: the scene you're on at the top (tap for the
-/// scenes panel), and "···" for sun path, grid and level at the bottom, in a small pop-up.
-struct FoldedLeftRail: View {
+/// "01", the scene you're on, on the top row; tap for the scenes panel.
+struct SceneButton: View {
     @Environment(ScoutStore.self) private var store
-    @State private var togglesOpen = false
 
     var body: some View {
-        VStack(spacing: 0) {
-            RoundButton(label: sceneNumber) { store.panel = .scenes }
-                .accessibilityLabel("scenes, on \(store.currentScene.name)")
-            Spacer(minLength: Space.xs)
-            RoundButton(label: "···") { togglesOpen = true }
-                .accessibilityLabel("sun path, grid and level")
-                .popover(isPresented: $togglesOpen, arrowEdge: .leading) {
-                    RailToggles()
-                        .padding(Space.s)
-                        .presentationCompactAdaptation(.popover)
-                        .presentationBackground(Outline.card)
-                }
-        }
-        .padding(.top, 2)
-        .padding(.bottom, Space.xs)
+        OPill(label: sceneNumber, size: .small) { store.panel = .scenes }
+            .accessibilityLabel("scenes, on \(store.currentScene.name)")
     }
 
     /// "01", the open scene's place in the project.
@@ -277,22 +273,19 @@ struct FoldedLeftRail: View {
     }
 }
 
-/// A hairline circle with a few characters in it.
-struct RoundButton: View {
-    let label: String
-    let action: () -> Void
+/// "···" on the bottom row: sun path, grid and level in a small pop-up.
+struct TogglesButton: View {
+    @State private var open = false
 
     var body: some View {
-        Button(action: action) {
-            Text(label)
-                .font(Fonts.mono(10))
-                .foregroundStyle(Palette.paper)
-                .frame(width: 34 * Fonts.scale, height: 34 * Fonts.scale)
-                .overlay(Circle().strokeBorder(Outline.line, lineWidth: 1))
-                .frame(minWidth: 44, minHeight: 44)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(OPressRing())
+        OPill(label: "···", size: .small) { open = true }
+            .accessibilityLabel("sun path, grid and level")
+            .popover(isPresented: $open, arrowEdge: .leading) {
+                RailToggles()
+                    .padding(Space.s)
+                    .presentationCompactAdaptation(.popover)
+                    .presentationBackground(Outline.card)
+            }
     }
 }
 
@@ -329,25 +322,36 @@ struct RailToggle: View {
 struct RightRail: View {
     @Environment(ScoutStore.self) private var store
     let capturing: Bool
+    /// Everything tucked away: only the shutter, and Show on the bottom row.
+    var hidden = false
     let onShutter: () -> Void
+    var show: () -> Void = {}
     @State private var ladderOpen = false
 
     var body: some View {
-        // Option 1 (Elliot, 16 Oct 2026): one centre line. The lens at the top (drag to step,
-        // tap for the whole kit), the shutter in the middle where the thumb sits, and the last
-        // shot as a square under it with the count on its corner.
-        ZStack {
-            Shutter(capturing: capturing, action: onShutter)
-            VStack(spacing: 0) {
-                LensChip(open: $ladderOpen)
-                Spacer(minLength: 0)
-                ShotStack(square: true)
+        // Option 1 (Elliot, 16 Oct 2026), on the grid: the lens on the top row, the shutter
+        // centred on the frame, the last shot on the bottom row.
+        VStack(spacing: VFGrid.rowGap) {
+            Group {
+                if hidden { Color.clear } else { LensChip(open: $ladderOpen) }
             }
+            .frame(height: VFGrid.row)
+            Shutter(capturing: capturing, action: onShutter)
+                .frame(maxHeight: .infinity)
+            Group {
+                if hidden {
+                    OPill(label: "Show", size: .small, caps: true, action: show)
+                        .accessibilityLabel("show the controls")
+                } else {
+                    ShotStack(square: true)
+                }
+            }
+            .frame(height: VFGrid.row)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity)
         // The ladder opens beside the column, over the edge of the picture.
         .overlay(alignment: .topLeading) {
-            if ladderOpen {
+            if ladderOpen && !hidden {
                 LensLadder { ladderOpen = false }
                     .alignmentGuide(.leading) { $0.width + 6 }
                     .transition(.opacity.combined(with: .offset(x: 6)))
@@ -355,35 +359,29 @@ struct RightRail: View {
         }
         .animation(.snappy(duration: 0.2), value: ladderOpen)
         .onChange(of: store.panel) { ladderOpen = false }
+        .onChange(of: hidden) { ladderOpen = false }
     }
 }
 
-/// "35 MM ▾": the lens in use. Drag up for longer, down for wider; tap for the ladder.
+/// "35MM▾": the lens in use. Drag up for longer, down for wider; tap for the ladder.
 struct LensChip: View {
     @Environment(ScoutStore.self) private var store
-    @Environment(CameraController.self) private var camera
     @Binding var open: Bool
     @State private var dragNotches = 0
 
     var body: some View {
-        VStack(spacing: 2) {
-            HStack(alignment: .firstTextBaseline, spacing: 3) {
-                Text(Format.mm(store.lensMM))
-                    .font(.osSans(30))
-                    .tracking(-1)
-                    .foregroundStyle(Palette.paper)
-                    .lineLimit(1)
-                    .fixedSize()
-                    .contentTransition(.numericText())
-                    .animation(.snappy(duration: 0.2), value: store.lensMM)
-                Text(open ? "MM ▴" : "MM ▾").font(Fonts.mono(9)).tracking(0.6).foregroundStyle(Ink.muted)
-            }
-            // The phone's own zoom, greyed when the crop gets soft.
-            Text(camera.lensLabel)
-                .font(Fonts.mono(8))
-                .foregroundStyle(camera.cropIsSoft ? Palette.nightRule : Ink.muted)
+        HStack(alignment: .firstTextBaseline, spacing: 2) {
+            Text(Format.mm(store.lensMM))
+                .font(.osSans(20))
+                .tracking(-0.6)
+                .foregroundStyle(Palette.paper)
+                .lineLimit(1)
+                .fixedSize()
+                .contentTransition(.numericText())
+                .animation(.snappy(duration: 0.2), value: store.lensMM)
+            Text(open ? "MM▴" : "MM▾").font(Fonts.mono(8)).tracking(0.4).foregroundStyle(Ink.muted)
         }
-        .frame(minWidth: 64, minHeight: 44)
+        .frame(minWidth: 44, minHeight: 44)
         .contentShape(Rectangle())
         .onTapGesture { open.toggle() }
         .gesture(
@@ -410,12 +408,20 @@ struct LensChip: View {
 /// Every lens in the kit, wide at the top, a dot on the one in use. Tap one to switch.
 struct LensLadder: View {
     @Environment(ScoutStore.self) private var store
+    @Environment(CameraController.self) private var camera
     let done: () -> Void
 
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 0) {
+                    // The phone's own zoom, greyed when the crop gets soft.
+                    Text("PHONE \(camera.lensLabel)")
+                        .font(Fonts.mono(8))
+                        .tracking(0.6)
+                        .foregroundStyle(camera.cropIsSoft ? Palette.nightRule : Ink.muted)
+                        .fixedSize()
+                        .padding(.bottom, 4)
                     ForEach(store.focalLengths, id: \.self) { f in
                         let on = abs(f - store.lensMM) < 0.01
                         Button {
@@ -498,17 +504,17 @@ struct ShotStack: View {
                     Group {
                         if let last { ShotThumb(shot: last) } else { Color(hex: 0x1A1A19) }
                     }
-                    .frame(width: 44, height: 44)
-                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(Outline.line, lineWidth: 1))
+                    .frame(width: 32 * Fonts.scale, height: 32 * Fonts.scale)
+                    .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 7, style: .continuous).strokeBorder(Outline.line, lineWidth: 1))
                     .overlay(alignment: .topTrailing) {
                         Text("\(shots)")
-                            .font(Fonts.mono(9))
+                            .font(Fonts.mono(8))
                             .foregroundStyle(Sheet.bg)
-                            .padding(.horizontal, 5)
-                            .frame(minWidth: 18, minHeight: 18)
+                            .padding(.horizontal, 4)
+                            .frame(minWidth: 16, minHeight: 16)
                             .background(Sheet.text, in: Capsule())
-                            .offset(x: 6, y: -6)
+                            .offset(x: 5, y: -5)
                     }
                 } else if beside {
                     HStack(spacing: 10) {
@@ -674,11 +680,11 @@ struct FoldedBottomBar: View {
             LightNow(sun: sun, sunDay: sunDay, planned: planned)
                 .layoutPriority(1)
             SunTimeline(sunDay: sunDay, planned: planned, compact: true)
+                .padding(.horizontal, 4)
                 .frame(minWidth: 80)
             OPill(label: "Hide", size: .small, caps: true, action: hide)
                 .accessibilityLabel("hide the controls")
         }
-        .frame(height: 30 * Fonts.scale)
         .onChange(of: store.aspect) { ratiosOpen = false }
         .onChange(of: store.showingCustomAspect) { if store.showingCustomAspect { ratiosOpen = false } }
     }

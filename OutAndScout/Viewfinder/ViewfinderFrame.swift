@@ -103,7 +103,7 @@ struct ViewfinderFrame: View {
                 // shot sits in its bottom-left corner as a small chip.
                 if !fullBleed {
                     Rectangle()
-                        .strokeBorder(Palette.paper, lineWidth: 2)
+                        .strokeBorder(Palette.paper, lineWidth: 1)
                         .frame(width: frame.width, height: frame.height)
                         .offset(x: frame.minX, y: frame.minY)
                         .allowsHitTesting(false)
