@@ -13,11 +13,19 @@ import UIKit
     /// True for the moment the screen is turning; the controls fade back in after.
     private(set) var turning = false
 
+    /// iPad turns freely with the device and the layout follows its shape; the switch is
+    /// for phones, where portrait is a deliberate choice.
+    static let isPad = UIDevice.current.userInterfaceIdiom == .pad
+
     /// What the app allows right now; read by the app delegate.
-    var mask: UIInterfaceOrientationMask { portrait ? .portrait : .landscape }
+    var mask: UIInterfaceOrientationMask {
+        if Self.isPad { return .all }
+        return portrait ? .portrait : .landscape
+    }
 
     /// Switches the layout and turns the screen to match.
     func set(portrait: Bool, remember: Bool = true) {
+        guard !Self.isPad else { return }
         if remember { UserDefaults.standard.set(portrait, forKey: Self.key) }
         guard portrait != self.portrait else { return }
         // Hide the controls straight away (no animation), turn the screen, then fade them in
@@ -54,9 +62,13 @@ struct LayoutSwitch: View {
     var vertical = false
 
     var body: some View {
+        if !LayoutMode.isPad { button }
+    }
+
+    private var button: some View {
         let mode = LayoutMode.shared
         let target = mode.portrait ? "Landscape" : "Portrait"
-        Button { mode.set(portrait: !mode.portrait) } label: {
+        return Button { mode.set(portrait: !mode.portrait) } label: {
             // HUD D, both layouts: a grey word like the toggles.
             Text("↻ " + target)
                 .font(Fonts.mono(10))
