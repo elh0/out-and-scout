@@ -29,6 +29,8 @@ struct Overlays: Codable, Hashable {
 enum Panel: Equatable {
     case projects
     case kit
+    /// The open project's scenes, from the folded rail's scene button.
+    case scenes
 }
 
 /// App state. One store, injected into the environment at the root.

@@ -199,7 +199,7 @@ struct ViewfinderView: View {
                                 .tracking(0.6)
                                 .foregroundStyle(Palette.paper)
                             Shutter(capturing: capturing) { Task { await pin() } }
-                            OPill(label: "Show", size: .small, caps: true) { setHidden(false) }
+                            OPill(label: "Show", caps: true) { setHidden(false) }
                                 .accessibilityLabel("show the controls")
                         }
                         .frame(maxHeight: .infinity)
@@ -239,6 +239,11 @@ struct ViewfinderView: View {
             }
             if store.panel == .projects {
                 ProjectsPanel()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .transition(.move(edge: .leading))
+            }
+            if store.panel == .scenes {
+                ScenesPanel()
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .transition(.move(edge: .leading))
             }
@@ -401,6 +406,8 @@ enum Bearing {
 private struct SavedChip: View {
     @Environment(ScoutStore.self) private var store
     let shot: Shot
+    /// How far it's been pushed up; a flick up clears it.
+    @State private var lift: CGFloat = 0
 
     var body: some View {
         Button {
@@ -433,7 +440,22 @@ private struct SavedChip: View {
         }
         .buttonStyle(.plain)
         .frame(maxWidth: 440)
+        // Swipe it up to clear it, as well as tapping to edit (Elliot, 16 Oct 2026).
+        .offset(y: min(lift, 0))
+        .opacity(1 + Double(min(lift, 0) / 80))
+        .simultaneousGesture(
+            DragGesture(minimumDistance: 8)
+                .onChanged { lift = $0.translation.height }
+                .onEnded { v in
+                    if v.translation.height < -24 || v.predictedEndTranslation.height < -60 {
+                        withAnimation(.easeOut(duration: 0.2)) { store.justSaved = nil }
+                    } else {
+                        withAnimation(.snappy(duration: 0.2)) { lift = 0 }
+                    }
+                }
+        )
         .accessibilityLabel("edit caption for shot \(shot.number)")
+        .accessibilityAction(named: "Dismiss") { store.justSaved = nil }
         .task {
             guard (try? await Task.sleep(for: .seconds(4))) != nil else { return }
             if store.justSaved == shot.id { store.justSaved = nil }

@@ -48,6 +48,29 @@ struct PanelHeader: View {
     }
 }
 
+// MARK: - Scenes panel
+
+/// The open project's scenes, sliding in from the left like Projects (Elliot, 16 Oct 2026:
+/// the pop-up bubble felt wrong). Picking a scene, or adding one, closes it.
+struct ScenesPanel: View {
+    @Environment(ScoutStore.self) private var store
+
+    var body: some View {
+        SidePanel(edge: .leading, width: 260) {
+            HStack(alignment: .firstTextBaseline) {
+                Text(store.currentProject.name).font(.osSans(15)).lineLimit(1)
+                Spacer()
+                Button("Done") { store.panel = nil }
+                    .buttonStyle(UnderlinedWord())
+            }
+            .padding(.bottom, Space.xs)
+            LeftRail(toggles: false)
+        }
+        .onChange(of: store.currentSceneID) { store.panel = nil }
+        .onChange(of: store.namingSceneID) { if store.namingSceneID != nil { store.panel = nil } }
+    }
+}
+
 // MARK: - 06 Projects panel
 
 /// As in the prototype (flow.html): the wordmark, PROJECTS with Edit and Done, then one ruled

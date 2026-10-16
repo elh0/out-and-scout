@@ -246,25 +246,16 @@ struct RailToggles: View {
 
 // MARK: - Folded left rail (Elliot, 16 Oct 2026: a bigger frame)
 
-/// The left rail folded to two round buttons: the scene you're on (tap for the scenes) at
-/// the top, and "···" for sun path, grid and level at the bottom. Each opens a small pop-up.
+/// The left rail folded to two round buttons: the scene you're on at the top (tap for the
+/// scenes panel), and "···" for sun path, grid and level at the bottom, in a small pop-up.
 struct FoldedLeftRail: View {
     @Environment(ScoutStore.self) private var store
-    @State private var scenesOpen = false
     @State private var togglesOpen = false
 
     var body: some View {
         VStack(spacing: 0) {
-            RoundButton(label: sceneNumber) { scenesOpen = true }
+            RoundButton(label: sceneNumber) { store.panel = .scenes }
                 .accessibilityLabel("scenes, on \(store.currentScene.name)")
-                .popover(isPresented: $scenesOpen, arrowEdge: .leading) {
-                    LeftRail(toggles: false)
-                        .frame(width: 200 * Fonts.scale, height: min(56 + 26 * CGFloat(store.currentProject.scenes.count), 260) * Fonts.scale)
-                        .padding(Space.s)
-                        .foregroundStyle(Palette.paper)
-                        .presentationCompactAdaptation(.popover)
-                        .presentationBackground(Outline.card)
-                }
             Spacer(minLength: Space.xs)
             RoundButton(label: "···") { togglesOpen = true }
                 .accessibilityLabel("sun path, grid and level")
@@ -277,8 +268,6 @@ struct FoldedLeftRail: View {
         }
         .padding(.top, 2)
         .padding(.bottom, Space.xs)
-        // Picking a scene closes the list.
-        .onChange(of: store.currentSceneID) { scenesOpen = false }
     }
 
     /// "01", the open scene's place in the project.
