@@ -8,6 +8,10 @@ struct Wordmark: View, Animatable {
     /// grows the letters part where the light falls and the sun rises into its place
     /// (the identity page's "part" animation).
     var rise: CGFloat = 1
+    /// How far below its place the sun sits, in ems, and how visible it is: the opening
+    /// raises the sun alone behind the locked letters (option A).
+    var sunDrop: CGFloat = 0
+    var sunOpacity: CGFloat = 1
 
     // Animatable, so the Canvas redraws every frame while `rise` changes.
     var animatableData: CGFloat {
@@ -36,9 +40,9 @@ struct Wordmark: View, Animatable {
             c.fill(WordmarkGlyphs.left, with: .color(Palette.paper))
             let sunX = WordmarkGlyphs.leftWidth + before
             // Starts .45em lower, as on the identity page.
-            let sunY = -Self.raised - Self.sun + (1 - r) * 0.45
+            let sunY = -Self.raised - Self.sun + (1 - r) * 0.45 + sunDrop
             var s = c
-            s.opacity = min(1, r / 0.4)
+            s.opacity = min(1, r / 0.4) * sunOpacity
             s.fill(Path(ellipseIn: CGRect(x: sunX, y: sunY, width: Self.sun, height: Self.sun)),
                    with: .color(Palette.sun))
             c.translateBy(x: sunX + Self.sun + after, y: 0)
@@ -53,8 +57,9 @@ struct Wordmark: View, Animatable {
     }
 }
 
-/// The opening (prototype option D): the wordmark fades in on ink, the letters part and
-/// the sun rises into its place. Covers the camera's start-up.
+/// The opening (Elliot's option A, 19 Oct 2026): the locked wordmark fades in on ink and
+/// the sun alone rises slowly from below into its place and stays. Covers the camera's
+/// start-up.
 struct LaunchMark: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     /// When the first frame showed; the animation is worked out from the clock, so it
@@ -66,12 +71,14 @@ struct LaunchMark: View {
             Palette.night.ignoresSafeArea()
             TimelineView(.animation(paused: start == nil)) { context in
                 let t = start.map { context.date.timeIntervalSince($0) } ?? 0
-                // Fades in over .35 s; from .2 s the letters part and the sun rises over
-                // 1.8 s, easing out (the identity page's timing).
+                // The letters fade in over .35 s; from .2 s the sun rises .9em into place
+                // over 1.8 s, easing in and out, and shows over its first quarter second.
                 let fade = min(1, max(0, t / 0.35))
                 let p = min(1, max(0, (t - 0.2) / 1.8))
-                let rise = reduceMotion ? 1 : 1 - pow(1 - p, 3)
-                Wordmark(size: 30, rise: CGFloat(rise))
+                let eased = p < 0.5 ? 4 * p * p * p : 1 - pow(-2 * p + 2, 3) / 2
+                Wordmark(size: 30,
+                         sunDrop: reduceMotion ? 0 : CGFloat(1 - eased) * 0.9,
+                         sunOpacity: reduceMotion ? 1 : CGFloat(min(1, p / 0.15)))
                     .opacity(start == nil ? 0 : (reduceMotion ? 1 : fade))
             }
         }
