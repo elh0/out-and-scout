@@ -275,6 +275,66 @@ final class CameraController: NSObject {
         }
     }
 
+    // MARK: Sky sweep
+
+    @ObservationIgnored private var skyOutput: AVCaptureVideoDataOutput?
+    @ObservationIgnored private var skyReader: SkyFrameReader?
+    private let skyQueue = DispatchQueue(label: "outandscout.sky")
+
+    /// Starts reading frames for the sky sweep. Frames come turned upright, the same way the
+    /// stills are, so the top of each frame is the sky.
+    func startSkyFrames(_ handler: @escaping @MainActor (SkyColumns) -> Void) {
+        guard status == .running, skyOutput == nil else { return }
+        let reader = SkyFrameReader { cols in
+            DispatchQueue.main.async { MainActor.assumeIsolated { handler(cols) } }
+        }
+        let output = AVCaptureVideoDataOutput()
+        output.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
+        output.alwaysDiscardsLateVideoFrames = true
+        output.setSampleBufferDelegate(reader, queue: skyQueue)
+        skyReader = reader
+        skyOutput = output
+        let session = session
+        let angle = captureRotationAngle
+        queue.async {
+            session.beginConfiguration()
+            if session.canAddOutput(output) { session.addOutput(output) }
+            session.commitConfiguration()
+            if let c = output.connection(with: .video), c.isVideoRotationAngleSupported(angle) {
+                c.videoRotationAngle = angle
+            }
+        }
+    }
+
+    func stopSkyFrames() {
+        guard let output = skyOutput else { return }
+        skyOutput = nil
+        skyReader = nil
+        let session = session
+        queue.async {
+            output.setSampleBufferDelegate(nil, queue: nil)
+            session.beginConfiguration()
+            session.removeOutput(output)
+            session.commitConfiguration()
+        }
+    }
+
+    /// The sweep reads best on the main 1× lens: wide enough to follow the sun's path
+    /// without the ultra wide's bent edges. The frame lines put the cine lens back after.
+    func zoomForSweep() {
+        guard let device else { return }
+        let z: CGFloat = displayMultiplier < 1 && lensFactors.count > 1 ? lensFactors[1] : 1
+        let session = session
+        queue.async {
+            guard session.isRunning, (try? device.lockForConfiguration()) != nil else { return }
+            device.ramp(toVideoZoomFactor: z, withRate: 32)
+            device.unlockForConfiguration()
+        }
+        previewHFOV = 2 * atan(tan(baseHFOV * .pi / 360) / Double(z)) * 180 / .pi
+        isTooWide = false
+        shrink = 1
+    }
+
     // MARK: Stills
 
     /// Takes a quality-prioritised still and crops it to the frame lines.

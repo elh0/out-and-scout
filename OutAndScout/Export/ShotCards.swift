@@ -274,7 +274,16 @@ extension Exporter {
             let recce = NSMutableAttributedString(attributedString: text(Format.time(shot.plannedTime), font: mono(7.5)))
             if let rel { recce.append(text(" · \(LightClass.of(rel: rel).short)", font: mono(7.5), color: grey)) }
             row("Recce", recce)
-            for (label, k) in [("Backlit", LightClass.backlit), ("Side lit", .side)] {
+            // From the sky sweep: when the sun clears the roof at this spot.
+            if let sky = scene.skyline {
+                let read = SkyRead.read(sky, on: shot.capturedAt)
+                let v = NSMutableAttributedString()
+                if let b = read.beHere { v.append(text("Be here \(Format.time(b)) · ", font: mono(7.5))) }
+                v.append(text(read.summary, font: mono(7.5), color: read.clears != nil ? sun : ink))
+                row("Sky", v)
+            }
+            // With a sky line, its row takes the side-lit row's place so the card keeps its height.
+            for (label, k) in [("Backlit", LightClass.backlit), ("Side lit", .side)] where !(k == .side && scene.skyline != nil) {
                 row(label, LightRead.spans(k, day: day, heading: heading).map { text($0, font: mono(7.5)) }
                     ?? text("not from here today", font: mono(7.5), color: grey))
             }

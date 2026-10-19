@@ -72,6 +72,14 @@ final class ScoutStore {
     var toast: String?
     /// The shot just taken; the Viewfinder shows its caption for a few seconds with an edit link.
     var justSaved: UUID?
+    /// A scene where a sky sweep is on offer after its first shot.
+    var sweepOffer: UUID?
+    /// The sweep under way.
+    var sweep: SkySweep?
+    /// A scene whose fresh sweep result is showing.
+    var sweepResult: UUID?
+    /// A scene whose sky line is open for fixing by hand.
+    var editingSkyline: UUID?
 
     private let fileURL: URL
 
@@ -367,6 +375,68 @@ final class ScoutStore {
         currentProjectID = project.id
         currentSceneID = scene.id
         save()
+    }
+
+    // MARK: Sky sweep
+
+    /// Offers the sweep once per scene, after a shot, when today's low sun comes round the
+    /// way the shot faces.
+    func offerSweepIfUseful(bearing: Double?, latitude: Double, longitude: Double) {
+        let scene = currentScene
+        guard let bearing, scene.skyline == nil, scene.sweepSkipped != true,
+              SkySweep.crossesView(latitude: latitude, longitude: longitude, bearing: bearing) else { return }
+        sweepOffer = scene.id
+    }
+
+    func skipSweep(_ sceneID: UUID) {
+        updateScene(sceneID) { $0.sweepSkipped = true }
+        sweepOffer = nil
+        save()
+    }
+
+    /// Starts a sweep for a scene, facing `bearing`. False when the sun doesn't come round
+    /// that way today.
+    @discardableResult
+    func startSweep(_ sceneID: UUID, bearing: Double, latitude: Double, longitude: Double) -> Bool {
+        sweepOffer = nil
+        sweepResult = nil
+        guard let s = SkySweep(sceneID: sceneID, latitude: latitude, longitude: longitude, bearing: bearing) else {
+            toast = "The sun doesn't come round this way today"
+            return false
+        }
+        sweep = s
+        return true
+    }
+
+    func finishSweep() {
+        guard let s = sweep else { return }
+        sweep = nil
+        guard let line = s.make() else {
+            toast = "Couldn't see the sky. Try again in daylight."
+            return
+        }
+        setSkyline(s.sceneID, to: line)
+        sweepResult = s.sceneID
+    }
+
+    func setSkyline(_ sceneID: UUID, to line: Skyline?) {
+        updateScene(sceneID) { $0.skyline = line }
+        save()
+    }
+
+    func scene(_ id: UUID) -> ScoutScene? {
+        for project in projects {
+            if let s = project.scenes.first(where: { $0.id == id }) { return s }
+        }
+        return nil
+    }
+
+    /// The scene a shot belongs to.
+    func scene(containing shotID: UUID) -> ScoutScene? {
+        for project in projects {
+            if let s = project.scenes.first(where: { $0.shots.contains { $0.id == shotID } }) { return s }
+        }
+        return nil
     }
 
     // MARK: Shots

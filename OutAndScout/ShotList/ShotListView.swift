@@ -508,6 +508,12 @@ struct ShotListView: View {
                 if let best = bestTime(shot) {
                     Text("BEST TIME · \(best)".uppercased()).font(Fonts.mono(9)).tracking(0.6).foregroundStyle(Sheet.text)
                 }
+                // From the sky sweep: when the sun clears the roof here.
+                if let sky = store.scene(containing: shot.id)?.skyline {
+                    let read = SkyRead.read(sky, on: shot.capturedAt)
+                    Text(([read.beHere.map { "Be here \(Format.time($0))" }, read.summary].compactMap { $0 }.joined(separator: " · ")).uppercased())
+                        .font(Fonts.mono(9)).tracking(0.6).foregroundStyle(Palette.sun)
+                }
             }
             .padding(.top, 6)
             HStack(alignment: .firstTextBaseline, spacing: 6) {

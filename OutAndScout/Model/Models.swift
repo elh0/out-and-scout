@@ -19,6 +19,10 @@ struct ScoutScene: Identifiable, Codable, Hashable {
     var note: String = ""
     var location: ShotLocation?
     var shots: [Shot] = []
+    /// Where the sky starts along the sun's path here, from the sky sweep.
+    var skyline: Skyline?
+    /// The sweep was offered here and skipped, so it isn't offered again.
+    var sweepSkipped: Bool?
 }
 
 struct Shot: Identifiable, Codable, Hashable {

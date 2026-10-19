@@ -57,8 +57,31 @@ struct ViewfinderView: View {
                     .id(id)
             }
 
+            // The sky sweep's offer and result sit low over the frame, clear of the saved chip.
+            if store.sweep == nil, !cardIsOpen {
+                Group {
+                    if let id = store.sweepResult, let scene = store.scene(id) {
+                        SweepResultCard(scene: scene)
+                    } else if let id = store.sweepOffer {
+                        SweepOfferCard(sceneID: id)
+                    }
+                }
+                .frame(maxHeight: .infinity, alignment: .bottom)
+                .padding(.bottom, portrait ? 160 : 44)
+                .padding(.horizontal, Space.m)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+
             overlays
+
+            if let id = store.editingSkyline, let scene = store.scene(id) {
+                SkylineEditor(scene: scene)
+                    .transition(.opacity)
+            }
         }
+        .animation(.snappy(duration: 0.25), value: store.sweepOffer)
+        .animation(.snappy(duration: 0.25), value: store.sweepResult)
+        .animation(.easeOut(duration: 0.2), value: store.editingSkyline)
         // The keyboard only ever slides over the app; nothing gets pushed up or squashed.
         .ignoresSafeArea(.keyboard)
         .animation(.easeOut(duration: 0.2), value: store.justSaved)
@@ -326,6 +349,8 @@ struct ViewfinderView: View {
         store.addShot(shot, caption: "")
         store.toast = nil
         store.justSaved = shot.id
+        // The first shot at a spot facing the low sun: offer the sky sweep.
+        store.offerSweepIfUseful(bearing: shot.bearing, latitude: coord.latitude, longitude: coord.longitude)
 
         let sensorWidth = store.kit.mode.widthMM * store.kit.lenses.squeeze
             / (ViewfinderFrame.sensorOnSide(aspect: store.aspect, portrait: portrait) ? store.kit.frameAspect : 1)

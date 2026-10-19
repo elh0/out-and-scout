@@ -77,8 +77,11 @@ struct ViewfinderFrame: View {
                 // enough that there's no doubt what's in shot.
                 // HUD D (Elliot, 6 Oct 2026): only the shot shows. Outside the frame is solid
                 // ink, so nothing bleeds in around the edges.
-                AspectMask(frame: frame, shade: fullBleed ? 0.55 : nil,
-                           ticks: fullBleed, solid: fullBleed ? nil : Sheet.bg)
+                // While sweeping the sky, the whole picture shows, not just the shot.
+                if store.sweep == nil {
+                    AspectMask(frame: frame, shade: fullBleed ? 0.55 : nil,
+                               ticks: fullBleed, solid: fullBleed ? nil : Sheet.bg)
+                }
 
                 if store.overlays.grid {
                     ThirdsGrid().frame(width: frame.width, height: frame.height).offset(x: frame.minX, y: frame.minY)
@@ -86,7 +89,15 @@ struct ViewfinderFrame: View {
                 if store.overlays.level {
                     LevelLine(roll: motion.roll).frame(width: frame.width, height: frame.height).offset(x: frame.minX, y: frame.minY)
                 }
-                if store.overlays.sunPath, let heading = (motion.heading ?? location.heading) {
+                if let sweep = store.sweep {
+                    if let heading = motion.heading ?? location.heading {
+                        SkySweepOverlay(
+                            sweep: sweep,
+                            projector: Projector(heading: heading, elevation: motion.cameraElevation, hfov: camera.previewHFOV, size: size)
+                        )
+                    }
+                    SkySweepHUD(sweep: sweep)
+                } else if store.overlays.sunPath, let heading = (motion.heading ?? location.heading) {
                     SunPathOverlay(
                         sunDay: sunDay,
                         sun: sun,
@@ -191,6 +202,22 @@ struct ViewfinderFrame: View {
                 syncLens(size: size, frame: frame)
             }
             .onChange(of: camera.status) { syncLens(size: size, frame: frame) }
+            // The sky sweep: the main lens, frames read for the sky, every frame placed by
+            // the compass and tilt. When it ends, the cine lens comes back.
+            .task(id: store.sweep?.id) {
+                guard store.sweep != nil else { return }
+                camera.zoomForSweep()
+                camera.startSkyFrames { [store, motion, camera] cols in
+                    guard let sweep = store.sweep, let heading = motion.heading else { return }
+                    sweep.ingest(cols, heading: heading, elevation: motion.cameraElevation, hfov: camera.previewHFOV)
+                    if sweep.isEnough { store.finishSweep() }
+                }
+                while !Task.isCancelled, store.sweep != nil {
+                    try? await Task.sleep(for: .milliseconds(250))
+                }
+                camera.stopSkyFrames()
+                syncLens(size: size, frame: frame)
+            }
             .task(id: camera.isTooWide && camera.status == .running) {
                 guard camera.isTooWide, camera.status == .running else { greyNotice = false; return }
                 withAnimation(.easeOut(duration: 0.2)) { greyNotice = true }
