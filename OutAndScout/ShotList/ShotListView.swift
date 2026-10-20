@@ -65,7 +65,7 @@ struct ShotListView: View {
         .sheet(isPresented: $reordering) {
             let project = store.currentProject
             VStack(alignment: .leading, spacing: 16) {
-                PanelHeader(title: "Edit Scenes", sub: "Tap a name to rename, drag to reorder. Exports follow this order.", action: ("Done", { reordering = false }))
+                PanelHeader(title: "Edit Scenes", sub: "Tap a name to rename, drag to reorder, or sort. Hold a shot in the list to move it to another scene. Exports follow this order.", action: ("Done", { reordering = false }))
                 ScrollView {
                     VStack(alignment: .leading, spacing: 20) {
                         VStack(alignment: .leading, spacing: 6) {
@@ -77,6 +77,12 @@ struct ShotListView: View {
                             .overlay(alignment: .bottom) { Rule() }
                         }
                         if project.scenes.count > 1 {
+                            // One tap puts the scenes in shooting order.
+                            HStack(spacing: 8) {
+                                Text("Sort").font(.osDataSmall).foregroundStyle(Sheet.muted)
+                                sortButton("By light") { store.sortScenesByLight() }
+                                sortButton("As shot") { store.sortScenesByTime() }
+                            }
                             SceneOrder(scenes: project.scenes, move: { store.moveScenes(from: $0, to: $1) }) { id in
                                 sheetDeletingScene = project.scenes.first { $0.id == id }
                             }
@@ -120,7 +126,7 @@ struct ShotListView: View {
             .padding(.horizontal, 20)
             .background(Sheet.bg)
             .foregroundStyle(Sheet.text)
-            .presentationDetents([.medium, .large])
+            .presentationDetents([.large])
             .font(.osRow)
             .renameBar()
             // A dialog on the screen behind can't show over this sheet, so it has its own.
@@ -292,6 +298,18 @@ struct ShotListView: View {
             .buttonStyle(.plain)
         }
         .padding(.bottom, Space.xs)
+    }
+
+    private func sortButton(_ label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(label).font(.osDataSmall)
+                .padding(.horizontal, 12)
+                .frame(height: 32)
+                .overlay(Capsule().strokeBorder(Sheet.rule, lineWidth: 1))
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     private func filterButton(_ label: String, on: Bool, action: @escaping () -> Void) -> some View {
@@ -491,6 +509,13 @@ struct ShotListView: View {
         .contentShape(Rectangle())
         .onTapGesture { if inPlace { toggle(shot) } else { selectedID = shot.id } }
         .contextMenu {
+            // Organise as you go: put a shot in the scene it belongs to.
+            Menu("Move to Scene", systemImage: "arrow.right.square") {
+                ForEach(project.scenes.filter { sc in !sc.shots.contains { $0.id == shot.id } }) { sc in
+                    Button(sc.name) { store.moveShot(shot.id, to: sc.id) }
+                }
+                Button("New Scene", systemImage: "plus") { store.moveShotToNewScene(shot.id) }
+            }
             Button("Delete \(shot.number)", systemImage: "trash", role: .destructive) {
                 selectedID = shot.id
                 confirmDelete = true

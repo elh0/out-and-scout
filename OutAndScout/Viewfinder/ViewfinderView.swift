@@ -39,10 +39,15 @@ struct ViewfinderView: View {
             // layout, so you never see one layout stretched into the other.
             .opacity(LayoutMode.shared.turning ? 0 : 1)
 
-            if let metres = movedMetres {
-                SceneChangeChip(metres: metres) { newScene in
-                    keptScenes.insert(store.currentSceneID)
-                    if newScene { store.requestNewScene() }
+            if let a = store.autoFiled, store.justSaved == a.shotID, let to = store.scene(a.to) {
+                SceneFiledChip(text: a.created ? "New scene · \(to.name)" : "Back in \(to.name)") {
+                    store.undoAutoFile()
+                    store.justSaved = nil
+                }
+                .task(id: a.shotID) {
+                    // Longer than the saved chip, so there's time to Undo.
+                    guard (try? await Task.sleep(for: .seconds(6))) != nil else { return }
+                    if store.justSaved == a.shotID { store.justSaved = nil }
                 }
                 .frame(maxHeight: .infinity, alignment: .top)
                 .padding(.top, chipTop)
@@ -285,20 +290,6 @@ struct ViewfinderView: View {
         .animation(.snappy(duration: 0.25), value: cardIsOpen)
     }
 
-    /// Scenes where "keep" was picked, so the new-scene question isn't asked again there.
-    @State private var keptScenes: Set<UUID> = []
-
-    /// How far you've walked from this scene's last shot, once it's more than 100 m. GPS has to be good to
-    /// within 30 m, or a poor fix could fake the move.
-    private var movedMetres: Int? {
-        guard !cardIsOpen, store.justSaved == nil, !keptScenes.contains(store.currentSceneID),
-              let here = location.location, here.horizontalAccuracy >= 0, here.horizontalAccuracy < 30,
-              let last = store.currentScene.shots.last(where: { $0.location != nil })?.location
-        else { return nil }
-        let d = here.distance(from: CLLocation(latitude: last.latitude, longitude: last.longitude))
-        return d > 100 ? Int((d / 10).rounded() * 10) : nil
-    }
-
     private var cardIsOpen: Bool {
         store.pending != nil || store.askingLocation || store.namingSceneID != nil || store.showingCustomAspect
     }
@@ -341,7 +332,13 @@ struct ViewfinderView: View {
             sun: sun,
             light: light,
             bearing: (motion.heading ?? location.heading),
-            location: nil,
+            // The spot now, so the shot can be filed by place at once (auto scenes); the
+            // street name follows when the lookup comes back. Only a good fix counts.
+            location: location.location.flatMap { here in
+                here.horizontalAccuracy >= 0 && here.horizontalAccuracy < 50
+                    ? ShotLocation(latitude: here.coordinate.latitude, longitude: here.coordinate.longitude)
+                    : nil
+            },
             stillAspect: stillAspect
         )
         // Save now so the shutter is ready again at once; the caption and place name
@@ -473,22 +470,17 @@ private struct SavedChip: View {
     }
 }
 
-/// "moved 340 m · new scene?" with keep / new scene, after you walk away from the last shot.
-private struct SceneChangeChip: View {
-    let metres: Int
-    let choose: (Bool) -> Void
+/// "New scene · Brick Lane" (or "Back in Scene 2") with Undo, after a shot is filed by
+/// where it was taken.
+private struct SceneFiledChip: View {
+    let text: String
+    let undo: () -> Void
 
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: "location").font(.system(size: 11))
-            Text("Moved \(metres) m · new scene?").lineLimit(1).minimumScaleFactor(0.8)
-            Button("Keep") { choose(false) }
-                .padding(.horizontal, 12)
-                .frame(height: 32)
-                .overlay(Capsule().strokeBorder(Palette.rule, lineWidth: 1))
-                .frame(minHeight: 44)
-                .contentShape(Rectangle())
-            Button("New Scene") { choose(true) }
+            Text(text).lineLimit(1).minimumScaleFactor(0.8)
+            Button("Undo", action: undo)
                 .foregroundStyle(Palette.paper)
                 .padding(.horizontal, 12)
                 .frame(height: 32)

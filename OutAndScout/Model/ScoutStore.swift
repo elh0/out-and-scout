@@ -1,3 +1,4 @@
+import CoreLocation
 import Foundation
 import Observation
 
@@ -198,8 +199,10 @@ final class ScoutStore {
 
     /// "5A": the next setup number in the current scene.
     /// One past the highest number used, so deleting a shot never reuses its number.
-    var nextShotNumber: String {
-        let used = currentScene.shots.compactMap { Int($0.number.prefix { $0.isNumber }) }
+    var nextShotNumber: String { nextNumber(in: currentScene) }
+
+    private func nextNumber(in scene: ScoutScene) -> String {
+        let used = scene.shots.compactMap { Int($0.number.prefix { $0.isNumber }) }
         return "\((used.max() ?? 0) + 1)A"
     }
 
@@ -460,9 +463,13 @@ final class ScoutStore {
                 toast = "Couldn't save the still"
             }
         }
+        // Auto scenes: a shot taken away from this scene's spot starts a new scene, or
+        // goes back into an earlier scene taken there.
+        let from = currentSceneID
+        let target = sceneForShot(at: p.location)
         let shot = Shot(
             id: p.id,
-            number: p.number,
+            number: target.id == from ? p.number : (scene(target.id).map(nextNumber(in:)) ?? p.number),
             caption: caption.trimmingCharacters(in: .whitespacesAndNewlines),
             lensMM: p.lensMM,
             aspect: aspect.isFull ? .full(p.stillAspect) : aspect,
@@ -478,7 +485,13 @@ final class ScoutStore {
             photoFile: photoFile,
             stillAspect: p.stillAspect
         )
-        updateScene(currentSceneID) { $0.shots.append(shot) }
+        updateScene(target.id) { $0.shots.append(shot) }
+        if target.id != from {
+            currentSceneID = target.id
+            autoFiled = AutoFiled(shotID: shot.id, from: from, to: target.id, created: target.created)
+        } else {
+            autoFiled = nil
+        }
         toast = "Saved \(shot.number)"
         save()
     }
@@ -493,12 +506,124 @@ final class ScoutStore {
                     if !trimmed.isEmpty, projects[p].scenes[s].shots[i].caption.isEmpty {
                         projects[p].scenes[s].shots[i].caption = trimmed
                     }
-                    if let location, projects[p].scenes[s].shots[i].location == nil {
-                        projects[p].scenes[s].shots[i].location = location
+                    if let location {
+                        // The spot is saved at the shutter; the street name follows.
+                        if projects[p].scenes[s].shots[i].location == nil {
+                            projects[p].scenes[s].shots[i].location = location
+                        } else if projects[p].scenes[s].shots[i].location?.label == nil {
+                            projects[p].scenes[s].shots[i].location?.label = location.label
+                            projects[p].scenes[s].shots[i].location?.postcode = location.postcode
+                        }
+                        // A scene still called "Scene 3" takes the street's name.
+                        if let label = location.label, Self.isDefaultName(projects[p].scenes[s].name) {
+                            projects[p].scenes[s].name = label
+                            if projects[p].scenes[s].location == nil { projects[p].scenes[s].location = location }
+                        }
                     }
                 }
             }
         }
+        save()
+    }
+
+    // MARK: Auto scenes
+
+    /// A shot further than this from everything in its scene belongs to another place.
+    static let sceneRadius: Double = 80
+
+    struct AutoFiled: Equatable {
+        var shotID: UUID
+        var from: UUID
+        var to: UUID
+        var created: Bool
+    }
+    /// The last shot filed by where it was taken, for the chip's Undo.
+    var autoFiled: AutoFiled?
+
+    static func isDefaultName(_ name: String) -> Bool {
+        name.wholeMatch(of: #/Scene \d+/#) != nil
+    }
+
+    /// Metres from a spot to the nearest shot (or saved place) in a scene; nil if the scene
+    /// has no located shots yet.
+    private func distance(from loc: ShotLocation, to scene: ScoutScene) -> Double? {
+        let here = CLLocation(latitude: loc.latitude, longitude: loc.longitude)
+        let spots = scene.shots.compactMap(\.location) + [scene.location].compactMap { $0 }
+        return spots.map { here.distance(from: CLLocation(latitude: $0.latitude, longitude: $0.longitude)) }.min()
+    }
+
+    /// Where a new shot belongs: this scene if it's near (or nothing here is placed yet),
+    /// an earlier scene if you've come back to it, otherwise a new scene.
+    private func sceneForShot(at loc: ShotLocation?) -> (id: UUID, created: Bool) {
+        guard let loc, let d = distance(from: loc, to: currentScene), d > Self.sceneRadius else {
+            return (currentSceneID, false)
+        }
+        let back = currentProject.scenes
+            .filter { $0.id != currentSceneID }
+            .compactMap { sc in distance(from: loc, to: sc).map { (id: sc.id, d: $0) } }
+            .filter { $0.d <= Self.sceneRadius }
+            .min { $0.d < $1.d }
+        if let back { return (back.id, false) }
+        let scene = ScoutScene(name: "Scene \(currentProject.scenes.count + 1)", note: Format.shortDate(Date()), location: loc)
+        updateProject(currentProjectID) { $0.scenes.append(scene) }
+        return (scene.id, true)
+    }
+
+    /// The chip's Undo: the shot goes back to the scene you were on, and a scene made just
+    /// for it goes away.
+    func undoAutoFile() {
+        guard let a = autoFiled else { return }
+        autoFiled = nil
+        moveShot(a.shotID, to: a.from)
+        if a.created, scene(a.to)?.shots.isEmpty == true { deleteScene(a.to) }
+        currentSceneID = a.from
+        save()
+    }
+
+    /// Moves a shot into another scene. It takes that scene's next number.
+    func moveShot(_ id: UUID, to sceneID: UUID) {
+        guard var moving = shot(id), let target = scene(sceneID),
+              !target.shots.contains(where: { $0.id == id }) else { return }
+        moving.number = nextNumber(in: target)
+        for p in projects.indices {
+            for s in projects[p].scenes.indices { projects[p].scenes[s].shots.removeAll { $0.id == id } }
+        }
+        updateScene(sceneID) { $0.shots.append(moving) }
+        save()
+    }
+
+    /// Moves a shot into a scene of its own, named after its street when known.
+    func moveShotToNewScene(_ id: UUID) {
+        guard let moving = shot(id) else { return }
+        let scene = ScoutScene(
+            name: moving.location?.label ?? "Scene \(currentProject.scenes.count + 1)",
+            note: Format.shortDate(moving.capturedAt),
+            location: moving.location
+        )
+        updateProject(currentProjectID) { $0.scenes.append(scene) }
+        moveShot(id, to: scene.id)
+    }
+
+    /// Puts the scenes in the order their light comes round on the planned day (the shoot
+    /// day plan's order); scenes without a place or shots go last.
+    func sortScenesByLight() {
+        let plan = Exporter.dayPlan(currentProject.scenes, on: plannedDate()).map(\.scene.id)
+        sortScenes { plan.firstIndex(of: $0.id) }
+    }
+
+    /// Puts the scenes in the order they were shot.
+    func sortScenesByTime() {
+        sortScenes { sc in sc.shots.map(\.capturedAt).min().map { Int($0.timeIntervalSince1970) } }
+    }
+
+    private func sortScenes(by key: (ScoutScene) -> Int?) {
+        guard let p = projects.firstIndex(where: { $0.id == currentProjectID }) else { return }
+        projects[p].scenes = projects[p].scenes.enumerated()
+            .sorted { a, b in
+                let ka = key(a.element) ?? .max, kb = key(b.element) ?? .max
+                return ka != kb ? ka < kb : a.offset < b.offset
+            }
+            .map(\.element)
         save()
     }
 
