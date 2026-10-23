@@ -222,7 +222,7 @@ extension Exporter {
 
         // The frame, cropped to its lines.
         let imgRect = CGRect(x: r.minX, y: y, width: 315, height: 177)
-        if let image = ThumbCache.full(for: shot).flatMap({ printable($0, for: imgRect) }) {
+        if let image = printable(shot, for: imgRect) {
             ctx.cgContext.saveGState()
             UIRectClip(imgRect)
             let crop = fitCrop(aspect: shot.aspect.value, in: image.size)
@@ -773,7 +773,7 @@ extension Exporter {
                     let x = p + CGFloat(i % 2) * (cellW + gap)
                     let y = top + CGFloat(i / 2) * cellH
                     let rect = CGRect(x: x, y: y, width: cellW, height: imgH)
-                    if let image = ThumbCache.full(for: item.0).flatMap({ printable($0, for: rect) }) {
+                    if let image = printable(item.0, for: rect) {
                         ctx.cgContext.saveGState()
                         UIRectClip(rect)
                         let crop = fitCrop(aspect: item.0.aspect.value, in: image.size)

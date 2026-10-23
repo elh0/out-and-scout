@@ -483,7 +483,7 @@ enum Exporter {
                 let aspect = max(shot.aspect.value, 0.3)
                 let boxW = min(frameW, boxH * aspect)
                 let rect = CGRect(x: cFrame, y: top, width: boxW, height: min(boxH, boxW / aspect))
-                if let image = ThumbCache.full(for: shot).flatMap({ printable($0, for: rect) }) {
+                if let image = printable(shot, for: rect) {
                     ctx.cgContext.saveGState()
                     UIBezierPath(roundedRect: rect, cornerRadius: 3).addClip()
                     // The frame lines crop the still, as on screen.
@@ -537,6 +537,16 @@ enum Exporter {
 
     /// Shrinks a 12MP still to what the thumbnail needs at print resolution and makes it a
     /// JPEG, which the PDF embeds as is. Drawing the full still made each page tens of MB.
+    static func printable(_ shot: Shot, for rect: CGRect) -> UIImage? {
+        // Read small from the file and let go of it at once: decoding every full still in
+        // one go is what stalled a 66-shot export.
+        autoreleasepool { () -> UIImage? in
+            let px = min(2400, max(rect.width, rect.height) * 6)
+            guard let small = ThumbCache.downsampled(for: shot, maxPixel: px) else { return nil }
+            return small.jpegData(compressionQuality: 0.8).flatMap(UIImage.init(data:))
+        }
+    }
+
     static func printable(_ image: UIImage, for rect: CGRect) -> UIImage? {
         let fill = aspectFill(image.size, in: rect).size
         let target = CGSize(width: fill.width * 3, height: fill.height * 3)

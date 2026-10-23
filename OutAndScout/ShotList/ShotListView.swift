@@ -56,7 +56,7 @@ struct ShotListView: View {
             .animation(.snappy(duration: 0.28), value: store.showingExport)
 
             if let shot = enlarged {
-                ShotViewer(shot: shot) { enlarged = nil }
+                ShotViewer(shots: visible.map(\.shot), start: shot.id) { enlarged = nil }
                     .transition(.opacity)
                     .zIndex(2)
             }
@@ -676,29 +676,49 @@ struct PortraitShotRow: View {
 }
 
 /// One still, as big as the screen allows, cropped to its frame lines. Tap to close.
+/// Stills full screen, to show the director: swipe left and right through the shots in
+/// view, tap to close.
 struct ShotViewer: View {
     @Environment(ScoutStore.self) private var store
-    let shot: Shot
+    let shots: [Shot]
     let onClose: () -> Void
+    @State private var current: UUID
     @State private var saving = false
+
+    init(shots: [Shot], start: UUID, onClose: @escaping () -> Void) {
+        self.shots = shots
+        self.onClose = onClose
+        _current = State(initialValue: start)
+    }
+
+    private var shot: Shot { shots.first { $0.id == current } ?? shots[0] }
 
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
 
-            Color(hex: 0x2B2B28)
-                .overlay {
-                    if let image = ThumbCache.full(for: shot) {
-                        Image(uiImage: image).resizable().scaledToFill()
-                    }
+            TabView(selection: $current) {
+                ForEach(shots) { s in
+                    Color(hex: 0x2B2B28)
+                        .overlay {
+                            if let image = ThumbCache.screen(for: s) {
+                                Image(uiImage: image).resizable().scaledToFill()
+                            }
+                        }
+                        .aspectRatio(s.aspect.value, contentMode: .fit)
+                        .clipped()
+                        .padding(.vertical, Space.xs)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .tag(s.id)
                 }
-                .aspectRatio(shot.aspect.value, contentMode: .fit)
-                .clipped()
-                .padding(.vertical, Space.xs)
+            }
+            .tabViewStyle(.page(indexDisplayMode: .never))
+            .ignoresSafeArea()
 
             VStack {
                 Spacer()
-                Text("\(shot.number) · \(shot.caption.isEmpty ? "Untitled" : shot.caption) · \(Format.mm(shot.lensMM))mm · \(shot.aspect.display)")
+                Text("\(shot.number) · \(shot.caption.isEmpty ? "Untitled" : shot.caption) · \(Format.mm(shot.lensMM))mm · \(shot.aspect.display)"
+                     + (shots.count > 1 ? "   \((shots.firstIndex { $0.id == current } ?? 0) + 1) / \(shots.count)" : ""))
                     .font(.osData)
                     .foregroundStyle(Sheet.text)
                     .padding(.horizontal, Space.xs)

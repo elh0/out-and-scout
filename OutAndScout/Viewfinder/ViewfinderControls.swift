@@ -1,3 +1,4 @@
+import ImageIO
 import SwiftUI
 
 // The Viewfinder chrome, laid out like the v3c prototype: Geist Mono, small type,
@@ -907,6 +908,33 @@ enum ThumbCache {
     static func full(for shot: Shot) -> UIImage? {
         guard let url = ScoutStore.photoURL(for: shot) else { return nil }
         return UIImage(contentsOfFile: url.path)
+    }
+
+    /// Big enough to fill the screen (2400 px on the long side), kept like the thumbs, for
+    /// flicking through stills full screen.
+    static func screen(for shot: Shot) -> UIImage? {
+        guard let url = ScoutStore.photoURL(for: shot) else { return nil }
+        let key = ("S" + url.lastPathComponent) as NSString
+        if let hit = cache.object(forKey: key) { return hit }
+        guard let image = downsampled(for: shot, maxPixel: 2400) else { return nil }
+        cache.setObject(image, forKey: key)
+        return image
+    }
+
+    /// Reads the still straight at a smaller size, without ever decoding the full 12 MP
+    /// picture (about 48 MB each), so long exports and paging stay light on memory.
+    static func downsampled(for shot: Shot, maxPixel: CGFloat) -> UIImage? {
+        guard let url = ScoutStore.photoURL(for: shot) else { return nil }
+        return autoreleasepool { () -> UIImage? in
+            guard let source = CGImageSourceCreateWithURL(url as CFURL, [kCGImageSourceShouldCache: false] as CFDictionary) else { return nil }
+            let options: [CFString: Any] = [
+                kCGImageSourceCreateThumbnailFromImageAlways: true,
+                kCGImageSourceCreateThumbnailWithTransform: true,
+                kCGImageSourceShouldCacheImmediately: true,
+                kCGImageSourceThumbnailMaxPixelSize: maxPixel,
+            ]
+            return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary).map { UIImage(cgImage: $0) }
+        }
     }
 }
 
