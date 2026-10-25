@@ -132,12 +132,6 @@ struct PortraitTimeRow: View {
                 word("Sun", on: store.overlays.sunPath) { store.toggle(\.sunPath) }
                 word("Grid", on: store.overlays.grid) { store.toggle(\.grid) }
                 word("Level", on: store.overlays.level) { store.toggle(\.level) }
-                word("Sky", on: store.currentScene.skyline != nil) {
-                    let c = location.coordinate
-                    if let b = motion.heading ?? location.heading {
-                        store.startSweep(store.currentSceneID, bearing: b, latitude: c.latitude, longitude: c.longitude)
-                    }
-                }
             }
             SunTimeline(sunDay: sunDay, planned: planned)
         }

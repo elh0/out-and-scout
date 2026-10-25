@@ -346,8 +346,8 @@ struct ViewfinderView: View {
         store.addShot(shot, caption: "")
         store.toast = nil
         store.justSaved = shot.id
-        // The first shot at a spot facing the low sun: offer the sky sweep.
-        store.offerSweepIfUseful(bearing: shot.bearing, latitude: coord.latitude, longitude: coord.longitude)
+        // The sky sweep offer is off for now (Elliot, 25 Oct 2026: confusing); the sun path
+        // is being redesigned first.
 
         let sensorWidth = store.kit.mode.widthMM * store.kit.lenses.squeeze
             / (ViewfinderFrame.sensorOnSide(aspect: store.aspect, portrait: portrait) ? store.kit.frameAspect : 1)

@@ -253,14 +253,6 @@ struct RailToggles: View {
             RailToggle(symbol: "sun.horizon", label: "Sun Path", on: store.overlays.sunPath) { store.toggle(\.sunPath) }
             RailToggle(symbol: "grid", label: "Grid", on: store.overlays.grid) { store.toggle(\.grid) }
             RailToggle(symbol: "level", label: "Level", on: store.overlays.level) { store.toggle(\.level) }
-            // Sweep the sky here any time, not only when it's offered after a shot.
-            RailToggle(symbol: "sun.horizon.fill", label: "Sky Sweep", on: store.currentScene.skyline != nil) {
-                let c = location.coordinate
-                if let b = motion.heading ?? location.heading {
-                    store.startSweep(store.currentSceneID, bearing: b, latitude: c.latitude, longitude: c.longitude)
-                }
-                dismiss()
-            }
             // Portrait layout, picked by hand rather than by tilting the phone.
             LayoutSwitch(vertical: true)
         }

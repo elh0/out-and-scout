@@ -106,6 +106,7 @@ struct ViewfinderFrame: View {
                             at: Date(), latitude: location.coordinate.latitude, longitude: location.coordinate.longitude),
                         // After sunset, the moon takes the sun's place.
                         moon: sun.elevation < -1 ? moon : nil,
+                        time: planned,
                         projector: Projector(heading: heading, elevation: motion.cameraElevation, hfov: 2 * atan(tan(camera.previewHFOV * .pi / 360) * shrink) * 360 / .pi, size: size)
                     )
                 }
@@ -517,7 +518,7 @@ struct Projector {
 }
 
 /// The day's sun path: a solid line, golden-hour stretches in orange, a dot and label on
-/// each hour, the sun at the chosen time (filled) with its azimuth and elevation, and a ring
+/// each hour, the sun at the chosen time (filled) with that time beside it, and a ring
 /// for where it is now when the time is scrubbed. Off-screen, an edge marker says which way.
 struct SunPathOverlay: View {
     let sunDay: SunDay?
@@ -525,6 +526,8 @@ struct SunPathOverlay: View {
     var nowSun: SunPosition?
     /// Set once the sun is down: drawn instead of the sun, with its phase.
     var moon: MoonInfo?
+    /// The chosen time, written beside the sun so it moves with it as you scrub.
+    var time: Date?
     let projector: Projector
 
     var body: some View {
@@ -554,7 +557,9 @@ struct SunPathOverlay: View {
                 ctx.stroke(arc, with: .color(Palette.paper.opacity(0.55)), lineWidth: 1)
                 ctx.stroke(golden, with: .color(Palette.sun.opacity(0.85)), style: StrokeStyle(lineWidth: 2, lineCap: .round))
 
-                for (p, h) in hours {
+                // Hour labels step aside for the sun and its time, so the two never overlap.
+                let sunAt = moon == nil ? projector.point(azimuth: sun.azimuth, elevation: sun.elevation) : nil
+                for (p, h) in hours where sunAt.map({ hypot($0.x - p.x, $0.y - p.y) > 34 }) ?? true {
                     ctx.fill(Path(ellipseIn: CGRect(x: p.x - 2, y: p.y - 2, width: 4, height: 4)), with: .color(Palette.paper.opacity(0.8)))
                     let label = Text(String(format: "%02d", h)).font(Fonts.mono(9)).foregroundColor(Palette.paper.opacity(0.7))
                     ctx.draw(label, at: CGPoint(x: p.x, y: p.y + 9), anchor: .top)
@@ -587,14 +592,19 @@ struct SunPathOverlay: View {
                 let r: CGFloat = 7
                 let dot = Path(ellipseIn: CGRect(x: p.x - r, y: p.y - r, width: r * 2, height: r * 2))
                 ctx.fill(dot, with: .color(Palette.sun))
-                let readout = ctx.resolve(Text("Az \(Int(sun.azimuth.rounded()))° · El \(Int(sun.elevation.rounded()))°")
-                    .font(.osNumSmall).foregroundColor(Palette.paper))
-                // Keep the readout inside the frame: flip sides near the right edge and hold it
-                // clear of the top and bottom.
-                let w = readout.measure(in: size).width
-                let right = p.x + r + 5 + w < size.width - 6
-                let y = min(max(p.y, 12), size.height - 12)
-                ctx.draw(readout, at: CGPoint(x: right ? p.x + r + 5 : max(p.x - r - 5, w + 6), y: y), anchor: right ? .leading : .trailing)
+                // Just the time, on a dark pill so it reads over sky and leaves (Elliot, 25 Oct
+                // 2026: the Az/El readout was noise). Above the sun, flipped below near the top.
+                if let time {
+                    let label = ctx.resolve(Text(Format.time(time)).font(.osNumSmall).foregroundColor(Palette.paper))
+                    let m = label.measure(in: size)
+                    let pill = CGSize(width: m.width + 12, height: m.height + 6)
+                    let above = p.y - r - 6 - pill.height > 4
+                    let cy = above ? p.y - r - 6 - pill.height / 2 : p.y + r + 6 + pill.height / 2
+                    let cx = min(max(p.x, pill.width / 2 + 4), size.width - pill.width / 2 - 4)
+                    let box = CGRect(x: cx - pill.width / 2, y: cy - pill.height / 2, width: pill.width, height: pill.height)
+                    ctx.fill(Path(roundedRect: box, cornerRadius: pill.height / 2), with: .color(Palette.ink.opacity(0.6)))
+                    ctx.draw(label, at: CGPoint(x: cx, y: cy), anchor: .center)
+                }
             } else {
                 // Off-screen: arrow at the edge pointing the way to turn.
                 let left = Bearing.difference(sun.azimuth, projector.heading) < 0
