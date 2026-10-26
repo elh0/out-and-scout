@@ -45,7 +45,8 @@ final class MotionService {
                 : atan2(g.y, abs(g.x)) * 180 / .pi * (g.x < 0 ? 1 : -1)
             let azimuth = Self.cameraAzimuth(motion.attitude.rotationMatrix, gravity: g)
             MainActor.assumeIsolated {
-                self.cameraElevation = elevation
+                // Eased a little, like the heading, so the sun path doesn't shiver.
+                self.cameraElevation += (elevation - self.cameraElevation) * 0.35
                 self.roll = roll
                 if let azimuth, abs(elevation) < 80 {
                     // Light smoothing on the circle so 359° → 1° doesn't swing through 180°.

@@ -497,7 +497,10 @@ struct FocusSquare: View {
 }
 
 /// Projects a sun position (azimuth, elevation) into the viewfinder.
-/// Rectilinear projection; ignores roll, which is fine for a phone held roughly level.
+/// A true rectilinear (pinhole) projection, as the lens itself draws: the sky direction is
+/// turned into the camera's frame and divided by depth, so the day's arc comes out as one
+/// clean curve. (Projecting azimuth and elevation separately bent it into a wave.) Ignores
+/// roll, which is fine for a phone held roughly level.
 struct Projector {
     var heading: Double
     var elevation: Double
@@ -506,13 +509,20 @@ struct Projector {
 
     func point(azimuth: Double, elevation el: Double) -> CGPoint? {
         let rad = { (d: Double) in d * .pi / 180 }
-        let dx = Bearing.difference(azimuth, heading)
-        let dy = el - elevation
-        guard abs(dx) < 85, abs(dy) < 85 else { return nil }
+        // Directions as east, north, up.
+        let a = rad(azimuth), e = rad(el), h = rad(heading), p = rad(elevation)
+        let d = (cos(e) * sin(a), cos(e) * cos(a), sin(e))
+        let forward = (cos(p) * sin(h), cos(p) * cos(h), sin(p))
+        let right = (cos(h), -sin(h), 0.0)
+        let up = (-sin(p) * sin(h), -sin(p) * cos(h), cos(p))
+        let dot = { (u: (Double, Double, Double), v: (Double, Double, Double)) in u.0 * v.0 + u.1 * v.1 + u.2 * v.2 }
+        let z = dot(d, forward)
+        // Behind the camera, or so far off to the side it would fly off to infinity.
+        guard z > 0.09 else { return nil }
         let halfW = tan(rad(hfov / 2))
         let halfH = halfW * Double(size.height / max(size.width, 1))
-        let x = Double(size.width) / 2 * (1 + tan(rad(dx)) / halfW)
-        let y = Double(size.height) / 2 * (1 - tan(rad(dy)) / halfH)
+        let x = Double(size.width) / 2 * (1 + dot(d, right) / z / halfW)
+        let y = Double(size.height) / 2 * (1 - dot(d, up) / z / halfH)
         return CGPoint(x: x, y: y)
     }
 }
@@ -534,26 +544,29 @@ struct SunPathOverlay: View {
         Canvas { ctx, size in
             let bounds = CGRect(origin: .zero, size: size)
             if let day = sunDay {
-                var arc = Path()
-                var golden = Path()
-                var started = false
-                var goldenStarted = false
+                // Runs of on-screen points, every ten minutes, drawn as smooth curves.
+                var arcRuns: [[CGPoint]] = [[]]
+                var goldenRuns: [[CGPoint]] = [[]]
                 var hours: [(CGPoint, Int)] = []
                 let calendar = Calendar.current
                 for s in day.samples where s.position.elevation > -8 {
-                    guard let p = projector.point(azimuth: s.position.azimuth, elevation: s.position.elevation) else {
-                        started = false; goldenStarted = false; continue
-                    }
-                    if started { arc.addLine(to: p) } else { arc.move(to: p); started = true }
-                    let isGolden = s.position.elevation >= -4 && s.position.elevation < 6
-                    if isGolden {
-                        if goldenStarted { golden.addLine(to: p) } else { golden.move(to: p); goldenStarted = true }
-                    } else {
-                        goldenStarted = false
-                    }
                     let c = calendar.dateComponents([.hour, .minute], from: s.time)
+                    guard (c.minute ?? 0) % 10 == 0 else { continue }
+                    guard let p = projector.point(azimuth: s.position.azimuth, elevation: s.position.elevation) else {
+                        arcRuns.append([]); goldenRuns.append([]); continue
+                    }
+                    arcRuns[arcRuns.count - 1].append(p)
+                    if s.position.elevation >= -4 && s.position.elevation < 6 {
+                        goldenRuns[goldenRuns.count - 1].append(p)
+                    } else if !(goldenRuns.last?.isEmpty ?? true) {
+                        goldenRuns.append([])
+                    }
                     if c.minute == 0, s.position.elevation > -4, bounds.contains(p) { hours.append((p, c.hour ?? 0)) }
                 }
+                var arc = Path()
+                arcRuns.forEach { Self.addSmooth($0, to: &arc) }
+                var golden = Path()
+                goldenRuns.forEach { Self.addSmooth($0, to: &golden) }
                 ctx.stroke(arc, with: .color(Palette.paper.opacity(0.55)), lineWidth: 1)
                 ctx.stroke(golden, with: .color(Palette.sun.opacity(0.85)), style: StrokeStyle(lineWidth: 2, lineCap: .round))
 
@@ -623,6 +636,21 @@ struct SunPathOverlay: View {
             }
         }
         .allowsHitTesting(false)
+    }
+
+    /// A curve through the points (Catmull-Rom as cubic Béziers), so the arc has no corners.
+    static func addSmooth(_ pts: [CGPoint], to path: inout Path) {
+        guard let first = pts.first else { return }
+        path.move(to: first)
+        guard pts.count > 1 else { return }
+        for i in 0..<(pts.count - 1) {
+            let p0 = pts[max(i - 1, 0)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[min(i + 2, pts.count - 1)]
+            path.addCurve(
+                to: p2,
+                control1: CGPoint(x: p1.x + (p2.x - p0.x) / 6, y: p1.y + (p2.y - p0.y) / 6),
+                control2: CGPoint(x: p2.x - (p3.x - p1.x) / 6, y: p2.y - (p3.y - p1.y) / 6)
+            )
+        }
     }
 
     /// The moon where it is, lit to its phase, with "Moon · Waxing gibbous · 78% lit"; an arrow
