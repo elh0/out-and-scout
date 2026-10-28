@@ -353,15 +353,24 @@ struct RightRail: View {
             .frame(height: VFGrid.row)
         }
         .frame(maxWidth: .infinity)
-        // The ladder opens beside the column, over the edge of the picture.
+        // While the ladder is open, a tap anywhere else closes it (Elliot, 28 Oct 2026).
+        .background {
+            if ladderOpen && !hidden {
+                Color.black.opacity(0.001)
+                    .frame(width: 5000, height: 5000)
+                    .contentShape(Rectangle())
+                    .onTapGesture { ladderOpen = false }
+            }
+        }
+        // The ladder opens beside the column, over the edge of the picture, with a soft fade.
         .overlay(alignment: .topLeading) {
             if ladderOpen && !hidden {
                 LensLadder { ladderOpen = false }
                     .alignmentGuide(.leading) { $0.width + 6 }
-                    .transition(.opacity.combined(with: .offset(x: 6)))
+                    .transition(.opacity.combined(with: .scale(scale: 0.96, anchor: .topTrailing)))
             }
         }
-        .animation(.snappy(duration: 0.2), value: ladderOpen)
+        .animation(.easeOut(duration: 0.25), value: ladderOpen)
         .onChange(of: store.panel) { ladderOpen = false }
         .onChange(of: hidden) { ladderOpen = false }
     }
@@ -724,22 +733,25 @@ struct LightNow: View {
     var body: some View {
         let moved = store.plannedMinutes != nil
         let golden = sunDay?.goldenWindows.contains { $0.contains(planned) } ?? false
-        HStack(spacing: 10) {
-            Text(((moved ? "At \(Format.time(planned))" : "Now") + " · " + read).uppercased())
+        // A fixed width, so the day's line beside it never jumps as you drag: only the
+        // light changes here; the time rides beside the sun on the frame (Elliot, 28 Oct 2026).
+        HStack(spacing: 4) {
+            Text(read.uppercased())
                 .font(Fonts.mono(10))
                 .tracking(0.6)
                 .foregroundStyle(golden ? Palette.sun : Palette.paper)
                 .lineLimit(1)
-                .minimumScaleFactor(0.8)
-            if moved {
-                Button { store.plannedMinutes = nil } label: {
-                    Text("↺ NOW").font(Fonts.mono(10)).tracking(0.6).foregroundStyle(Ink.muted)
-                        .underline(color: Palette.nightRule)
-                        .frame(minHeight: 44).contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("back to now")
+                .minimumScaleFactor(0.7)
+                .frame(width: 132, alignment: .leading)
+            Button { store.plannedMinutes = nil } label: {
+                Text("↺").font(Fonts.mono(12)).foregroundStyle(Ink.muted)
+                    .frame(width: 28, height: 44).contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .opacity(moved ? 1 : 0)
+            .disabled(!moved)
+            .accessibilityHidden(!moved)
+            .accessibilityLabel("back to now")
         }
     }
 
@@ -817,6 +829,8 @@ struct SunTimeline: View {
                 DragGesture(minimumDistance: 0).onChanged { v in
                     let f = min(max(Double(v.location.x / max(w, 1)), 0), 1)
                     store.plannedMinutes = ((lo + f * span) / 5).rounded() * 5
+                    // Moving the time shows the sun's path, so you can see where it goes.
+                    if !store.overlays.sunPath { store.toggle(\.sunPath) }
                 }
             )
             .onTapGesture(count: 2) { store.plannedMinutes = nil }

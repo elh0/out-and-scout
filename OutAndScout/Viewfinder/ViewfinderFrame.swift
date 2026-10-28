@@ -104,8 +104,9 @@ struct ViewfinderFrame: View {
                         // When the time is scrubbed, a ring marks where the sun is right now.
                         nowSun: store.plannedMinutes == nil ? nil : SunCalculator.position(
                             at: Date(), latitude: location.coordinate.latitude, longitude: location.coordinate.longitude),
-                        // After sunset, the moon takes the sun's place.
-                        moon: sun.elevation < -1 ? moon : nil,
+                        // After sunset, the moon takes the sun's place, but not while you
+                        // drag the time: then the sun stays the one mark, so nothing jumps.
+                        moon: sun.elevation < -1 && store.plannedMinutes == nil ? moon : nil,
                         time: planned,
                         projector: Projector(heading: heading, elevation: motion.cameraElevation, hfov: 2 * atan(tan(camera.previewHFOV * .pi / 360) * shrink) * 360 / .pi, size: size)
                     )
@@ -604,7 +605,12 @@ struct SunPathOverlay: View {
                bounds.insetBy(dx: -8, dy: -8).contains(p) {
                 let r: CGFloat = 7
                 let dot = Path(ellipseIn: CGRect(x: p.x - r, y: p.y - r, width: r * 2, height: r * 2))
-                ctx.fill(dot, with: .color(Palette.sun))
+                // Below the horizon it's an outline, so you can still follow it.
+                if sun.elevation < -1 {
+                    ctx.stroke(dot, with: .color(Palette.sun.opacity(0.8)), lineWidth: 1.5)
+                } else {
+                    ctx.fill(dot, with: .color(Palette.sun))
+                }
                 // Just the time, on a dark pill so it reads over sky and leaves (Elliot, 25 Oct
                 // 2026: the Az/El readout was noise). Above the sun, flipped below near the top.
                 if let time {
@@ -631,7 +637,7 @@ struct SunPathOverlay: View {
                 }
                 tri.closeSubpath()
                 ctx.fill(tri, with: .color(Palette.sun))
-                let label = Text("Sun \(Int(sun.azimuth.rounded()))°").font(.osDataSmall).foregroundColor(Palette.paper)
+                let label = Text(time.map { "Sun \(Format.time($0))" } ?? "Sun").font(.osDataSmall).foregroundColor(Palette.paper)
                 ctx.draw(label, at: CGPoint(x: left ? x + 10 : x - 10, y: y + 16), anchor: left ? .leading : .trailing)
             }
         }
