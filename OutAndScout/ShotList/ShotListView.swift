@@ -361,12 +361,7 @@ struct ShotListView: View {
             if let item = selected {
                 let shot = item.shot
                 VStack(alignment: .leading, spacing: 10) {
-                    Color(hex: 0x2B2B28)
-                        .overlay {
-                            if let image = ThumbCache.large(for: shot) {
-                                Image(uiImage: image).resizable().scaledToFill()
-                            }
-                        }
+                    StillImage(shot: shot, size: .large)
                         .aspectRatio(16 / 9, contentMode: .fit)
                         .frame(maxWidth: .infinity)
                         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
@@ -699,12 +694,7 @@ struct ShotViewer: View {
 
             TabView(selection: $current) {
                 ForEach(shots) { s in
-                    Color(hex: 0x2B2B28)
-                        .overlay {
-                            if let image = ThumbCache.screen(for: s) {
-                                Image(uiImage: image).resizable().scaledToFill()
-                            }
-                        }
+                    StillImage(shot: s, size: .screen)
                         .aspectRatio(s.aspect.value, contentMode: .fit)
                         .clipped()
                         .padding(.vertical, Space.xs)
@@ -714,6 +704,13 @@ struct ShotViewer: View {
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
             .ignoresSafeArea()
+            // Get the neighbours ready before you swipe to them.
+            .task(id: current) {
+                guard let i = shots.firstIndex(where: { $0.id == current }) else { return }
+                for j in [i + 1, i - 1, i + 2] where shots.indices.contains(j) {
+                    _ = await ThumbCache.load(shots[j], .screen)
+                }
+            }
 
             VStack {
                 Spacer()

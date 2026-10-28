@@ -860,57 +860,117 @@ struct ShotThumb: View {
     var body: some View {
         // The placeholder takes the frame it's given and the photo fills it, so a tall
         // still is cropped to the box instead of spilling over neighbouring rows.
-        Color(hex: 0x2B2B28)
-            .overlay {
-                if let image = ThumbCache.image(for: shot) {
-                    Image(uiImage: image).resizable().scaledToFill()
-                }
-            }
+        StillImage(shot: shot, size: .thumb)
             .clipShape(RoundedRectangle(cornerRadius: Radius.readout, style: .continuous))
     }
 }
 
-enum ThumbCache {
-    private static let cache = NSCache<NSString, UIImage>()
+/// A still that loads in the background: grey until it's ready, then the photo filling the
+/// box. Never decodes on the main thread, so taps don't wait on photos (Elliot, 28 Oct 2026:
+/// slow with a big library).
+struct StillImage: View {
+    let shot: Shot
+    var size: ThumbCache.Size = .thumb
+    @State private var image: UIImage?
 
-    static func image(for shot: Shot) -> UIImage? {
-        guard let url = ScoutStore.photoURL(for: shot) else { return nil }
-        let key = url.lastPathComponent as NSString
-        if let hit = cache.object(forKey: key) { return hit }
-        guard let full = UIImage(contentsOfFile: url.path) else { return nil }
-        // Keep the still's own shape; frame lines crop it when it's drawn, and can change.
-        let size = full.size.width > 0 ? CGSize(width: 480, height: 480 * full.size.height / full.size.width) : full.size
-        let thumb = full.preparingThumbnail(of: size) ?? full
-        cache.setObject(thumb, forKey: key)
-        return thumb
+    init(shot: Shot, size: ThumbCache.Size = .thumb) {
+        self.shot = shot
+        self.size = size
+        // Already in memory: show it in the first frame, no flicker.
+        _image = State(initialValue: ThumbCache.cached(shot, size))
     }
 
-    /// A sharper copy for big panes (the iPad shot list), 1400 px wide, kept like the thumbs.
-    static func large(for shot: Shot) -> UIImage? {
-        guard let url = ScoutStore.photoURL(for: shot) else { return nil }
-        let key = ("L" + url.lastPathComponent) as NSString
-        if let hit = cache.object(forKey: key) { return hit }
-        guard let full = UIImage(contentsOfFile: url.path) else { return nil }
-        let size = full.size.width > 1400 ? CGSize(width: 1400, height: 1400 * full.size.height / full.size.width) : full.size
-        let big = full.preparingThumbnail(of: size) ?? full
-        cache.setObject(big, forKey: key)
-        return big
+    var body: some View {
+        Color(hex: 0x2B2B28)
+            .overlay {
+                if let image { Image(uiImage: image).resizable().scaledToFill() }
+            }
+            .task(id: "\(shot.photoFile ?? "")·\(size.rawValue)") {
+                if let hit = ThumbCache.cached(shot, size) { image = hit; return }
+                image = nil
+                image = await ThumbCache.load(shot, size)
+            }
+    }
+}
+
+enum ThumbCache {
+    enum Size: Int, Sendable {
+        /// Lists and squares: 480 px wide, also kept as a small file beside the library.
+        case thumb = 480
+        /// The iPad's big pane.
+        case large = 1400
+        /// Full screen, for flicking through with the director.
+        case screen = 2400
+    }
+
+    private static let cache: NSCache<NSString, UIImage> = {
+        let c = NSCache<NSString, UIImage>()
+        // About 150 MB of decoded pictures; thumbs cost little, so hundreds stay.
+        c.totalCostLimit = 150_000_000
+        return c
+    }()
+
+    /// Small copies of every still, made once. A cache folder: iOS may clear it and they're
+    /// simply made again.
+    static var thumbsFolder: URL {
+        FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("thumbs", isDirectory: true)
+    }
+
+    private static func key(_ shot: Shot, _ size: Size) -> NSString? {
+        shot.photoFile.map { "\(size.rawValue)/\($0)" as NSString }
+    }
+
+    /// Only what's already in memory; never touches the disk.
+    static func cached(_ shot: Shot, _ size: Size) -> UIImage? {
+        key(shot, size).flatMap { cache.object(forKey: $0) }
+    }
+
+    /// Loads off the main thread, keeps it in memory, and for thumbs keeps a small file too.
+    static func load(_ shot: Shot, _ size: Size) async -> UIImage? {
+        if let hit = cached(shot, size) { return hit }
+        guard let key = key(shot, size) else { return nil }
+        let image = await Task.detached(priority: .userInitiated) { () -> UIImage? in
+            decode(shot, size)
+        }.value
+        if let image {
+            let cost = Int(image.size.width * image.size.height * image.scale * image.scale * 4)
+            cache.setObject(image, forKey: key, cost: cost)
+        }
+        return image
+    }
+
+    /// Reads a thumb from its small file when there is one; otherwise shrinks the still
+    /// straight from the file (never the full 12 MP picture) and, for thumbs, saves the copy.
+    private static func decode(_ shot: Shot, _ size: Size) -> UIImage? {
+        guard let file = shot.photoFile else { return nil }
+        let small = thumbsFolder.appendingPathComponent(file + ".jpg")
+        if size == .thumb, let data = try? Data(contentsOf: small), let image = UIImage(data: data) {
+            return image.preparingForDisplay() ?? image
+        }
+        guard let image = downsampled(for: shot, maxPixel: CGFloat(size.rawValue)) else { return nil }
+        if size == .thumb, let jpeg = image.jpegData(compressionQuality: 0.8) {
+            try? FileManager.default.createDirectory(at: thumbsFolder, withIntermediateDirectories: true)
+            try? jpeg.write(to: small, options: .atomic)
+        }
+        return image
+    }
+
+    /// Makes the small copies for a library from before they existed, quietly, a few at a time.
+    static func backfill(_ shots: [Shot]) {
+        let files = shots.compactMap(\.photoFile)
+        Task.detached(priority: .background) {
+            for (file, shot) in zip(files, shots.filter { $0.photoFile != nil }) {
+                let small = thumbsFolder.appendingPathComponent(file + ".jpg")
+                if FileManager.default.fileExists(atPath: small.path) { continue }
+                _ = autoreleasepool { decode(shot, .thumb) }
+            }
+        }
     }
 
     static func full(for shot: Shot) -> UIImage? {
         guard let url = ScoutStore.photoURL(for: shot) else { return nil }
         return UIImage(contentsOfFile: url.path)
-    }
-
-    /// Big enough to fill the screen (2400 px on the long side), kept like the thumbs, for
-    /// flicking through stills full screen.
-    static func screen(for shot: Shot) -> UIImage? {
-        guard let url = ScoutStore.photoURL(for: shot) else { return nil }
-        let key = ("S" + url.lastPathComponent) as NSString
-        if let hit = cache.object(forKey: key) { return hit }
-        guard let image = downsampled(for: shot, maxPixel: 2400) else { return nil }
-        cache.setObject(image, forKey: key)
-        return image
     }
 
     /// Reads the still straight at a smaller size, without ever decoding the full 12 MP

@@ -138,6 +138,8 @@ final class ScoutStore {
             locationChoice = nil
         }
         fixOldLowercaseNames()
+        // Small copies for stills taken before they were kept.
+        ThumbCache.backfill(projects.flatMap { $0.scenes.flatMap(\.shots) })
     }
 
     #if DEBUG
@@ -486,6 +488,8 @@ final class ScoutStore {
             stillAspect: p.stillAspect
         )
         updateScene(target.id) { $0.shots.append(shot) }
+        // Make its small copy now, in the background, so lists show it at once.
+        Task { _ = await ThumbCache.load(shot, .thumb) }
         if target.id != from {
             currentSceneID = target.id
             autoFiled = AutoFiled(shotID: shot.id, from: from, to: target.id, created: target.created)
@@ -793,13 +797,19 @@ final class ScoutStore {
             kit: kit, lensMM: lensMM, aspect: aspect, customAspects: customAspects,
             overlays: overlays, locationChoice: locationChoice
         )
-        do {
-            let data = try JSONEncoder.scout.encode(snap)
-            try data.write(to: fileURL, options: .atomic)
-        } catch {
-            toast = "Couldn't save"
+        // Written in the background, in order, so a big library never holds up a tap.
+        let url = fileURL
+        Self.saveQueue.async {
+            do {
+                let data = try JSONEncoder.scout.encode(snap)
+                try data.write(to: url, options: .atomic)
+            } catch {
+                Task { @MainActor in self.toast = "Couldn't save" }
+            }
         }
     }
+
+    private static let saveQueue = DispatchQueue(label: "outandscout.save", qos: .utility)
 
     nonisolated static var documents: URL {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
