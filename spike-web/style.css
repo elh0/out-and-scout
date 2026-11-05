@@ -1,0 +1,8 @@
+:root { --ink:#0B0B0A; --paper:#F3F3F0; --grey:#8A8A83; }
+body { margin:0; padding:32px 16px; background:var(--paper); color:var(--ink); font:14px/1.6 ui-monospace, "Geist Mono", Menlo, monospace; }
+main { max-width:560px; margin:0 auto; }
+h1 { font-size:inherit; font-weight:inherit; text-transform:uppercase; letter-spacing:.06em; }
+.q { color:var(--grey); }
+button { font:inherit; text-transform:uppercase; background:var(--ink); color:var(--paper); border:0; padding:8px 14px; cursor:pointer; }
+input { font:inherit; width:100%; box-sizing:border-box; padding:8px; border:1px solid var(--grey); background:transparent; color:inherit; }
+pre { white-space:pre-wrap; color:var(--grey); }

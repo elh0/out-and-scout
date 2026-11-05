@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sync Spike Public</title><link rel="stylesheet" href="style.css"></head>
+<body><main>
+<h1>Public spike</h1>
+<p class="q">Reads public.html#&lt;id&gt; from the public database. No sign-in.</p>
+<p>id: <span id="id">-</span><br>title: <span id="title">-</span><br>note: <span id="note">-</span><br>expires: <span id="exp">-</span></p>
+<pre id="log"></pre>
+</main>
+<script src="token.js"></script>
+<script src="https://cdn.apple-cloudkit.com/ck/2/cloudkit.js"></script>
+<script src="spike.js"></script>
+<script>
+async function load() {
+  const id = location.hash.slice(1);
+  $('id').textContent = id || '(add #id to the url)';
+  if (!id) return;
+  const r = await container.publicCloudDatabase.fetchRecords([id]);
+  if (r.hasErrors) return say('read error: ' + JSON.stringify(r.errors[0]));
+  const f = r.records[0].fields;
+  $('title').textContent = f.title?.value; $('note').textContent = f.note?.value;
+  $('exp').textContent = f.expiresAt ? new Date(f.expiresAt.value).toDateString() : '-';
+  say('public read ok, no sign-in');
+}
+window.onhashchange = load;
+load().catch(e => say('threw: ' + (e.ckErrorCode || '') + ' ' + (e.reason || e)));
+</script>
+</body></html>

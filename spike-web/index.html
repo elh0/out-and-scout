@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sync Spike Private</title><link rel="stylesheet" href="style.css"></head>
+<body><main>
+<h1>Private spike</h1>
+<p class="q">Signs in with Apple ID, reads Scouts / spike-test, edits the note, saves it.</p>
+<div id="apple-sign-in-button"></div><div id="apple-sign-out-button"></div>
+<p>title: <span id="title">-</span><br>modified: <span id="mod">-</span></p>
+<p><input id="note" placeholder="note"></p>
+<p><button id="read">Read</button> <button id="save">Save edit</button></p>
+<pre id="log"></pre>
+<p class="q"><a href="public.html">public read test</a></p>
+</main>
+<script src="token.js"></script>
+<script src="https://cdn.apple-cloudkit.com/ck/2/cloudkit.js"></script>
+<script src="spike.js"></script>
+<script>
+const zoneID = { zoneName: 'Scouts' };
+let record = null;
+const db = () => container.privateCloudDatabase;
+async function read() {
+  const r = await db().fetchRecords([{ recordName: 'spike-test', zoneID }]);
+  if (r.hasErrors) return say('read error: ' + JSON.stringify(r.errors[0]));
+  record = r.records[0];
+  $('title').textContent = record.fields.title?.value ?? '';
+  $('note').value = record.fields.note?.value ?? '';
+  $('mod').textContent = new Date(record.fields.modifiedAt?.value ?? record.modified.timestamp).toLocaleTimeString();
+  say('read ok, tag ' + record.recordChangeTag);
+}
+async function save() {
+  if (!record) return say('read first');
+  const r = await db().saveRecords([{
+    recordType: record.recordType, recordName: record.recordName, zoneID,
+    recordChangeTag: record.recordChangeTag,
+    fields: { title: { value: record.fields.title?.value ?? '' }, note: { value: $('note').value }, modifiedAt: { value: Date.now() } }
+  }]);
+  if (r.hasErrors) return say('save error: ' + JSON.stringify(r.errors[0]));
+  record = r.records[0];
+  say('saved, tag ' + record.recordChangeTag + '. Tap READ BACK on the phone.');
+}
+$('read').onclick = () => read().catch(e => say('read threw: ' + e));
+$('save').onclick = () => save().catch(e => say('save threw: ' + e));
+container.setUpAuth().then(user => {
+  if (user) { say('signed in: ' + (user.userRecordName || '')); read().catch(e => say('read threw: ' + e)); }
+  else { say('not signed in'); container.whenUserSignsIn().then(() => location.reload()); }
+}).catch(e => say('setUpAuth error: ' + (e.ckErrorCode || '') + ' ' + (e.reason || e)));
+</script>
+</body></html>

@@ -81,6 +81,9 @@ struct ProjectsPanel: View {
     @Environment(\.isPortrait) private var portrait
     @State private var editing = false
     @State private var confirmDeleteAll = false
+    #if DEBUG
+    @State private var showSpike = false
+    #endif
     /// The project the "delete project" dialog is asking about.
     @State private var deleting: Project?
     /// The scene the "delete scene" dialog is asking about.
@@ -155,6 +158,15 @@ struct ProjectsPanel: View {
 
             // TestFlight builds only.
             FoundingTesterCard()
+
+            #if DEBUG
+            // Sync spike (step 0 of the sync brief), debug builds only.
+            Button("cloudkit spike") { showSpike = true }
+                .font(.osData)
+                .foregroundStyle(Sheet.muted.opacity(0.5))
+                .buttonStyle(.plain)
+                .sheet(isPresented: $showSpike) { CloudKitSpikeView() }
+            #endif
         }
         // Prototype: 380 from the screen edge (336 plus the ~47 safe area), clear of the notch on the left, ink to every edge.
         .padding(.top, 18)
