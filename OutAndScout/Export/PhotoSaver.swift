@@ -59,7 +59,7 @@ enum StillWriter {
             if Task.isCancelled { break }
             let url = folder.appendingPathComponent(names(shot, i)).appendingPathExtension("jpg")
             let ok = await Task.detached(priority: .userInitiated) {
-                autoreleasepool { write(shot, to: url) }
+                autoreleasepool { StillWriter.write(shot, to: url) }
             }.value
             if ok { made.append(url) }
             if let progress { await progress(i + 1) }
