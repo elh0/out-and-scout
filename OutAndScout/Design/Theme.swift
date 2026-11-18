@@ -561,3 +561,84 @@ struct LiveStrip: View {
         }
     }
 }
+
+// MARK: - Shot card: the top-down plot
+
+/// From above, north up: the camera's view as a wedge, the sun as an orange dot (further out
+/// is lower in the sky), and today's sun path as a thin arc.
+struct TopDownPlot: View {
+    let shot: Shot
+
+    var body: some View {
+        Canvas { ctx, size in
+            let r = min(size.width, size.height) / 2 - 10
+            let c = CGPoint(x: size.width / 2, y: size.height / 2)
+            func point(az: Double, el: Double) -> CGPoint {
+                let k = r * CGFloat(1 - max(0, min(el, 90)) / 90)
+                let a = (az - 90) * .pi / 180
+                return CGPoint(x: c.x + k * CGFloat(cos(a)), y: c.y + k * CGFloat(sin(a)))
+            }
+            let ring = Path(ellipseIn: CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2))
+            ctx.stroke(ring, with: .color(Sheet.rule), lineWidth: 1)
+            ctx.stroke(Path(ellipseIn: CGRect(x: c.x - r / 2, y: c.y - r / 2, width: r, height: r)),
+                       with: .color(Sheet.rule.opacity(0.6)), style: StrokeStyle(lineWidth: 0.5, dash: [2, 3]))
+            ctx.draw(Text("N").font(Fonts.mono(8)).foregroundColor(Sheet.muted), at: CGPoint(x: c.x, y: c.y - r - 6))
+
+            // Today's path, sun above the horizon only.
+            if let loc = shot.location {
+                let day = SunCalculator.day(containing: shot.capturedAt, latitude: loc.latitude, longitude: loc.longitude)
+                var path = Path()
+                var started = false
+                for s in day.samples where s.position.elevation > 0 {
+                    let p = point(az: s.position.azimuth, el: s.position.elevation)
+                    if started { path.addLine(to: p) } else { path.move(to: p); started = true }
+                }
+                ctx.stroke(path, with: .color(Palette.sun.opacity(0.45)), lineWidth: 1)
+            }
+
+            // The camera: a wedge as wide as the lens sees (Super 35 width).
+            if let b = shot.bearing {
+                let half = atan(12.45 / max(shot.lensMM, 1)) * 180 / .pi
+                var wedge = Path()
+                wedge.move(to: c)
+                wedge.addArc(center: c, radius: r * 0.8,
+                             startAngle: .degrees(b - half - 90), endAngle: .degrees(b + half - 90), clockwise: false)
+                wedge.closeSubpath()
+                ctx.fill(wedge, with: .color(Sheet.text.opacity(0.12)))
+                ctx.stroke(wedge, with: .color(Sheet.text), lineWidth: 1)
+            }
+            ctx.fill(Path(ellipseIn: CGRect(x: c.x - 2.5, y: c.y - 2.5, width: 5, height: 5)), with: .color(Sheet.text))
+
+            // The sun when the shot was planned.
+            if shot.sunElevation > -1 {
+                let p = point(az: shot.sunAzimuth, el: shot.sunElevation)
+                ctx.fill(Path(ellipseIn: CGRect(x: p.x - 5, y: p.y - 5, width: 10, height: 10)), with: .color(Palette.sun))
+            }
+        }
+        .accessibilityLabel("Plan from above: camera facing \(shot.bearing.map { Bearing.facing($0) } ?? "unknown"), sun \(shot.sunSide ?? "down")")
+    }
+}
+
+/// `247° SW`, the arrow turned to the heading.
+struct HeadingTag: View {
+    let heading: Double
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Image(systemName: "location.north.fill")
+                .font(.system(size: 8))
+                .rotationEffect(.degrees(heading))
+            Text("\(Int(heading.rounded()))° \(Self.short(heading))")
+        }
+        .font(Fonts.mono(9))
+        .padding(.horizontal, 5)
+        .frame(height: 18)
+        .overlay(Rectangle().strokeBorder(Sheet.rule, lineWidth: 1))
+    }
+
+    static func short(_ h: Double) -> String {
+        let names = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
+        let i = Int(((h.truncatingRemainder(dividingBy: 360) + 360).truncatingRemainder(dividingBy: 360) / 22.5).rounded()) % 16
+        return names[i]
+    }
+}

@@ -581,19 +581,67 @@ struct ShotListView: View {
     private func openDetails(_ item: Item) -> some View {
         let shot = item.shot
         return VStack(alignment: .leading, spacing: 8) {
-            VStack(alignment: .leading, spacing: 3) {
-                Text(longRead(shot)).font(Fonts.mono(12)).foregroundStyle(Sheet.text)
-                if let best = bestTime(shot) {
-                    Text("BEST TIME · \(best)".uppercased()).font(Fonts.mono(9)).tracking(0.6).foregroundStyle(Sheet.text)
+            // 1.1 Paper shot card: the ID big with its rule, the light, and the plan from above.
+            HStack(alignment: .top, spacing: Space.m) {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(shot.number)
+                        .font(Fonts.sans(40, .medium)).tracking(-1.2)
+                        .foregroundStyle(Palette.sun)
+                    Palette.sun.frame(height: 1.5)
+                    if let best = bestTime(shot) {
+                        Text("BEST LIGHT · \(best)".uppercased()).font(Fonts.mono(9)).tracking(0.6).foregroundStyle(Sheet.text)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    HStack(spacing: 6) {
+                        LightChip(light: shot.lightClass)
+                        Text(longRead(shot)).font(Fonts.mono(11)).foregroundStyle(Sheet.text)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    // From the sky sweep: when the sun clears the roof here.
+                    if let sky = store.scene(containing: shot.id)?.skyline {
+                        let read = SkyRead.read(sky, on: shot.capturedAt)
+                        Text(([read.beHere.map { "Be here \(Format.time($0))" }, read.summary].compactMap { $0 }.joined(separator: " · ")).uppercased())
+                            .font(Fonts.mono(9)).tracking(0.6).foregroundStyle(Palette.sun)
+                    }
                 }
-                // From the sky sweep: when the sun clears the roof here.
-                if let sky = store.scene(containing: shot.id)?.skyline {
-                    let read = SkyRead.read(sky, on: shot.capturedAt)
-                    Text(([read.beHere.map { "Be here \(Format.time($0))" }, read.summary].compactMap { $0 }.joined(separator: " · ")).uppercased())
-                        .font(Fonts.mono(9)).tracking(0.6).foregroundStyle(Palette.sun)
-                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                TopDownPlot(shot: shot)
+                    .frame(width: 112, height: 112)
             }
             .padding(.top, 6)
+            DisclosureGroup {
+                VStack(alignment: .leading, spacing: 5) {
+                    if let b = shot.bearing {
+                        HStack(spacing: 6) { detailLabel("Facing"); HeadingTag(heading: b) }
+                    }
+                    HStack(spacing: 6) {
+                        detailLabel("Sun")
+                        Text(shot.sunElevation > -1 ? "\(Int(shot.sunAzimuth.rounded()))° · \(Int(shot.sunElevation.rounded()))° up · \(shot.sunSide ?? "")" : "Down")
+                    }
+                    HStack(spacing: 6) { detailLabel("Lens"); Text("\(Format.mm(shot.lensMM))mm · \(shot.aspect.display)") }
+                    HStack(spacing: 6) { detailLabel("Kit"); Text([shot.cameraName, shot.lensSeries].filter { !$0.isEmpty }.joined(separator: " · ")) }
+                    HStack(spacing: 6) {
+                        detailLabel("Taken")
+                        Text(shot.capturedAt.formatted(.dateTime.day().month(.abbreviated).hour().minute()))
+                    }
+                    if let loc = shot.location {
+                        HStack(spacing: 6) {
+                            detailLabel("Place")
+                            Text("◎ \(loc.display)").lineLimit(2)
+                            if let url = URL(string: "https://maps.apple.com/?ll=\(loc.latitude),\(loc.longitude)&q=\(shot.number)") {
+                                Link("Maps ↗", destination: url).underline()
+                            }
+                        }
+                    }
+                }
+                .font(Fonts.mono(10))
+                .foregroundStyle(Sheet.text)
+                .padding(.top, 4)
+            } label: {
+                Text("DETAILS").font(Fonts.mono(9)).tracking(0.8).foregroundStyle(Sheet.muted)
+            }
+            .tint(Sheet.muted)
+            .overlay(alignment: .top) { Sheet.rule.frame(height: 1) }
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text("Notes").font(Fonts.mono(11)).foregroundStyle(Sheet.muted)
                 EditableName(text: shot.notes ?? "", font: Fonts.mono(11), color: Sheet.text, lineLimit: 4,
@@ -631,6 +679,10 @@ struct ShotListView: View {
             .buttonStyle(.plain)
             .accessibilityLabel("delete shot \(shot.number)")
         }
+    }
+
+    private func detailLabel(_ text: String) -> some View {
+        Text(text.uppercased()).font(Fonts.mono(9)).tracking(0.6).foregroundStyle(Sheet.muted).frame(width: 46, alignment: .leading)
     }
 
     private func toggle(_ shot: Shot) {
