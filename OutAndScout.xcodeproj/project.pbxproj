@@ -6,278 +6,743 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		002C4C1169EA35552829DB4E /* ShotArc.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17F68DDF42664FF3CE1E1EB6 /* ShotArc.swift */; };
+		00AA963A48067BD611D80EE1 /* Cards.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FDA6C4DC4DF737C24DD3AE4 /* Cards.swift */; };
+		03D45199E849C8217CF21C21 /* ScoutStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE9FFD58C98D37809BA663D4 /* ScoutStore.swift */; };
+		07990A06BFE3E0015C95323D /* PhotoSaver.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5C8667B1690178487CD4425 /* PhotoSaver.swift */; };
+		0C475D109B7E888E82BC14E1 /* SwipeToDelete.swift in Sources */ = {isa = PBXBuildFile; fileRef = 827B2C2493672F4355D9E415 /* SwipeToDelete.swift */; };
+		10F23677009FB389D4D41D3F /* Keyboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA83407C698E59A47F7AC661 /* Keyboard.swift */; };
+		143C18405B55E9879AC7A86A /* EditableName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28571D6A40BBE070622B8A29 /* EditableName.swift */; };
+		160874D5D66B81BC0E1DF9DB /* ShootDay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1495332C5BDB0CBACA6EFA1F /* ShootDay.swift */; };
+		195A05A2AD3B75D733DD2F32 /* Geist-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = E64BB1DDB6312E8EF889FA70 /* Geist-Medium.ttf */; };
+		1C2CF9908F4A6D9C34E95FD9 /* CameraController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAC65322D74EECBD686E4336 /* CameraController.swift */; };
+		2469EC66BBE57B192F827450 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CFCA18682ED0D9701DF54CB7 /* Assets.xcassets */; };
+		2E053AED4659403326B4E82A /* ShootDayControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3B9D6D3A8215045A100BBB6 /* ShootDayControl.swift */; };
+		3076042944A6F17BBA4BDE61 /* GeistMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 719D3427C9AB169F3C31C806 /* GeistMono-Regular.ttf */; };
+		319F228C41201641246058D7 /* WordmarkGlyphs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 051C0DA03A6CE5A5F6D6E79D /* WordmarkGlyphs.swift */; };
+		4CE83E1D995B26B62EDFEAF2 /* ViewfinderFrame.swift in Sources */ = {isa = PBXBuildFile; fileRef = A459D856D9BBEFA7F486E8AF /* ViewfinderFrame.swift */; };
+		4F9CB6B5382E889849CAD4EB /* ZoomableStill.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23CD2296646A1DB846B7E2F6 /* ZoomableStill.swift */; };
+		51DA8C46D5904260AD832F07 /* CameraPreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32C9B63B7A8E7FC3D7C73E4D /* CameraPreview.swift */; };
+		5CD88AE3BFE75E21484CC425 /* GeistMono-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 1A1C3933813B8D5B22982BAF /* GeistMono-Medium.ttf */; };
+		5FED71F910EA2EBA9F90431C /* SunCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E49D6EF526F8DB92E179C91 /* SunCalculator.swift */; };
+		66B05F985F894323D2981617 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 30AEA60DFD2D4F42AD9FFE4D /* PrivacyInfo.xcprivacy */; };
+		6C2FE8BE8A2C4ED1BFD08566 /* MoonCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8AFDE5FCBFC62649D44A57C /* MoonCalculator.swift */; };
+		79777864BE4DFFBFA09BB1D5 /* ShootDayWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 8F003C4DAB453090A2AA4129 /* ShootDayWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		8150896C78070F001EBEEC42 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B886A2DCC5718C31BCBE6F7 /* Theme.swift */; };
+		8CE37C819B533019A2168025 /* SunPathStrip.swift in Sources */ = {isa = PBXBuildFile; fileRef = C21C5172D38448582992235B /* SunPathStrip.swift */; };
+		92AAA58287284F29A542627D /* LightRead.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7C53EF7448C2A9C6029F270 /* LightRead.swift */; };
+		97FD81764EFBB07C713A6D15 /* ExportPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A861C9FA26EFA8F2DC40CB30 /* ExportPanel.swift */; };
+		994B40EDB7832B15588ABB98 /* ShootDayPin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A494399C35662BCE0CC2A088 /* ShootDayPin.swift */; };
+		A40940E1D8956E5343DC4DA0 /* ForecastSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA9748309A94A78E5E5E2E56 /* ForecastSheet.swift */; };
+		AE7760DA6D17340C52D62F57 /* Fonts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07CAC6AEAFE2D45BC3E7F66C /* Fonts.swift */; };
+		AF2D7EAAACF57AD25F9D6892 /* Exporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 227FD7A37AE1DCB12671EA5A /* Exporter.swift */; };
+		B46B37F3CDFB92A30C902B85 /* Models.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE14C44B1A4C1252FC8486D3 /* Models.swift */; };
+		B62B6D2E25F55080A13E1A80 /* SkySweepViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41A1DFF999F18AE447933A59 /* SkySweepViews.swift */; };
+		B9DACB8DE43DC5FBAD759E9D /* KitCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4626224FF6DE0A2D2369A9BE /* KitCatalog.swift */; };
+		BF70AB7066BD568B347BDAEB /* Captioner.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9BF7557EFC5C3AC8E2073E5 /* Captioner.swift */; };
+		C0C5D6E3A451422E69F05AC2 /* SelectsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB4ED02CE56A0617C28413D1 /* SelectsView.swift */; };
+		C158B2BB17CD2FD5D518D42F /* StartScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 042F47296D8D88A65E230511 /* StartScreen.swift */; };
+		C3E8D77A4C0F7F90AF70DC9A /* SkyFrames.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72D8E9F8F12335DB4F549C76 /* SkyFrames.swift */; };
+		C71AB625E9EC1E484A9D566D /* ShotListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4554428706669BD0F412D6A /* ShotListView.swift */; };
+		C8BA0B78E6F7ED2858FF7C52 /* LocationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D90FA9A521824F202EA99686 /* LocationService.swift */; };
+		CC9234310182479604A7A16C /* Panels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3AE854BD4937B0570E69669 /* Panels.swift */; };
+		CCD46C2C3A74113C256A119F /* OutAndScoutApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 913703A584F6D75BEE023CA8 /* OutAndScoutApp.swift */; };
+		CCFD5FB8D89F1D69EA0BB3FF /* SkySweep.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6831D7C6FD530D3327719E3B /* SkySweep.swift */; };
+		CCFF9C89819EA5FCCAFF9512 /* ViewfinderControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76D03F55D47575DF41872EF5 /* ViewfinderControls.swift */; };
+		D096D9EAA14674E927726661 /* Orientation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0715B1FEB5346010D4EA51C5 /* Orientation.swift */; };
+		D167D6C117FD00E8C8140956 /* ViewfinderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEA9EDE19417631EDEBB1C47 /* ViewfinderView.swift */; };
+		D6F695F89D1E10F0850C8B2A /* MotionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E340EFF0CCE8EC47C3FC20C /* MotionService.swift */; };
+		DA6ADEF5277AB9F8A0FC6C10 /* FoundingTester.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E1C19756097B74E224CB17E /* FoundingTester.swift */; };
+		DDA18AC0BE94CF80B70F6963 /* ShootDayIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FB8386B7E43D122D440EFB1 /* ShootDayIntent.swift */; };
+		E6F371FA2BE3D1F48A0C3D4E /* ShootDayIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FB8386B7E43D122D440EFB1 /* ShootDayIntent.swift */; };
+		EAF1847AFF511784FC22E812 /* Geist-OFL.txt in Resources */ = {isa = PBXBuildFile; fileRef = 74A0D4CA9089A614FC7BAD49 /* Geist-OFL.txt */; };
+		EB7A9DBFD394F303BFE3547A /* Forecast.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0096705A8854341375415358 /* Forecast.swift */; };
+		EF3B634C4803DE06F2F8F538 /* ShotCards.swift in Sources */ = {isa = PBXBuildFile; fileRef = B71509817CDF4F0104B34EC2 /* ShotCards.swift */; };
+		EF80DEA32465BCD6D97ABB92 /* PortraitViewfinder.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE9A03CCA62C41E6508F47D2 /* PortraitViewfinder.swift */; };
+		F2D92113BFD04E08D853520B /* Geist-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 471A42435447254EEAB968D4 /* Geist-Regular.ttf */; };
+		F897A1AF8E214CF0DC643D3C /* Skyline.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07636E9C282B31EF0CEF9D6F /* Skyline.swift */; };
+		FABF4F6DE640612C407CB808 /* LaunchMark.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1107F3AF168E68B3BA23FEA5 /* LaunchMark.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		4933EEE589AE740774FD7A17 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 139716A54F16DC1A0B4568DF /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 90F0D25FD6D12FF8BFCFC244;
+			remoteInfo = ShootDayWidget;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		E773496A7CA12D6CDA9C835F /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				79777864BE4DFFBFA09BB1D5 /* ShootDayWidget.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
-		0A5C0000000000000000A001 /* OutAndScout.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = OutAndScout.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		0096705A8854341375415358 /* Forecast.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Forecast.swift; sourceTree = "<group>"; };
+		042F47296D8D88A65E230511 /* StartScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StartScreen.swift; sourceTree = "<group>"; };
+		051C0DA03A6CE5A5F6D6E79D /* WordmarkGlyphs.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WordmarkGlyphs.swift; sourceTree = "<group>"; };
+		0715B1FEB5346010D4EA51C5 /* Orientation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Orientation.swift; sourceTree = "<group>"; };
+		07636E9C282B31EF0CEF9D6F /* Skyline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Skyline.swift; sourceTree = "<group>"; };
+		07CAC6AEAFE2D45BC3E7F66C /* Fonts.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Fonts.swift; sourceTree = "<group>"; };
+		0FB8386B7E43D122D440EFB1 /* ShootDayIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShootDayIntent.swift; sourceTree = "<group>"; };
+		1107F3AF168E68B3BA23FEA5 /* LaunchMark.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LaunchMark.swift; sourceTree = "<group>"; };
+		1495332C5BDB0CBACA6EFA1F /* ShootDay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShootDay.swift; sourceTree = "<group>"; };
+		17F68DDF42664FF3CE1E1EB6 /* ShotArc.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShotArc.swift; sourceTree = "<group>"; };
+		1A1C3933813B8D5B22982BAF /* GeistMono-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "GeistMono-Medium.ttf"; sourceTree = "<group>"; };
+		227FD7A37AE1DCB12671EA5A /* Exporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Exporter.swift; sourceTree = "<group>"; };
+		23CD2296646A1DB846B7E2F6 /* ZoomableStill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZoomableStill.swift; sourceTree = "<group>"; };
+		28571D6A40BBE070622B8A29 /* EditableName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EditableName.swift; sourceTree = "<group>"; };
+		30AEA60DFD2D4F42AD9FFE4D /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		32C9B63B7A8E7FC3D7C73E4D /* CameraPreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraPreview.swift; sourceTree = "<group>"; };
+		3E49D6EF526F8DB92E179C91 /* SunCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunCalculator.swift; sourceTree = "<group>"; };
+		41A1DFF999F18AE447933A59 /* SkySweepViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkySweepViews.swift; sourceTree = "<group>"; };
+		41A4E4C5B1A0354C6D3E0C36 /* OutAndScout.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = OutAndScout.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4626224FF6DE0A2D2369A9BE /* KitCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KitCatalog.swift; sourceTree = "<group>"; };
+		471A42435447254EEAB968D4 /* Geist-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Geist-Regular.ttf"; sourceTree = "<group>"; };
+		4E1C19756097B74E224CB17E /* FoundingTester.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoundingTester.swift; sourceTree = "<group>"; };
+		5E340EFF0CCE8EC47C3FC20C /* MotionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionService.swift; sourceTree = "<group>"; };
+		6831D7C6FD530D3327719E3B /* SkySweep.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkySweep.swift; sourceTree = "<group>"; };
+		719D3427C9AB169F3C31C806 /* GeistMono-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "GeistMono-Regular.ttf"; sourceTree = "<group>"; };
+		72D8E9F8F12335DB4F549C76 /* SkyFrames.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkyFrames.swift; sourceTree = "<group>"; };
+		74A0D4CA9089A614FC7BAD49 /* Geist-OFL.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Geist-OFL.txt"; sourceTree = "<group>"; };
+		76D03F55D47575DF41872EF5 /* ViewfinderControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewfinderControls.swift; sourceTree = "<group>"; };
+		827B2C2493672F4355D9E415 /* SwipeToDelete.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwipeToDelete.swift; sourceTree = "<group>"; };
+		8B886A2DCC5718C31BCBE6F7 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		8F003C4DAB453090A2AA4129 /* ShootDayWidget.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = ShootDayWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		8FDA6C4DC4DF737C24DD3AE4 /* Cards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Cards.swift; sourceTree = "<group>"; };
+		913703A584F6D75BEE023CA8 /* OutAndScoutApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutAndScoutApp.swift; sourceTree = "<group>"; };
+		A459D856D9BBEFA7F486E8AF /* ViewfinderFrame.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewfinderFrame.swift; sourceTree = "<group>"; };
+		A494399C35662BCE0CC2A088 /* ShootDayPin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShootDayPin.swift; sourceTree = "<group>"; };
+		A5C8667B1690178487CD4425 /* PhotoSaver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoSaver.swift; sourceTree = "<group>"; };
+		A861C9FA26EFA8F2DC40CB30 /* ExportPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportPanel.swift; sourceTree = "<group>"; };
+		AA83407C698E59A47F7AC661 /* Keyboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keyboard.swift; sourceTree = "<group>"; };
+		AA9748309A94A78E5E5E2E56 /* ForecastSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForecastSheet.swift; sourceTree = "<group>"; };
+		AAC65322D74EECBD686E4336 /* CameraController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraController.swift; sourceTree = "<group>"; };
+		AB4ED02CE56A0617C28413D1 /* SelectsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelectsView.swift; sourceTree = "<group>"; };
+		AE9A03CCA62C41E6508F47D2 /* PortraitViewfinder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortraitViewfinder.swift; sourceTree = "<group>"; };
+		B71509817CDF4F0104B34EC2 /* ShotCards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShotCards.swift; sourceTree = "<group>"; };
+		B8AFDE5FCBFC62649D44A57C /* MoonCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoonCalculator.swift; sourceTree = "<group>"; };
+		C21C5172D38448582992235B /* SunPathStrip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunPathStrip.swift; sourceTree = "<group>"; };
+		C7C53EF7448C2A9C6029F270 /* LightRead.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightRead.swift; sourceTree = "<group>"; };
+		CEA9EDE19417631EDEBB1C47 /* ViewfinderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewfinderView.swift; sourceTree = "<group>"; };
+		CFCA18682ED0D9701DF54CB7 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		D4554428706669BD0F412D6A /* ShotListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShotListView.swift; sourceTree = "<group>"; };
+		D90FA9A521824F202EA99686 /* LocationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocationService.swift; sourceTree = "<group>"; };
+		E3B9D6D3A8215045A100BBB6 /* ShootDayControl.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShootDayControl.swift; sourceTree = "<group>"; };
+		E64BB1DDB6312E8EF889FA70 /* Geist-Medium.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Geist-Medium.ttf"; sourceTree = "<group>"; };
+		E9BF7557EFC5C3AC8E2073E5 /* Captioner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Captioner.swift; sourceTree = "<group>"; };
+		EE14C44B1A4C1252FC8486D3 /* Models.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Models.swift; sourceTree = "<group>"; };
+		F3AE854BD4937B0570E69669 /* Panels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Panels.swift; sourceTree = "<group>"; };
+		FE9FFD58C98D37809BA663D4 /* ScoutStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScoutStore.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
-/* Begin PBXFileSystemSynchronizedRootGroup section */
-		0A5C0000000000000000A002 /* OutAndScout */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
+/* Begin PBXGroup section */
+		0C4B26DD02BF40B9230872DC /* OutAndScout */ = {
+			isa = PBXGroup;
+			children = (
+				CFCA18682ED0D9701DF54CB7 /* Assets.xcassets */,
+				30AEA60DFD2D4F42AD9FFE4D /* PrivacyInfo.xcprivacy */,
+				63D0CBE0B665FAAF1C7B77BA /* App */,
+				7845A31432F50CFC4F836DC5 /* Camera */,
+				EDA7F7A976B145418869BE7C /* Design */,
+				E118BDDEA67F43749EE85B74 /* Export */,
+				225049EB54B0BEADA50061B8 /* Fonts */,
+				7D66CD90BDBB3A019B172301 /* Model */,
+				3F2078DD4245EF6E88A8A9E1 /* Panels */,
+				4B532B779F2B5D5D8445307A /* Sensors */,
+				1A757C878DCD950116B29622 /* ShotList */,
+				23AD97FAA99A7D9C57A324E1 /* Viewfinder */,
+			);
 			path = OutAndScout;
 			sourceTree = "<group>";
 		};
-/* End PBXFileSystemSynchronizedRootGroup section */
-
-/* Begin PBXFrameworksBuildPhase section */
-		0A5C0000000000000000A003 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXFrameworksBuildPhase section */
-
-/* Begin PBXGroup section */
-		0A5C0000000000000000A004 = {
+		1A757C878DCD950116B29622 /* ShotList */ = {
 			isa = PBXGroup;
 			children = (
-				0A5C0000000000000000A002 /* OutAndScout */,
-				0A5C0000000000000000A005 /* Products */,
+				A861C9FA26EFA8F2DC40CB30 /* ExportPanel.swift */,
+				AA9748309A94A78E5E5E2E56 /* ForecastSheet.swift */,
+				AB4ED02CE56A0617C28413D1 /* SelectsView.swift */,
+				A494399C35662BCE0CC2A088 /* ShootDayPin.swift */,
+				17F68DDF42664FF3CE1E1EB6 /* ShotArc.swift */,
+				D4554428706669BD0F412D6A /* ShotListView.swift */,
+				C21C5172D38448582992235B /* SunPathStrip.swift */,
+				23CD2296646A1DB846B7E2F6 /* ZoomableStill.swift */,
+			);
+			path = ShotList;
+			sourceTree = "<group>";
+		};
+		1D2DDCEC93DF67FBD2D46368 = {
+			isa = PBXGroup;
+			children = (
+				0C4B26DD02BF40B9230872DC /* OutAndScout */,
+				AED53D0D48735E9F742C4982 /* ShootDayWidget */,
+				84A67A7A668607298872A841 /* Products */,
 			);
 			sourceTree = "<group>";
 		};
-		0A5C0000000000000000A005 /* Products */ = {
+		225049EB54B0BEADA50061B8 /* Fonts */ = {
 			isa = PBXGroup;
 			children = (
-				0A5C0000000000000000A001 /* OutAndScout.app */,
+				E64BB1DDB6312E8EF889FA70 /* Geist-Medium.ttf */,
+				74A0D4CA9089A614FC7BAD49 /* Geist-OFL.txt */,
+				471A42435447254EEAB968D4 /* Geist-Regular.ttf */,
+				1A1C3933813B8D5B22982BAF /* GeistMono-Medium.ttf */,
+				719D3427C9AB169F3C31C806 /* GeistMono-Regular.ttf */,
+			);
+			path = Fonts;
+			sourceTree = "<group>";
+		};
+		23AD97FAA99A7D9C57A324E1 /* Viewfinder */ = {
+			isa = PBXGroup;
+			children = (
+				8FDA6C4DC4DF737C24DD3AE4 /* Cards.swift */,
+				AE9A03CCA62C41E6508F47D2 /* PortraitViewfinder.swift */,
+				41A1DFF999F18AE447933A59 /* SkySweepViews.swift */,
+				76D03F55D47575DF41872EF5 /* ViewfinderControls.swift */,
+				A459D856D9BBEFA7F486E8AF /* ViewfinderFrame.swift */,
+				CEA9EDE19417631EDEBB1C47 /* ViewfinderView.swift */,
+			);
+			path = Viewfinder;
+			sourceTree = "<group>";
+		};
+		3F2078DD4245EF6E88A8A9E1 /* Panels */ = {
+			isa = PBXGroup;
+			children = (
+				F3AE854BD4937B0570E69669 /* Panels.swift */,
+			);
+			path = Panels;
+			sourceTree = "<group>";
+		};
+		4B532B779F2B5D5D8445307A /* Sensors */ = {
+			isa = PBXGroup;
+			children = (
+				D90FA9A521824F202EA99686 /* LocationService.swift */,
+				5E340EFF0CCE8EC47C3FC20C /* MotionService.swift */,
+			);
+			path = Sensors;
+			sourceTree = "<group>";
+		};
+		63D0CBE0B665FAAF1C7B77BA /* App */ = {
+			isa = PBXGroup;
+			children = (
+				4E1C19756097B74E224CB17E /* FoundingTester.swift */,
+				1107F3AF168E68B3BA23FEA5 /* LaunchMark.swift */,
+				0715B1FEB5346010D4EA51C5 /* Orientation.swift */,
+				913703A584F6D75BEE023CA8 /* OutAndScoutApp.swift */,
+				0FB8386B7E43D122D440EFB1 /* ShootDayIntent.swift */,
+				042F47296D8D88A65E230511 /* StartScreen.swift */,
+				051C0DA03A6CE5A5F6D6E79D /* WordmarkGlyphs.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		7845A31432F50CFC4F836DC5 /* Camera */ = {
+			isa = PBXGroup;
+			children = (
+				AAC65322D74EECBD686E4336 /* CameraController.swift */,
+				32C9B63B7A8E7FC3D7C73E4D /* CameraPreview.swift */,
+				72D8E9F8F12335DB4F549C76 /* SkyFrames.swift */,
+			);
+			path = Camera;
+			sourceTree = "<group>";
+		};
+		7D66CD90BDBB3A019B172301 /* Model */ = {
+			isa = PBXGroup;
+			children = (
+				E9BF7557EFC5C3AC8E2073E5 /* Captioner.swift */,
+				0096705A8854341375415358 /* Forecast.swift */,
+				4626224FF6DE0A2D2369A9BE /* KitCatalog.swift */,
+				C7C53EF7448C2A9C6029F270 /* LightRead.swift */,
+				EE14C44B1A4C1252FC8486D3 /* Models.swift */,
+				B8AFDE5FCBFC62649D44A57C /* MoonCalculator.swift */,
+				FE9FFD58C98D37809BA663D4 /* ScoutStore.swift */,
+				07636E9C282B31EF0CEF9D6F /* Skyline.swift */,
+				6831D7C6FD530D3327719E3B /* SkySweep.swift */,
+				3E49D6EF526F8DB92E179C91 /* SunCalculator.swift */,
+			);
+			path = Model;
+			sourceTree = "<group>";
+		};
+		84A67A7A668607298872A841 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				41A4E4C5B1A0354C6D3E0C36 /* OutAndScout.app */,
+				8F003C4DAB453090A2AA4129 /* ShootDayWidget.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		AED53D0D48735E9F742C4982 /* ShootDayWidget */ = {
+			isa = PBXGroup;
+			children = (
+				E3B9D6D3A8215045A100BBB6 /* ShootDayControl.swift */,
+			);
+			path = ShootDayWidget;
+			sourceTree = "<group>";
+		};
+		E118BDDEA67F43749EE85B74 /* Export */ = {
+			isa = PBXGroup;
+			children = (
+				227FD7A37AE1DCB12671EA5A /* Exporter.swift */,
+				A5C8667B1690178487CD4425 /* PhotoSaver.swift */,
+				1495332C5BDB0CBACA6EFA1F /* ShootDay.swift */,
+				B71509817CDF4F0104B34EC2 /* ShotCards.swift */,
+			);
+			path = Export;
+			sourceTree = "<group>";
+		};
+		EDA7F7A976B145418869BE7C /* Design */ = {
+			isa = PBXGroup;
+			children = (
+				28571D6A40BBE070622B8A29 /* EditableName.swift */,
+				07CAC6AEAFE2D45BC3E7F66C /* Fonts.swift */,
+				AA83407C698E59A47F7AC661 /* Keyboard.swift */,
+				827B2C2493672F4355D9E415 /* SwipeToDelete.swift */,
+				8B886A2DCC5718C31BCBE6F7 /* Theme.swift */,
+			);
+			path = Design;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		0A5C0000000000000000A006 /* OutAndScout */ = {
+		90F0D25FD6D12FF8BFCFC244 /* ShootDayWidget */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 0A5C0000000000000000A007 /* Build configuration list for PBXNativeTarget "OutAndScout" */;
+			buildConfigurationList = 12161439C8CB8EE1E4D20808 /* Build configuration list for PBXNativeTarget "ShootDayWidget" */;
 			buildPhases = (
-				0A5C0000000000000000A008 /* Sources */,
-				0A5C0000000000000000A003 /* Frameworks */,
-				0A5C0000000000000000A009 /* Resources */,
+				58C64563D4A84B6063C91475 /* Sources */,
 			);
 			buildRules = (
 			);
 			dependencies = (
 			);
-			fileSystemSynchronizedGroups = (
-				0A5C0000000000000000A002 /* OutAndScout */,
+			name = ShootDayWidget;
+			packageProductDependencies = (
+			);
+			productName = ShootDayWidget;
+			productReference = 8F003C4DAB453090A2AA4129 /* ShootDayWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		CD64A8DC454554B48B4D2497 /* OutAndScout */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 76897DCC2DDD6D2B44BAEDE3 /* Build configuration list for PBXNativeTarget "OutAndScout" */;
+			buildPhases = (
+				A11CDDC194098A50C502D70A /* Sources */,
+				F53F686CDF9CDFD0D2AB6378 /* Resources */,
+				E773496A7CA12D6CDA9C835F /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				2A88460D8F252AFA0D444BE4 /* PBXTargetDependency */,
 			);
 			name = OutAndScout;
 			packageProductDependencies = (
 			);
 			productName = OutAndScout;
-			productReference = 0A5C0000000000000000A001 /* OutAndScout.app */;
+			productReference = 41A4E4C5B1A0354C6D3E0C36 /* OutAndScout.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
-		0A5C0000000000000000A00A /* Project object */ = {
+		139716A54F16DC1A0B4568DF /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1600;
-				LastUpgradeCheck = 1600;
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
 				TargetAttributes = {
-					0A5C0000000000000000A006 = {
-						CreatedOnToolsVersion = 16.0;
+					90F0D25FD6D12FF8BFCFC244 = {
+						DevelopmentTeam = CF8HY3UXL4;
+					};
+					CD64A8DC454554B48B4D2497 = {
+						DevelopmentTeam = CF8HY3UXL4;
 					};
 				};
 			};
-			buildConfigurationList = 0A5C0000000000000000A00B /* Build configuration list for PBXProject "OutAndScout" */;
+			buildConfigurationList = B3DEA2FAEC86CAF337492384 /* Build configuration list for PBXProject "OutAndScout" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
-				en,
 				Base,
+				en,
 			);
-			mainGroup = 0A5C0000000000000000A004;
+			mainGroup = 1D2DDCEC93DF67FBD2D46368;
 			minimizedProjectReferenceProxies = 1;
 			preferredProjectObjectVersion = 77;
-			productRefGroup = 0A5C0000000000000000A005 /* Products */;
+			productRefGroup = 84A67A7A668607298872A841 /* Products */;
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				0A5C0000000000000000A006 /* OutAndScout */,
+				CD64A8DC454554B48B4D2497 /* OutAndScout */,
+				90F0D25FD6D12FF8BFCFC244 /* ShootDayWidget */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		0A5C0000000000000000A009 /* Resources */ = {
+		F53F686CDF9CDFD0D2AB6378 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2469EC66BBE57B192F827450 /* Assets.xcassets in Resources */,
+				195A05A2AD3B75D733DD2F32 /* Geist-Medium.ttf in Resources */,
+				EAF1847AFF511784FC22E812 /* Geist-OFL.txt in Resources */,
+				F2D92113BFD04E08D853520B /* Geist-Regular.ttf in Resources */,
+				5CD88AE3BFE75E21484CC425 /* GeistMono-Medium.ttf in Resources */,
+				3076042944A6F17BBA4BDE61 /* GeistMono-Regular.ttf in Resources */,
+				66B05F985F894323D2981617 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		0A5C0000000000000000A008 /* Sources */ = {
+		58C64563D4A84B6063C91475 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2E053AED4659403326B4E82A /* ShootDayControl.swift in Sources */,
+				DDA18AC0BE94CF80B70F6963 /* ShootDayIntent.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A11CDDC194098A50C502D70A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1C2CF9908F4A6D9C34E95FD9 /* CameraController.swift in Sources */,
+				51DA8C46D5904260AD832F07 /* CameraPreview.swift in Sources */,
+				BF70AB7066BD568B347BDAEB /* Captioner.swift in Sources */,
+				00AA963A48067BD611D80EE1 /* Cards.swift in Sources */,
+				143C18405B55E9879AC7A86A /* EditableName.swift in Sources */,
+				97FD81764EFBB07C713A6D15 /* ExportPanel.swift in Sources */,
+				AF2D7EAAACF57AD25F9D6892 /* Exporter.swift in Sources */,
+				AE7760DA6D17340C52D62F57 /* Fonts.swift in Sources */,
+				EB7A9DBFD394F303BFE3547A /* Forecast.swift in Sources */,
+				A40940E1D8956E5343DC4DA0 /* ForecastSheet.swift in Sources */,
+				DA6ADEF5277AB9F8A0FC6C10 /* FoundingTester.swift in Sources */,
+				10F23677009FB389D4D41D3F /* Keyboard.swift in Sources */,
+				B9DACB8DE43DC5FBAD759E9D /* KitCatalog.swift in Sources */,
+				FABF4F6DE640612C407CB808 /* LaunchMark.swift in Sources */,
+				92AAA58287284F29A542627D /* LightRead.swift in Sources */,
+				C8BA0B78E6F7ED2858FF7C52 /* LocationService.swift in Sources */,
+				B46B37F3CDFB92A30C902B85 /* Models.swift in Sources */,
+				6C2FE8BE8A2C4ED1BFD08566 /* MoonCalculator.swift in Sources */,
+				D6F695F89D1E10F0850C8B2A /* MotionService.swift in Sources */,
+				D096D9EAA14674E927726661 /* Orientation.swift in Sources */,
+				CCD46C2C3A74113C256A119F /* OutAndScoutApp.swift in Sources */,
+				CC9234310182479604A7A16C /* Panels.swift in Sources */,
+				07990A06BFE3E0015C95323D /* PhotoSaver.swift in Sources */,
+				EF80DEA32465BCD6D97ABB92 /* PortraitViewfinder.swift in Sources */,
+				03D45199E849C8217CF21C21 /* ScoutStore.swift in Sources */,
+				C0C5D6E3A451422E69F05AC2 /* SelectsView.swift in Sources */,
+				160874D5D66B81BC0E1DF9DB /* ShootDay.swift in Sources */,
+				E6F371FA2BE3D1F48A0C3D4E /* ShootDayIntent.swift in Sources */,
+				994B40EDB7832B15588ABB98 /* ShootDayPin.swift in Sources */,
+				002C4C1169EA35552829DB4E /* ShotArc.swift in Sources */,
+				EF3B634C4803DE06F2F8F538 /* ShotCards.swift in Sources */,
+				C71AB625E9EC1E484A9D566D /* ShotListView.swift in Sources */,
+				C3E8D77A4C0F7F90AF70DC9A /* SkyFrames.swift in Sources */,
+				CCFD5FB8D89F1D69EA0BB3FF /* SkySweep.swift in Sources */,
+				B62B6D2E25F55080A13E1A80 /* SkySweepViews.swift in Sources */,
+				F897A1AF8E214CF0DC643D3C /* Skyline.swift in Sources */,
+				C158B2BB17CD2FD5D518D42F /* StartScreen.swift in Sources */,
+				5FED71F910EA2EBA9F90431C /* SunCalculator.swift in Sources */,
+				8CE37C819B533019A2168025 /* SunPathStrip.swift in Sources */,
+				0C475D109B7E888E82BC14E1 /* SwipeToDelete.swift in Sources */,
+				8150896C78070F001EBEEC42 /* Theme.swift in Sources */,
+				CCFF9C89819EA5FCCAFF9512 /* ViewfinderControls.swift in Sources */,
+				4CE83E1D995B26B62EDFEAF2 /* ViewfinderFrame.swift in Sources */,
+				D167D6C117FD00E8C8140956 /* ViewfinderView.swift in Sources */,
+				319F228C41201641246058D7 /* WordmarkGlyphs.swift in Sources */,
+				4F9CB6B5382E889849CAD4EB /* ZoomableStill.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
-/* Begin XCBuildConfiguration section */
-		0A5C0000000000000000A00C /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
-				CLANG_ENABLE_MODULES = YES;
-				CLANG_ENABLE_OBJC_ARC = YES;
-				COPY_PHASE_STRIP = NO;
-				DEBUG_INFORMATION_FORMAT = dwarf;
-				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_TESTABILITY = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu17;
-				GCC_DYNAMIC_NO_PIC = NO;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"DEBUG=1",
-					"$(inherited)",
-				);
-				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
-				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
-				ONLY_ACTIVE_ARCH = YES;
-				SDKROOT = iphoneos;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
-				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-			};
-			name = Debug;
+/* Begin PBXTargetDependency section */
+		2A88460D8F252AFA0D444BE4 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 90F0D25FD6D12FF8BFCFC244 /* ShootDayWidget */;
+			targetProxy = 4933EEE589AE740774FD7A17 /* PBXContainerItemProxy */;
 		};
-		0A5C0000000000000000A00D /* Release */ = {
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		27B437D5D84B19FEE1E31A64 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = CF8HY3UXL4;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/OutAndScout-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Out & Scout";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSCameraUsageDescription = "The viewfinder uses the camera to frame shots.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Names each scene after the street you're on, tags shots with where they were taken, works out the sun for that spot, and (if you turn it on) gets the weather forecast there.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save your stills to Photos, cropped to their frame lines.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_UIColorName = LaunchBackground;
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
+				INFOPLIST_KEY_UIStatusBarHidden = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.outandscout.app;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		30BC87565E7822D49DDE8D04 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = CF8HY3UXL4;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/ShootDayWidget-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = "Out & Scout";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 0.1;
+				PRODUCT_BUNDLE_IDENTIFIER = com.outandscout.app.shootday;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		3BBB59C962625F47CEC37AC9 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
-				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
 				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
-				VALIDATE_PRODUCT = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
 		};
-		0A5C0000000000000000A00E /* Debug */ = {
+		9EA0FC84FF07B734B2650D5C /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_STYLE = Automatic;
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 18.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		ABE824AEDABA679898893CE2 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = CF8HY3UXL4;
-				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = "Config/OutAndScout-Info.plist";
+				INFOPLIST_FILE = "Config/ShootDayWidget-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Out & Scout";
-				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
-				INFOPLIST_KEY_NSCameraUsageDescription = "The viewfinder uses the camera to frame shots.";
-				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save your stills to Photos, cropped to their frame lines.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Names each scene after the street you're on, tags shots with where they were taken, works out the sun for that spot, and (if you turn it on) gets the weather forecast there.";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UILaunchScreen_UIColorName = LaunchBackground;
-				INFOPLIST_KEY_UIRequiresFullScreen = YES;
-				INFOPLIST_KEY_UIStatusBarHidden = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 0.1;
-				PRODUCT_BUNDLE_IDENTIFIER = com.outandscout.app;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SWIFT_EMIT_LOC_STRINGS = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.outandscout.app.shootday;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
-		0A5C0000000000000000A00F /* Release */ = {
+		CEEA4F4784FCD24A5D1DDA55 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = CF8HY3UXL4;
-				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/OutAndScout-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Out & Scout";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "The viewfinder uses the camera to frame shots.";
-				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save your stills to Photos, cropped to their frame lines.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Names each scene after the street you're on, tags shots with where they were taken, works out the sun for that spot, and (if you turn it on) gets the weather forecast there.";
+				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Save your stills to Photos, cropped to their frame lines.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_UIColorName = LaunchBackground;
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UIStatusBarHidden = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 0.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.outandscout.app;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
-				SUPPORTS_MACCATALYST = NO;
-				SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD = NO;
-				SWIFT_EMIT_LOC_STRINGS = YES;
+				SDKROOT = iphoneos;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
-			name = Release;
+			name = Debug;
 		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		0A5C0000000000000000A007 /* Build configuration list for PBXNativeTarget "OutAndScout" */ = {
+		12161439C8CB8EE1E4D20808 /* Build configuration list for PBXNativeTarget "ShootDayWidget" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				0A5C0000000000000000A00E /* Debug */,
-				0A5C0000000000000000A00F /* Release */,
+				ABE824AEDABA679898893CE2 /* Debug */,
+				30BC87565E7822D49DDE8D04 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Debug;
 		};
-		0A5C0000000000000000A00B /* Build configuration list for PBXProject "OutAndScout" */ = {
+		76897DCC2DDD6D2B44BAEDE3 /* Build configuration list for PBXNativeTarget "OutAndScout" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
-				0A5C0000000000000000A00C /* Debug */,
-				0A5C0000000000000000A00D /* Release */,
+				CEEA4F4784FCD24A5D1DDA55 /* Debug */,
+				27B437D5D84B19FEE1E31A64 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Debug;
+		};
+		B3DEA2FAEC86CAF337492384 /* Build configuration list for PBXProject "OutAndScout" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9EA0FC84FF07B734B2650D5C /* Debug */,
+				3BBB59C962625F47CEC37AC9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
 	};
-	rootObject = 0A5C0000000000000000A00A /* Project object */;
+	rootObject = 139716A54F16DC1A0B4568DF /* Project object */;
 }
