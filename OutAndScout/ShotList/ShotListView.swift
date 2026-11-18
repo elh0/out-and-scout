@@ -15,6 +15,8 @@ struct ShotListView: View {
     @State private var sheetDeletingScene: ScoutScene?
     /// The shot shown full screen, for holding the phone up to a director.
     @State private var enlarged: Shot?
+    /// The Selects grid, for sending just the stills.
+    @State private var selecting = false
     /// The shot opened in place in the list.
     @State private var openID: UUID?
     @Environment(\.isPortrait) private var portrait
@@ -60,8 +62,15 @@ struct ShotListView: View {
                     .transition(.opacity)
                     .zIndex(2)
             }
+
+            if selecting {
+                SelectsView(scene: sceneFilter.flatMap(scene(for:))) { selecting = false }
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .zIndex(3)
+            }
         }
         .animation(.easeOut(duration: 0.2), value: enlarged?.id)
+        .animation(.snappy(duration: 0.28), value: selecting)
         .sheet(isPresented: $reordering) {
             let project = store.currentProject
             VStack(alignment: .leading, spacing: 16) {
@@ -244,7 +253,8 @@ struct ShotListView: View {
                 }
                 Text("/ SHOT LIST").font(Fonts.mono(11)).tracking(0.6).foregroundStyle(Sheet.muted).fixedSize()
             }
-            .padding(.horizontal, 190)
+            // Clear of Projects on the left and Weather · Select · Export on the right.
+            .padding(.horizontal, 270)
             HStack(spacing: 8) {
                 Button {
                     store.showingShotList = false
@@ -255,6 +265,8 @@ struct ShotListView: View {
                 .buttonStyle(.plain)
                 Spacer()
                 OPill(label: "Weather", caps: true) { showingWeather = true }
+                OPill(label: "Select", caps: true) { selecting = true }
+                    .disabled(visible.isEmpty)
                 OPill(label: "Export", on: true, caps: true) { store.showingExport = true }
                     .disabled(visible.isEmpty)
             }
@@ -402,6 +414,8 @@ struct ShotListView: View {
                 Spacer()
                 OPill(label: "Edit", caps: true) { reordering = true }
                 OPill(label: "Weather", caps: true) { showingWeather = true }
+                OPill(label: "Select", caps: true) { selecting = true }
+                    .disabled(visible.isEmpty)
                 OPill(label: "Export", on: true, caps: true) { store.showingExport = true }
                     .disabled(visible.isEmpty)
             }

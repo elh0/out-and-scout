@@ -542,9 +542,13 @@ struct ShareItem: Identifiable {
 /// The system share sheet: AirDrop, Mail, Files, Messages.
 struct ActivityView: UIViewControllerRepresentable {
     let items: [Any]
+    /// Called when the sheet closes: true if something was sent or saved.
+    var onDone: ((Bool) -> Void)? = nil
 
     func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: items, applicationActivities: nil)
+        let vc = UIActivityViewController(activityItems: items, applicationActivities: nil)
+        if let onDone { vc.completionWithItemsHandler = { _, completed, _, _ in onDone(completed) } }
+        return vc
     }
 
     func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
