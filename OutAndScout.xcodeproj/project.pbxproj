@@ -18,6 +18,8 @@
 		195A05A2AD3B75D733DD2F32 /* Geist-Medium.ttf in Resources */ = {isa = PBXBuildFile; fileRef = E64BB1DDB6312E8EF889FA70 /* Geist-Medium.ttf */; };
 		1C2CF9908F4A6D9C34E95FD9 /* CameraController.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAC65322D74EECBD686E4336 /* CameraController.swift */; };
 		2469EC66BBE57B192F827450 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CFCA18682ED0D9701DF54CB7 /* Assets.xcassets */; };
+		27C7C7D1D46EC97833B5C521 /* Pro.swift in Sources */ = {isa = PBXBuildFile; fileRef = 536B756A0CC39CD76547B072 /* Pro.swift */; };
+		292F236848FA073E475821AB /* AppleWeather.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB8F38DCA84AF41922629A0C /* AppleWeather.swift */; };
 		2E053AED4659403326B4E82A /* ShootDayControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = E3B9D6D3A8215045A100BBB6 /* ShootDayControl.swift */; };
 		3076042944A6F17BBA4BDE61 /* GeistMono-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 719D3427C9AB169F3C31C806 /* GeistMono-Regular.ttf */; };
 		319F228C41201641246058D7 /* WordmarkGlyphs.swift in Sources */ = {isa = PBXBuildFile; fileRef = 051C0DA03A6CE5A5F6D6E79D /* WordmarkGlyphs.swift */; };
@@ -112,6 +114,7 @@
 		4626224FF6DE0A2D2369A9BE /* KitCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KitCatalog.swift; sourceTree = "<group>"; };
 		471A42435447254EEAB968D4 /* Geist-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Geist-Regular.ttf"; sourceTree = "<group>"; };
 		4E1C19756097B74E224CB17E /* FoundingTester.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoundingTester.swift; sourceTree = "<group>"; };
+		536B756A0CC39CD76547B072 /* Pro.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pro.swift; sourceTree = "<group>"; };
 		5E340EFF0CCE8EC47C3FC20C /* MotionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionService.swift; sourceTree = "<group>"; };
 		6831D7C6FD530D3327719E3B /* SkySweep.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SkySweep.swift; sourceTree = "<group>"; };
 		719D3427C9AB169F3C31C806 /* GeistMono-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "GeistMono-Regular.ttf"; sourceTree = "<group>"; };
@@ -134,6 +137,7 @@
 		AE9A03CCA62C41E6508F47D2 /* PortraitViewfinder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortraitViewfinder.swift; sourceTree = "<group>"; };
 		B71509817CDF4F0104B34EC2 /* ShotCards.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShotCards.swift; sourceTree = "<group>"; };
 		B8AFDE5FCBFC62649D44A57C /* MoonCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoonCalculator.swift; sourceTree = "<group>"; };
+		BB8F38DCA84AF41922629A0C /* AppleWeather.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppleWeather.swift; sourceTree = "<group>"; };
 		C21C5172D38448582992235B /* SunPathStrip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunPathStrip.swift; sourceTree = "<group>"; };
 		C7C53EF7448C2A9C6029F270 /* LightRead.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightRead.swift; sourceTree = "<group>"; };
 		CEA9EDE19417631EDEBB1C47 /* ViewfinderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewfinderView.swift; sourceTree = "<group>"; };
@@ -241,6 +245,7 @@
 				1107F3AF168E68B3BA23FEA5 /* LaunchMark.swift */,
 				0715B1FEB5346010D4EA51C5 /* Orientation.swift */,
 				913703A584F6D75BEE023CA8 /* OutAndScoutApp.swift */,
+				536B756A0CC39CD76547B072 /* Pro.swift */,
 				0FB8386B7E43D122D440EFB1 /* ShootDayIntent.swift */,
 				042F47296D8D88A65E230511 /* StartScreen.swift */,
 				051C0DA03A6CE5A5F6D6E79D /* WordmarkGlyphs.swift */,
@@ -261,6 +266,7 @@
 		7D66CD90BDBB3A019B172301 /* Model */ = {
 			isa = PBXGroup;
 			children = (
+				BB8F38DCA84AF41922629A0C /* AppleWeather.swift */,
 				E9BF7557EFC5C3AC8E2073E5 /* Captioner.swift */,
 				0096705A8854341375415358 /* Forecast.swift */,
 				4626224FF6DE0A2D2369A9BE /* KitCatalog.swift */,
@@ -423,6 +429,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				292F236848FA073E475821AB /* AppleWeather.swift in Sources */,
 				1C2CF9908F4A6D9C34E95FD9 /* CameraController.swift in Sources */,
 				51DA8C46D5904260AD832F07 /* CameraPreview.swift in Sources */,
 				BF70AB7066BD568B347BDAEB /* Captioner.swift in Sources */,
@@ -447,6 +454,7 @@
 				CC9234310182479604A7A16C /* Panels.swift in Sources */,
 				07990A06BFE3E0015C95323D /* PhotoSaver.swift in Sources */,
 				EF80DEA32465BCD6D97ABB92 /* PortraitViewfinder.swift in Sources */,
+				27C7C7D1D46EC97833B5C521 /* Pro.swift in Sources */,
 				03D45199E849C8217CF21C21 /* ScoutStore.swift in Sources */,
 				C0C5D6E3A451422E69F05AC2 /* SelectsView.swift in Sources */,
 				160874D5D66B81BC0E1DF9DB /* ShootDay.swift in Sources */,
@@ -487,8 +495,9 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Config/OutAndScout.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = CF8HY3UXL4;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/OutAndScout-Info.plist";
@@ -519,7 +528,7 @@
 		30BC87565E7822D49DDE8D04 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = CF8HY3UXL4;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/ShootDayWidget-Info.plist";
@@ -660,7 +669,7 @@
 		ABE824AEDABA679898893CE2 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = CF8HY3UXL4;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/ShootDayWidget-Info.plist";
@@ -683,8 +692,9 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Config/OutAndScout.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = CF8HY3UXL4;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = "Config/OutAndScout-Info.plist";
