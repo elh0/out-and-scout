@@ -21,9 +21,9 @@ targets:
         CODE_SIGN_ENTITLEMENTS: Config/OutAndScout.entitlements
         DEVELOPMENT_TEAM: CF8HY3UXL4
         MARKETING_VERSION: "1.0"
-        CURRENT_PROJECT_VERSION: 5
+        CURRENT_PROJECT_VERSION: 6
         SWIFT_VERSION: "5.0"
-        TARGETED_DEVICE_FAMILY: "1,2"
+        TARGETED_DEVICE_FAMILY: "1"
         GENERATE_INFOPLIST_FILE: YES
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_KEY_CFBundleDisplayName: "Out & Scout"
@@ -52,9 +52,9 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.outandscout.app.shootday
         DEVELOPMENT_TEAM: CF8HY3UXL4
         MARKETING_VERSION: "1.0"
-        CURRENT_PROJECT_VERSION: 5
+        CURRENT_PROJECT_VERSION: 6
         SWIFT_VERSION: "5.0"
-        TARGETED_DEVICE_FAMILY: "1,2"
+        TARGETED_DEVICE_FAMILY: "1"
         INFOPLIST_FILE: Config/ShootDayWidget-Info.plist
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: "Out & Scout"

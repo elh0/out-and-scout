@@ -126,6 +126,32 @@ struct RootView: View {
     }
 
     var body: some View {
+        #if DEBUG
+        // Screenshot testing: -howtoOnly YES draws just the Shoot day how-to (the iOS 27.2 beta
+        // simulator crashes in Foundation's Date compare on the start screen).
+        if UserDefaults.standard.bool(forKey: "howtoOnly") {
+            GeometryReader { geo in
+                ZStack {
+                    Sheet.bg.ignoresSafeArea()
+                    ShootDayHowTo(shootDay: shootDay)
+                }
+                .environment(\.isPortrait, geo.size.height > geo.size.width)
+            }
+            .task {
+                try? await Task.sleep(for: .seconds(1))
+                if let o = UserDefaults.standard.string(forKey: "orientation") {
+                    LayoutMode.shared.set(portrait: o == "portrait", remember: false)
+                }
+            }
+        } else {
+            main
+        }
+        #else
+        main
+        #endif
+    }
+
+    @ViewBuilder private var main: some View {
         // The switch decides which way the screen may turn (never the gyro); the layout then
         // follows the screen's actual shape, so one layout is never drawn in the other's space.
         GeometryReader { geo in
