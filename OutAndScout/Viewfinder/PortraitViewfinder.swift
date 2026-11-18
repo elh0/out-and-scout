@@ -112,6 +112,7 @@ struct PortraitToolsRow: View {
 /// the day's line.
 struct PortraitTimeRow: View {
     @Environment(ScoutStore.self) private var store
+    @State private var look = Look.shared
     @Environment(LocationService.self) private var location
     @Environment(MotionService.self) private var motion
     let sunDay: SunDay?
@@ -132,6 +133,7 @@ struct PortraitTimeRow: View {
                 word("Sun", on: store.overlays.sunPath) { store.toggle(\.sunPath) }
                 word("Grid", on: store.overlays.grid) { store.toggle(\.grid) }
                 word("Level", on: store.overlays.level) { store.toggle(\.level) }
+                word(look.mode == .auto ? "Auto" : look.mode.label, on: look.mode != .day) { look.cycle() }
             }
             SunTimeline(sunDay: sunDay, planned: planned)
         }

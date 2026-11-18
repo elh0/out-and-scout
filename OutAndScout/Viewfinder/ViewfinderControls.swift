@@ -244,6 +244,7 @@ struct LeftRail: View {
 /// Sun path, grid and level, then the layout switch.
 struct RailToggles: View {
     @Environment(ScoutStore.self) private var store
+    @State private var look = Look.shared
     @Environment(LocationService.self) private var location
     @Environment(MotionService.self) private var motion
     @Environment(\.dismiss) private var dismiss
@@ -253,6 +254,8 @@ struct RailToggles: View {
             RailToggle(symbol: "sun.horizon", label: "Sun Path", on: store.overlays.sunPath) { store.toggle(\.sunPath) }
             RailToggle(symbol: "grid", label: "Grid", on: store.overlays.grid) { store.toggle(\.grid) }
             RailToggle(symbol: "level", label: "Level", on: store.overlays.level) { store.toggle(\.level) }
+            // 1.1 Paper: dark from sunset to sunrise on Auto; Day or Night pins it.
+            RailToggle(symbol: "moon", label: "Night · \(look.mode.label)", on: look.mode != .day) { look.cycle() }
             // Portrait layout, picked by hand rather than by tilting the phone.
             LayoutSwitch(vertical: true)
         }
@@ -470,7 +473,7 @@ struct LensLadder: View {
     }
 }
 
-/// The outline shutter: a paper ring with a soft grey disc that dips when pressed.
+/// The shutter: an ink ring with an orange disc that dips when pressed.
 struct Shutter: View {
     @Environment(ScoutStore.self) private var store
     let capturing: Bool
@@ -479,8 +482,9 @@ struct Shutter: View {
     var body: some View {
         Button(action: action) {
             ZStack {
+                // 1.1 Paper: an orange dot in an ink ring.
                 Circle().strokeBorder(Palette.paper, lineWidth: 2).frame(width: 58, height: 58)
-                Circle().fill(Color(hex: 0xC9C8C3)).frame(width: 46, height: 46)
+                Circle().fill(Palette.sun).frame(width: 46, height: 46)
                     .scaleEffect(capturing ? 0.88 : 1)
             }
             .frame(width: 60, height: 60)

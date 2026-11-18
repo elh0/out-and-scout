@@ -32,7 +32,7 @@ struct CameraPreview: UIViewRepresentable {
     func makeUIView(context: Context) -> Container {
         Self.newest += 1
         let container = Container(serial: Self.newest)
-        container.backgroundColor = UIColor(Palette.night)
+        container.backgroundColor = Palette.nightUI
         container.clipsToBounds = true
         return container
     }
@@ -50,6 +50,10 @@ struct CameraPreview: UIViewRepresentable {
         if container.serial == Self.newest, view.previewLayer.videoGravity != gravity {
             view.previewLayer.videoGravity = gravity
         }
+        // Day or night: the side bars follow the viewfinder's look.
+        let style: UIUserInterfaceStyle = context.environment.colorScheme == .dark ? .dark : .light
+        view.previewLayer.backgroundColor = Palette.nightUI.resolvedColor(with: UITraitCollection(userInterfaceStyle: style)).cgColor
+        container.overrideUserInterfaceStyle = style
         if view.coordinator == nil, let device = camera.device {
             view.attach(device: device, camera: camera)
         }
@@ -60,10 +64,10 @@ struct CameraPreview: UIViewRepresentable {
         let view = PreviewView()
         view.previewLayer.session = camera.session
         view.previewLayer.videoGravity = .resizeAspectFill
-        view.backgroundColor = UIColor(Palette.night)
+        view.backgroundColor = Palette.nightUI
         // Fit's side bars in the same ink as the controls, so they read as part of the
         // camera's frame rather than black bars.
-        view.previewLayer.backgroundColor = UIColor(Palette.night).cgColor
+        view.previewLayer.backgroundColor = Palette.nightUI.resolvedColor(with: view.traitCollection).cgColor
         camera.previewLayer = view.previewLayer
         shared = view
         return view

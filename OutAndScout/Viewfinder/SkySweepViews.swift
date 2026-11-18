@@ -36,7 +36,7 @@ struct SkySweepOverlay: View {
             ctx.stroke(all, with: .color(Palette.sun.opacity(0.9)), style: StrokeStyle(lineWidth: 1.5, lineCap: .round, dash: [2, 5]))
             ctx.stroke(done, with: .color(Palette.sun), style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
             for (p, h) in hours {
-                ctx.draw(Text(String(format: "%02d", h)).font(Fonts.mono(9)).foregroundColor(Palette.paper.opacity(0.8)),
+                ctx.draw(Text(String(format: "%02d", h)).font(Fonts.mono(9)).foregroundColor(Palette.onPicture.opacity(0.8)),
                          at: CGPoint(x: p.x, y: p.y - 8), anchor: .bottom)
             }
 
@@ -48,13 +48,13 @@ struct SkySweepOverlay: View {
                     guard let p = projector.point(azimuth: pt.azimuth, elevation: pt.elevation) else { started = false; continue }
                     if started { l.addLine(to: p) } else { l.move(to: p); started = true }
                 }
-                ctx.stroke(l, with: .color(Palette.paper), style: StrokeStyle(lineWidth: 1.5, lineJoin: .round))
+                ctx.stroke(l, with: .color(Palette.onPicture), style: StrokeStyle(lineWidth: 1.5, lineJoin: .round))
             }
 
             // The ring to keep the path in.
             let c = CGPoint(x: size.width / 2, y: size.height / 2)
-            ctx.stroke(Path(ellipseIn: CGRect(x: c.x - 28, y: c.y - 28, width: 56, height: 56)), with: .color(Palette.paper), lineWidth: 1)
-            ctx.fill(Path(ellipseIn: CGRect(x: c.x - 2, y: c.y - 2, width: 4, height: 4)), with: .color(Palette.paper))
+            ctx.stroke(Path(ellipseIn: CGRect(x: c.x - 28, y: c.y - 28, width: 56, height: 56)), with: .color(Palette.onPicture), lineWidth: 1)
+            ctx.fill(Path(ellipseIn: CGRect(x: c.x - 2, y: c.y - 2, width: 4, height: 4)), with: .color(Palette.onPicture))
 
             // Where to look next.
             if let t = target {
@@ -92,18 +92,18 @@ struct SkySweepHUD: View {
             Text(hint.uppercased())
                 .font(Fonts.mono(9))
                 .tracking(0.6)
-                .foregroundStyle(Palette.paper)
+                .foregroundStyle(Palette.onPicture)
                 .padding(.horizontal, 11)
                 .padding(.vertical, 5)
-                .background(Sheet.bg.opacity(0.7), in: Capsule())
+                .background(Palette.onPictureInk.opacity(0.7), in: Capsule())
                 .padding(.top, 10)
             Spacer(minLength: 0)
             HStack(spacing: 10) {
                 OPill(label: "Cancel", size: .small) { store.sweep = nil }
                 GeometryReader { g in
                     ZStack(alignment: .leading) {
-                        Capsule().fill(Palette.paper.opacity(0.18))
-                        Capsule().fill(Palette.paper).frame(width: g.size.width * min(1, sweep.progress / 0.9))
+                        Capsule().fill(Palette.onPicture.opacity(0.18))
+                        Capsule().fill(Palette.onPicture).frame(width: g.size.width * min(1, sweep.progress / 0.9))
                     }
                 }
                 .frame(height: 2)
@@ -316,7 +316,7 @@ struct SkylineEditor: View {
                         let q = f.point(p.azimuth, p.elevation)
                         if i == 0 { edge.move(to: q) } else { edge.addLine(to: q) }
                     }
-                    ctx.stroke(edge, with: .color(Palette.paper), lineWidth: 1.2)
+                    ctx.stroke(edge, with: .color(Palette.onPicture), lineWidth: 1.2)
                     // The sun: solid where it reaches the spot, dashed where it's behind something.
                     var prev: (CGPoint, Bool)?
                     for s in path {
@@ -325,12 +325,12 @@ struct SkylineEditor: View {
                         if let pv = prev {
                             let pl = pv.1
                             var seg = Path(); seg.move(to: pv.0); seg.addLine(to: q)
-                            ctx.stroke(seg, with: .color(pl ? Palette.sun : Palette.paper.opacity(0.5)),
+                            ctx.stroke(seg, with: .color(pl ? Palette.sun : Palette.onPicture.opacity(0.5)),
                                        style: StrokeStyle(lineWidth: pl ? 2.2 : 1.2, lineCap: .round, dash: pl ? [] : [3, 4]))
                         }
                         prev = (q, lit)
                         if Calendar.current.component(.minute, from: s.time) == 0 {
-                            ctx.draw(Text(Format.time(s.time)).font(Fonts.mono(8)).foregroundColor(Palette.paper.opacity(0.85)),
+                            ctx.draw(Text(Format.time(s.time)).font(Fonts.mono(8)).foregroundColor(Palette.onPicture.opacity(0.85)),
                                      at: CGPoint(x: q.x, y: q.y - 8), anchor: .bottom)
                         }
                     }
@@ -340,8 +340,8 @@ struct SkylineEditor: View {
                 ForEach(handles, id: \.self) { i in
                     let q = f.point(l.points[i].azimuth, l.points[i].elevation)
                     Circle()
-                        .fill(Sheet.bg)
-                        .overlay(Circle().strokeBorder(Palette.paper, lineWidth: 1.2))
+                        .fill(Palette.onPictureInk)
+                        .overlay(Circle().strokeBorder(Palette.onPicture, lineWidth: 1.2))
                         .frame(width: 9, height: 9)
                         .frame(width: 36, height: 36)
                         .contentShape(Rectangle())

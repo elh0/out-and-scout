@@ -122,15 +122,16 @@ struct ViewfinderFrame: View {
                         .allowsHitTesting(false)
                 }
                 if lightChip {
+                    // 1.1 Paper: the light read in an orange-outlined box on the picture.
                     Text(chipText.uppercased())
                         .font(Fonts.mono(9))
                         .tracking(0.6)
-                        .foregroundStyle(Palette.paper)
+                        .foregroundStyle(Palette.onPicture)
                         .lineLimit(1)
                         .padding(.horizontal, 10)
                         .padding(.vertical, 5)
-                        .background(Sheet.bg.opacity(0.82), in: Capsule())
-                        .overlay(Capsule().strokeBorder(Outline.line, lineWidth: 1))
+                        .background(Palette.onPictureInk.opacity(0.55))
+                        .overlay(Rectangle().strokeBorder(Palette.sun, lineWidth: 1))
                         .fixedSize()
                         .offset(x: frame.minX + 8, y: frame.maxY - 30)
                         .allowsHitTesting(false)
@@ -142,7 +143,7 @@ struct ViewfinderFrame: View {
                 if greyNotice, camera.isTooWide, camera.status == .running {
                     Text("Grey edge: outside what the iPhone sees · it reaches ≈ \(widestFocal(size: size, frame: frame))mm")
                         .font(.osDataSmall)
-                        .foregroundStyle(Palette.paper)
+                        .foregroundStyle(Palette.onPicture)
                         .padding(.horizontal, 6)
                         .padding(.vertical, 2)
                         .background(Palette.hud, in: RoundedRectangle(cornerRadius: 4))
@@ -392,7 +393,7 @@ struct AspectMask: View {
             ctx.fill(outside, with: .color(fill), style: FillStyle(eoFill: true))
             if lines {
                 let r = frame.insetBy(dx: 0.5, dy: 0.5)
-                let color = GraphicsContext.Shading.color(Palette.paper.opacity(solid != nil ? 0.6 : shade != nil ? 0.7 : 0.85))
+                let color = GraphicsContext.Shading.color((solid != nil ? Palette.paper : Palette.onPicture).opacity(solid != nil ? 0.6 : shade != nil ? 0.7 : 0.85))
                 if ticks {
                     let t: CGFloat = 14
                     var p = Path()
@@ -422,7 +423,7 @@ struct ThirdsGrid: View {
                 p.move(to: CGPoint(x: x, y: 0)); p.addLine(to: CGPoint(x: x, y: size.height))
                 p.move(to: CGPoint(x: 0, y: y)); p.addLine(to: CGPoint(x: size.width, y: y))
             }
-            ctx.stroke(p, with: .color(Palette.paper.opacity(0.35)), lineWidth: 0.5)
+            ctx.stroke(p, with: .color(Palette.onPicture.opacity(0.35)), lineWidth: 0.5)
         }
         .allowsHitTesting(false)
     }
@@ -436,11 +437,11 @@ struct LevelLine: View {
         let level = abs(roll) < 0.5
         ZStack {
             Rectangle()
-                .fill(Palette.paper.opacity(level ? 0.9 : 0.5))
+                .fill(Palette.onPicture.opacity(level ? 0.9 : 0.5))
                 .frame(width: 160, height: 1)
                 .rotationEffect(.degrees(level ? 0 : -roll))
             Rectangle()
-                .fill(Palette.paper.opacity(0.35))
+                .fill(Palette.onPicture.opacity(0.35))
                 .frame(width: 40, height: 1)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -459,15 +460,15 @@ struct FocusSquare: View {
     var body: some View {
         HStack(alignment: .center, spacing: Space.xs) {
             RoundedRectangle(cornerRadius: 2)
-                .strokeBorder(Palette.paper, lineWidth: 1)
+                .strokeBorder(Palette.onPicture, lineWidth: 1)
                 .frame(width: 72, height: 72)
                 .overlay(alignment: .top) {
                     if locked {
                         Text("AE/AF Lock")
                             .font(.osDataSmall)
-                            .foregroundStyle(Palette.ink)
+                            .foregroundStyle(Palette.onPictureInk)
                             .padding(.horizontal, 4)
-                            .background(Palette.paper, in: RoundedRectangle(cornerRadius: 3))
+                            .background(Palette.onPicture, in: RoundedRectangle(cornerRadius: 3))
                             .offset(y: -18)
                             .fixedSize()
                     }
@@ -475,7 +476,7 @@ struct FocusSquare: View {
 
             // Drag up/down on the sun to brighten/darken, ±2 stops.
             ZStack {
-                Rectangle().fill(Palette.paper.opacity(0.5)).frame(width: 1, height: 96)
+                Rectangle().fill(Palette.onPicture.opacity(0.5)).frame(width: 1, height: 96)
                 Circle()
                     .fill(Palette.sun)
                     .frame(width: 16, height: 16)
@@ -568,14 +569,14 @@ struct SunPathOverlay: View {
                 arcRuns.forEach { Self.addSmooth($0, to: &arc) }
                 var golden = Path()
                 goldenRuns.forEach { Self.addSmooth($0, to: &golden) }
-                ctx.stroke(arc, with: .color(Palette.paper.opacity(0.55)), lineWidth: 1)
+                ctx.stroke(arc, with: .color(Palette.onPicture.opacity(0.55)), lineWidth: 1)
                 ctx.stroke(golden, with: .color(Palette.sun.opacity(0.85)), style: StrokeStyle(lineWidth: 2, lineCap: .round))
 
                 // Hour labels step aside for the sun and its time, so the two never overlap.
                 let sunAt = moon == nil ? projector.point(azimuth: sun.azimuth, elevation: sun.elevation) : nil
                 for (p, h) in hours where sunAt.map({ hypot($0.x - p.x, $0.y - p.y) > 34 }) ?? true {
-                    ctx.fill(Path(ellipseIn: CGRect(x: p.x - 2, y: p.y - 2, width: 4, height: 4)), with: .color(Palette.paper.opacity(0.8)))
-                    let label = Text(String(format: "%02d", h)).font(Fonts.mono(9)).foregroundColor(Palette.paper.opacity(0.7))
+                    ctx.fill(Path(ellipseIn: CGRect(x: p.x - 2, y: p.y - 2, width: 4, height: 4)), with: .color(Palette.onPicture.opacity(0.8)))
+                    let label = Text(String(format: "%02d", h)).font(Fonts.mono(9)).foregroundColor(Palette.onPicture.opacity(0.7))
                     ctx.draw(label, at: CGPoint(x: p.x, y: p.y + 9), anchor: .top)
                 }
 
@@ -584,7 +585,7 @@ struct SunPathOverlay: View {
                    let r = projector.point(azimuth: projector.heading + 80, elevation: 0) {
                     var h = Path()
                     h.move(to: CGPoint(x: 0, y: l.y)); h.addLine(to: CGPoint(x: size.width, y: r.y))
-                    ctx.stroke(h, with: .color(Palette.paper.opacity(0.2)), lineWidth: 0.5)
+                    ctx.stroke(h, with: .color(Palette.onPicture.opacity(0.2)), lineWidth: 0.5)
                 }
             }
 
@@ -595,7 +596,7 @@ struct SunPathOverlay: View {
                 // Only label it when it's clear of the planned sun and its readout.
                 let clear = sunPoint.map { hypot($0.x - p.x, $0.y - p.y) > 60 } ?? true
                 if clear, p.y > 24 {
-                    ctx.draw(Text("Now").font(.osDataSmall).foregroundColor(Palette.paper), at: CGPoint(x: p.x, y: p.y - r - 3), anchor: .bottom)
+                    ctx.draw(Text("Now").font(.osDataSmall).foregroundColor(Palette.onPicture), at: CGPoint(x: p.x, y: p.y - r - 3), anchor: .bottom)
                 }
             }
 
@@ -614,14 +615,14 @@ struct SunPathOverlay: View {
                 // Just the time, on a dark pill so it reads over sky and leaves (Elliot, 25 Oct
                 // 2026: the Az/El readout was noise). Above the sun, flipped below near the top.
                 if let time {
-                    let label = ctx.resolve(Text(Format.time(time)).font(.osNumSmall).foregroundColor(Palette.paper))
+                    let label = ctx.resolve(Text(Format.time(time)).font(.osNumSmall).foregroundColor(Palette.onPicture))
                     let m = label.measure(in: size)
                     let pill = CGSize(width: m.width + 12, height: m.height + 6)
                     let above = p.y - r - 6 - pill.height > 4
                     let cy = above ? p.y - r - 6 - pill.height / 2 : p.y + r + 6 + pill.height / 2
                     let cx = min(max(p.x, pill.width / 2 + 4), size.width - pill.width / 2 - 4)
                     let box = CGRect(x: cx - pill.width / 2, y: cy - pill.height / 2, width: pill.width, height: pill.height)
-                    ctx.fill(Path(roundedRect: box, cornerRadius: pill.height / 2), with: .color(Palette.ink.opacity(0.6)))
+                    ctx.fill(Path(roundedRect: box, cornerRadius: pill.height / 2), with: .color(Palette.onPictureInk.opacity(0.6)))
                     ctx.draw(label, at: CGPoint(x: cx, y: cy), anchor: .center)
                 }
             } else {
@@ -637,7 +638,7 @@ struct SunPathOverlay: View {
                 }
                 tri.closeSubpath()
                 ctx.fill(tri, with: .color(Palette.sun))
-                let label = Text(time.map { "Sun \(Format.time($0))" } ?? "Sun").font(.osDataSmall).foregroundColor(Palette.paper)
+                let label = Text(time.map { "Sun \(Format.time($0))" } ?? "Sun").font(.osDataSmall).foregroundColor(Palette.onPicture)
                 ctx.draw(label, at: CGPoint(x: left ? x + 10 : x - 10, y: y + 16), anchor: left ? .leading : .trailing)
             }
         }
@@ -665,7 +666,7 @@ struct SunPathOverlay: View {
         let bounds = CGRect(origin: .zero, size: size)
         let label = "Moon · \(moon.summary)"
         guard moon.position.elevation > -0.5 else {
-            ctx.draw(Text("Moon below the horizon · \(moon.summary)").font(.osDataSmall).foregroundColor(Palette.paper.opacity(0.8)),
+            ctx.draw(Text("Moon below the horizon · \(moon.summary)").font(.osDataSmall).foregroundColor(Palette.onPicture.opacity(0.8)),
                      at: CGPoint(x: size.width / 2, y: 14), anchor: .top)
             return
         }
@@ -673,7 +674,7 @@ struct SunPathOverlay: View {
            bounds.insetBy(dx: -8, dy: -8).contains(p) {
             let r: CGFloat = 8
             let disc = CGRect(x: p.x - r, y: p.y - r, width: r * 2, height: r * 2)
-            ctx.fill(Path(ellipseIn: disc), with: .color(Palette.paper.opacity(0.18)))
+            ctx.fill(Path(ellipseIn: disc), with: .color(Palette.onPicture.opacity(0.18)))
             // The lit part: a half disc plus or minus an ellipse for the terminator.
             var lit = Path()
             let k = CGFloat(1 - 2 * moon.illumination)
@@ -687,9 +688,9 @@ struct SunPathOverlay: View {
                 lit.addLine(to: CGPoint(x: x, y: y))
             }
             lit.closeSubpath()
-            ctx.fill(lit, with: .color(Palette.paper))
-            ctx.stroke(Path(ellipseIn: disc), with: .color(Palette.paper.opacity(0.6)), lineWidth: 0.75)
-            let readout = ctx.resolve(Text(label).font(.osDataSmall).foregroundColor(Palette.paper))
+            ctx.fill(lit, with: .color(Palette.onPicture))
+            ctx.stroke(Path(ellipseIn: disc), with: .color(Palette.onPicture.opacity(0.6)), lineWidth: 0.75)
+            let readout = ctx.resolve(Text(label).font(.osDataSmall).foregroundColor(Palette.onPicture))
             let w = readout.measure(in: size).width
             let right = p.x + r + 5 + w < size.width - 6
             let y = min(max(p.y, 12), size.height - 12)
@@ -705,8 +706,8 @@ struct SunPathOverlay: View {
                 tri.move(to: CGPoint(x: x + 6, y: y)); tri.addLine(to: CGPoint(x: x - 4, y: y - 6)); tri.addLine(to: CGPoint(x: x - 4, y: y + 6))
             }
             tri.closeSubpath()
-            ctx.fill(tri, with: .color(Palette.paper))
-            ctx.draw(Text("Moon \(Int(moon.position.azimuth.rounded()))° · \(Int((moon.illumination * 100).rounded()))% lit").font(.osDataSmall).foregroundColor(Palette.paper),
+            ctx.fill(tri, with: .color(Palette.onPicture))
+            ctx.draw(Text("Moon \(Int(moon.position.azimuth.rounded()))° · \(Int((moon.illumination * 100).rounded()))% lit").font(.osDataSmall).foregroundColor(Palette.onPicture),
                      at: CGPoint(x: left ? x + 10 : x - 10, y: y + 16), anchor: left ? .leading : .trailing)
         }
     }

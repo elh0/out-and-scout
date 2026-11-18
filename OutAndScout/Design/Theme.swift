@@ -14,42 +14,74 @@ extension Color {
     }
 }
 
+extension UIColor {
+    convenience init(hex: UInt32, alpha: CGFloat = 1) {
+        self.init(red: CGFloat((hex >> 16) & 0xFF) / 255,
+                  green: CGFloat((hex >> 8) & 0xFF) / 255,
+                  blue: CGFloat(hex & 0xFF) / 255,
+                  alpha: alpha)
+    }
+
+    /// Paper by day, night by night: follows the view's light or dark look.
+    static func look(day: UInt32, night: UInt32, dayAlpha: CGFloat = 1, nightAlpha: CGFloat = 1) -> UIColor {
+        UIColor { t in
+            t.userInterfaceStyle == .dark ? UIColor(hex: night, alpha: nightAlpha) : UIColor(hex: day, alpha: dayAlpha)
+        }
+    }
+}
+
+extension Color {
+    /// A token with a paper (day) and a night value. Which one shows follows the colour scheme,
+    /// so the 1.1 Paper look and the old dark look share every view.
+    static func look(day: UInt32, night: UInt32, dayOpacity: Double = 1, nightOpacity: Double = 1) -> Color {
+        Color(uiColor: .look(day: day, night: night, dayAlpha: dayOpacity, nightAlpha: nightOpacity))
+    }
+}
+
+// 1.1 "Paper" (Elliot, 18 Nov 2026): the whole app on warm paper with ink, one orange.
+// Night keeps the 1.0 outline look. The names are the 1.0 names, so "paper" is the
+// foreground (ink on paper by day, paper on night by night) and "night" the background.
+// The 1.0 design is kept at the git tag design-1.0-outline.
 enum Palette {
-    static let paper = Color(hex: 0xF3F3F0)
-    static let ink = Color(hex: 0x111111)
-    static let graphite = Color(hex: 0x66665F)
+    /// Foreground on the screen: ink by day, paper by night.
+    static let paper = Color.look(day: 0x151513, night: 0xF3F3F0)
+    /// The opposite of `paper`: text on a filled `paper` capsule.
+    static let ink = Color.look(day: 0xF1EEE7, night: 0x111111)
+    static let graphite = Color.look(day: 0x8A877F, night: 0x66665F)
     /// Accent for the sun, the current time and the golden-hour window. Nothing else.
-    static let sun = Color(hex: 0xFF5A1F)
-    static let rule = Color(hex: 0xD9D9D3)
-    /// Viewfinder background.
-    static let night = Color(hex: 0x0B0B0A)
-    /// Hairlines and chip borders on the dark viewfinder.
-    static let nightRule = Color(hex: 0x2E2E2B)
-    /// Secondary text on the dark viewfinder.
-    static let nightMuted = Color(hex: 0x8A8A83)
-    /// HUD backing: ink at 72%.
+    static let sun = Color.look(day: 0xE2531F, night: 0xFF5A1F)
+    static let rule = Color.look(day: 0xCFCBC2, night: 0xD9D9D3)
+    /// Viewfinder background: paper by day.
+    static let night = Color.look(day: 0xF1EEE7, night: 0x0B0B0A)
+    static let nightUI = UIColor.look(day: 0xF1EEE7, night: 0x0B0B0A)
+    /// Hairlines and chip borders on the viewfinder.
+    static let nightRule = Color.look(day: 0xCFCBC2, night: 0x2E2E2B)
+    /// Secondary text on the viewfinder.
+    static let nightMuted = Color.look(day: 0x8A877F, night: 0x8A8A83)
+    /// HUD backing over the picture: ink at 72%, day or night.
     static let hud = Color(hex: 0x111111, opacity: 0.72)
+    /// Lines, words and marks drawn on the live picture or a photo: always light, day or night.
+    static let onPicture = Color(hex: 0xF3F3F0)
+    /// Dark backing for words on the picture.
+    static let onPictureInk = Color(hex: 0x111111)
 }
 
-/// E2 sheets (Shot List, Export, Projects, Kit): dark, ruled lines instead of boxes,
-/// underlined words instead of pills, one outlined button.
+/// Sheets (Shot List, Export, Projects, Kit): paper by day, the 1.0 grey-black by night.
 enum Sheet {
-    /// The outline look's grey-black (Elliot kept it over pure black, 8 Oct 2026).
-    static let bg = Color(hex: 0x121211)
-    static let text = Color(hex: 0xECEBE6)
-    static let muted = Color(hex: 0x8C8A83)
-    static let rule = Color(hex: 0x2A2926)
+    static let bg = Color.look(day: 0xF1EEE7, night: 0x121211)
+    static let text = Color.look(day: 0x151513, night: 0xECEBE6)
+    static let muted = Color.look(day: 0x8A877F, night: 0x8C8A83)
+    static let rule = Color.look(day: 0xCFCBC2, night: 0x2A2926)
 }
 
-/// The outline look (round 4, locked 8 Oct 2026): hairline rounded cards and pills, a white
-/// frame window, Geist for names and big numbers, Geist Mono caps for labels.
+/// The outline look's hairlines and cards, on paper by day.
 enum Outline {
-    /// Pill and card edges: paper at 42%.
-    static let line = Color(hex: 0xECEBE6, opacity: 0.42)
+    /// Pill and card edges.
+    static let line = Color.look(day: 0x151513, night: 0xECEBE6, dayOpacity: 0.35, nightOpacity: 0.42)
     /// Sheets and cards that sit over the screen.
-    static let card = Color(hex: 0x1A1A19)
+    static let card = Color.look(day: 0xEAE6DE, night: 0x1A1A19)
     /// The ring a pill or card gets while pressed.
-    static let ring = Color(hex: 0xECEBE6, opacity: 0.16)
+    static let ring = Color.look(day: 0x151513, night: 0xECEBE6, dayOpacity: 0.12, nightOpacity: 0.16)
 }
 
 /// A hairline pill: outlined, or filled paper when on. Hit area padded to 44.
@@ -338,5 +370,66 @@ struct FadingHScroll<Content: View>: View {
                         .frame(width: fade)
                 }
             }
+    }
+}
+
+// MARK: - Day and night (1.1 Paper)
+
+/// Paper by day; the viewfinder and the photo viewer switch to the 1.0 dark look from sunset
+/// to sunrise, so the screen never glares at night. "Night" in the ··· menu picks it by hand.
+@MainActor @Observable final class Look {
+    static let shared = Look()
+
+    enum Mode: String, CaseIterable {
+        case auto, day, night
+        var label: String {
+            switch self {
+            case .auto: "Auto"
+            case .day: "Day"
+            case .night: "Night"
+            }
+        }
+    }
+
+    var mode: Mode {
+        didSet { UserDefaults.standard.set(mode.rawValue, forKey: "look.mode") }
+    }
+
+    private init() {
+        mode = Mode(rawValue: UserDefaults.standard.string(forKey: "look.mode") ?? "") ?? .auto
+    }
+
+    /// Day, then night, then auto.
+    func cycle() {
+        mode = switch mode {
+        case .auto: .day
+        case .day: .night
+        case .night: .auto
+        }
+    }
+
+    /// Night once the sun's top edge has gone (sunset), until it's back (sunrise).
+    func isNight(sunElevation: Double) -> Bool {
+        switch mode {
+        case .day: false
+        case .night: true
+        case .auto: sunElevation < -0.83
+        }
+    }
+}
+
+/// Gives its content the night look when it's dark out (checked each minute), paper otherwise.
+struct NightAware<Content: View>: View {
+    @Environment(LocationService.self) private var location
+    @State private var look = Look.shared
+    @ViewBuilder let content: Content
+
+    var body: some View {
+        TimelineView(.everyMinute) { tl in
+            let c = location.coordinate
+            let sun = SunCalculator.position(at: tl.date, latitude: c.latitude, longitude: c.longitude)
+            content
+                .environment(\.colorScheme, look.isNight(sunElevation: sun.elevation) ? .dark : .light)
+        }
     }
 }

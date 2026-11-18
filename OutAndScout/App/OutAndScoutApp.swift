@@ -49,7 +49,9 @@ struct KeyboardProofHost<Content: View>: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> KeyboardProofController<Content> {
         let host = KeyboardProofController(rootView: content())
         host.safeAreaRegions = .container
-        host.view.backgroundColor = UIColor(Palette.night)
+        host.view.backgroundColor = Palette.nightUI
+        // 1.1 Paper: the app is on paper; only the viewfinder turns dark at night.
+        host.overrideUserInterfaceStyle = .light
         return host
     }
 
@@ -225,7 +227,7 @@ struct RootView: View {
 
     private func content(portrait: Bool) -> some View {
         ZStack {
-            ViewfinderView()
+            NightAware { ViewfinderView() }
 
             if store.showingShotList {
                 ShotListView()
