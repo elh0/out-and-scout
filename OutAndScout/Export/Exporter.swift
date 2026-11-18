@@ -111,10 +111,15 @@ enum Exporter {
 
     static let page = CGRect(x: 0, y: 0, width: 595, height: 842) // A4 in points
 
-    static let ink = UIColor(red: 0x11 / 255, green: 0x11 / 255, blue: 0x11 / 255, alpha: 1)
-    static let graphite = UIColor(red: 0x66 / 255, green: 0x66 / 255, blue: 0x5F / 255, alpha: 1)
-    static let rule = UIColor(red: 0xD9 / 255, green: 0xD9 / 255, blue: 0xD3 / 255, alpha: 1)
-    static let sun = UIColor(red: 1, green: 0x5A / 255, blue: 0x1F / 255, alpha: 1)
+    // 1.1 Paper: ink, grey, line and the one orange.
+    static let ink = UIColor(hex: 0x151513)
+    static let graphite = UIColor(hex: 0x6E6B64)
+    static let rule = UIColor(hex: 0xCFCBC2)
+    static let sun = UIColor(hex: 0xE2531F)
+    /// Geist (not Mono), only for the big numbers.
+    static func big(_ size: CGFloat) -> UIFont {
+        UIFont(name: "Geist-Medium", size: size) ?? .systemFont(ofSize: size, weight: .medium)
+    }
 
     // Geist Mono for every word in the PDF too, as in the app (Elliot, 6 Oct 2026).
     static func sans(_ size: CGFloat, medium: Bool = false) -> UIFont {
@@ -133,11 +138,11 @@ enum Exporter {
     static let footerH: CGFloat = 20
 
     /// Shots per scene page, from the row height.
-    static func rowHeight(_ options: Options) -> CGFloat { options.frames ? 84 : 40 }
+    static func rowHeight(_ options: Options) -> CGFloat { options.frames ? 70 : 40 }
     static func rowsPerPage(_ options: Options) -> Int {
         // Room under the scene header and sun grid, above the footer.
         // The sun path chart takes another 140 when sun times are on.
-        let avail = page.height - pad * 2 - 168 - (options.sunTimes ? 140 : 0) - footerH
+        let avail = page.height - pad * 2 - 150 - (options.sunTimes ? 136 : 0) - footerH
         return max(1, Int(avail / rowHeight(options)))
     }
     static func pages(for scene: ScoutScene, _ options: Options) -> Int {
@@ -369,6 +374,11 @@ enum Exporter {
         let scope = text("Shot List · \(scenes.count == 1 ? scenes[0].name : "All scenes")", font: mono(8.5), color: graphite)
         scope.draw(at: CGPoint(x: page.width - pad - scope.size().width, y: pad + 2))
 
+        if options.tier != .detailed {
+            summaryCover(ctx, project: project, scenes: scenes, firstPage: firstPage, total: total, options: options)
+            return
+        }
+
         var y = pad + 50
         let kicker = [project.kind, "recce \(Format.shortDate(date)) \(Calendar.current.component(.year, from: date))"]
             .filter { !$0.isEmpty }.joined(separator: " · ")
@@ -445,59 +455,220 @@ enum Exporter {
         footer(left: "Exported from Out & Scout · \(stamp.string(from: Date()))", page: 1, of: total)
     }
 
+    // MARK: Summary, 1.1 Paper (the early-October layout, tighter, with the design kit)
+
+    static let stamp: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_GB")
+        f.dateFormat = "d MMM yyyy, HH:mm"
+        return f
+    }()
+
+    /// The light chip: B / ¾B / S / ¾F / F, solid for backlit down to an outline for front lit.
+    @discardableResult
+    static func lightChip(_ k: LightClass?, at p: CGPoint) -> CGFloat {
+        let label = k?.letter ?? "–"
+        let t = text(label, font: mono(7.5), color: ink)
+        let w = max(18, t.size().width + 6), h: CGFloat = 12
+        let r = CGRect(x: p.x, y: p.y, width: w, height: h)
+        let fill: UIColor? = switch k {
+        case .backlit: ink
+        case .threeQuarterBack: UIColor(hex: 0x6E6B64)
+        case .side: UIColor(hex: 0xB9B5AB)
+        case .threeQuarterFront: UIColor(hex: 0xDAD6CD)
+        case .front, .none: nil
+        }
+        if let fill { fill.setFill(); UIRectFill(r) }
+        ink.setStroke()
+        let b = UIBezierPath(rect: r.insetBy(dx: 0.35, dy: 0.35)); b.lineWidth = 0.7; b.stroke()
+        let dark = k == .backlit || k == .threeQuarterBack
+        text(label, font: mono(7.5), color: dark ? UIColor(hex: 0xF1EEE7) : ink)
+            .draw(at: CGPoint(x: r.midX - t.size().width / 2, y: r.minY + 1.5))
+        return w
+    }
+
+    /// `◎ place`, `↗ 247° SW` (arrow turned to the heading) or `Maps ↗`: a small outlined tag.
+    @discardableResult
+    static func tag(_ s: String, at p: CGPoint, heading: Double? = nil, link: URL? = nil,
+                    ctx: UIGraphicsPDFRendererContext? = nil, maxWidth: CGFloat = 200) -> CGFloat {
+        let t = text(s, font: mono(7), color: ink)
+        let arrow: CGFloat = heading == nil ? 0 : 9
+        let w = min(maxWidth, t.size().width + 8 + arrow), h: CGFloat = 12
+        let r = CGRect(x: p.x, y: p.y, width: w, height: h)
+        rule.setStroke()
+        let b = UIBezierPath(rect: r.insetBy(dx: 0.3, dy: 0.3)); b.lineWidth = 0.6; b.stroke()
+        if let heading, let cg = UIGraphicsGetCurrentContext() {
+            cg.saveGState()
+            cg.translateBy(x: r.minX + 7.5, y: r.midY)
+            cg.rotate(by: heading * .pi / 180)
+            let a = UIBezierPath()
+            a.move(to: CGPoint(x: 0, y: -4)); a.addLine(to: CGPoint(x: 3, y: 4))
+            a.addLine(to: CGPoint(x: 0, y: 2.4)); a.addLine(to: CGPoint(x: -3, y: 4)); a.close()
+            ink.setFill(); a.fill()
+            cg.restoreGState()
+        }
+        t.draw(with: CGRect(x: r.minX + 4 + arrow, y: r.minY + 2, width: w - 8 - arrow, height: 10),
+               options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], context: nil)
+        if let link, let ctx { ctx.setURL(link, for: r) }
+        return w
+    }
+
+    /// The day for one heading, sunrise to sunset: grey by how the light falls, golden hour in
+    /// orange, a tick at the shot's time.
+    static func dayStrip(day: SunDay, heading: Double, mark: Date, in r: CGRect) {
+        guard let rise = day.sunrise, let set = day.sunset, set > rise else { return }
+        let span = set.timeIntervalSince(rise)
+        let x = { (t: Date) in r.minX + CGFloat(min(max(t.timeIntervalSince(rise) / span, 0), 1)) * r.width }
+        for w in LightRead.windows(day: day, heading: heading) {
+            let shade: UIColor = switch w.light {
+            case .backlit: ink
+            case .threeQuarterBack: UIColor(hex: 0x6E6B64)
+            case .side: UIColor(hex: 0x9C988F)
+            case .threeQuarterFront: UIColor(hex: 0xB9B5AB)
+            case .front: UIColor(hex: 0xDAD6CD)
+            }
+            shade.setFill()
+            UIRectFill(CGRect(x: x(w.start), y: r.minY, width: max(0.5, x(w.end) - x(w.start)), height: r.height))
+        }
+        for g in day.goldenWindows {
+            sun.setFill()
+            UIRectFill(CGRect(x: x(g.lowerBound), y: r.minY, width: max(0.5, x(g.upperBound) - x(g.lowerBound)), height: r.height))
+        }
+        ink.setFill()
+        UIRectFill(CGRect(x: x(mark) - 0.6, y: r.minY - 2, width: 1.2, height: r.height + 4))
+    }
+
+    /// Summary cover: the big shot count, the project on an orange rule, the kit, the sun grid,
+    /// and the scene table (# · scene + page · place + coordinates · light · shots).
+    static func summaryCover(_ ctx: UIGraphicsPDFRendererContext, project: Project, scenes: [ScoutScene],
+                             firstPage: [UUID: Int], total: Int, options: Options) {
+        let date = recceDate(scenes)
+        let w = page.width - pad * 2
+        var y = pad + 30
+        let shotCount = scenes.reduce(0) { $0 + $1.shots.count }
+        let num = text("\(shotCount)", font: big(88), color: sun, kern: -4)
+        num.draw(at: CGPoint(x: pad - 4, y: y))
+        let nh = num.size().height
+        let r1 = text("SHOTS", font: mono(8.5), color: graphite, kern: 0.8)
+        r1.draw(at: CGPoint(x: page.width - pad - r1.size().width, y: y + nh - 34))
+        let r2 = text("\(scenes.count) SCENE\(scenes.count == 1 ? "" : "S")", font: mono(8.5), color: ink, kern: 0.8)
+        r2.draw(at: CGPoint(x: page.width - pad - r2.size().width, y: y + nh - 20))
+        y += nh + 2
+        line(at: y, color: sun, weight: 1.2)
+        y += 6
+        text(project.name, font: mono(11), color: ink)
+            .draw(with: CGRect(x: pad, y: y, width: w - 140, height: 14), options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], context: nil)
+        let when = text("Recce \(Format.shortDate(date)) \(Calendar.current.component(.year, from: date))", font: mono(9), color: graphite)
+        when.draw(at: CGPoint(x: page.width - pad - when.size().width, y: y + 1))
+        y += 18
+        var kit = [project.kind].filter { !$0.isEmpty }
+        if let first = scenes.flatMap(\.shots).first {
+            kit += [first.cameraName, first.lensSeries].filter { !$0.isEmpty }
+        }
+        if !kit.isEmpty {
+            text(kit.joined(separator: " · "), font: mono(8.5), color: graphite).draw(at: CGPoint(x: pad, y: y))
+            y += 18
+        }
+        if options.sunTimes, let where_ = scenes.lazy.compactMap(place).first {
+            let t = sunTimes(at: where_, on: date)
+            y = grid([("Sunrise", t.rise, false), ("Golden", t.golden, true), ("Sunset", t.set, false), ("Blue", t.blue, false)], y: y + 4) + 16
+        }
+
+        let cols: [CGFloat] = [pad, pad + 30, pad + 196, page.width - pad - 30 - 64, page.width - pad - 22]
+        for (i, h) in ["#", "Scene", "Location", "Light", "Shots"].enumerated() {
+            text(h.uppercased(), font: mono(7.5), color: graphite, kern: 0.6).draw(at: CGPoint(x: cols[i], y: y))
+        }
+        y += 13
+        line(at: y, color: ink)
+        for (i, scene) in scenes.enumerated() {
+            if y > page.height - pad - footerH - 40 { break }
+            let top = y + 8
+            text(String(format: "%02d", i + 1), font: big(13), color: sun).draw(at: CGPoint(x: cols[0], y: top - 1))
+            text(scene.name, font: mono(10.5))
+                .draw(with: CGRect(x: cols[1], y: top, width: cols[2] - cols[1] - 10, height: 14), options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], context: nil)
+            text(scene.shots.isEmpty ? "No shots yet" : "Page \(firstPage[scene.id] ?? 2)", font: mono(7.5), color: graphite)
+                .draw(at: CGPoint(x: cols[1], y: top + 15))
+            if let loc = place(of: scene) {
+                tag("◎ \(loc.label ?? "Pinned spot")", at: CGPoint(x: cols[2], y: top - 1), link: loc.mapURL, ctx: ctx, maxWidth: cols[3] - cols[2] - 10)
+                text(coords(loc), font: mono(7.5), color: graphite).draw(at: CGPoint(x: cols[2], y: top + 15))
+            }
+            var lx = cols[3]
+            if scene.shots.contains(where: \.isGolden) {
+                dot(at: CGPoint(x: lx, y: top + 3.5), golden: true)
+                lx += 9
+            }
+            if let first = scene.shots.first { lightChip(first.lightClass, at: CGPoint(x: lx, y: top)) }
+            text("\(scene.shots.count)", font: mono(10)).draw(at: CGPoint(x: cols[4], y: top))
+            y = top + 30
+            line(at: y)
+        }
+        footer(left: "Exported from Out & Scout · \(stamp.string(from: Date()))", page: 1, of: total)
+    }
+
     static func drawScene(_ ctx: UIGraphicsPDFRendererContext, project: Project, scene: ScoutScene, index: Int,
                                   startPage pageNo: inout Int, total: Int, options: Options) {
         var y: CGFloat = 0
         // Columns: shot, frame, description, lens, time, light.
-        let frameW: CGFloat = options.frames ? 99 : 0
+        let frameW: CGFloat = options.frames ? 92 : 0
         let cShot = pad
-        let cFrame = pad + 36 + 12
+        let cFrame = pad + 30 + 10
         let cDesc = options.frames ? cFrame + frameW + 12 : cFrame
-        let cLight = page.width - pad - 82
-        let cTime = cLight - 12 - 48
-        let cLens = cTime - 12 - 48
+        let cLight = page.width - pad - 70
+        let cTime = cLight - 10 - 36
+        let cLens = cTime - 10 - 30
         let descW = cLens - 12 - cDesc
+        let loc = place(of: scene)
+        let date = recceDate([scene])
+        let day = loc.map { SunCalculator.day(containing: date, latitude: $0.latitude, longitude: $0.longitude) }
 
         func header(continued: Bool = false) {
             ctx.beginPage()
             y = pad
-            text("\(project.name) · Scene \(String(format: "%02d", index))", font: mono(8.5), color: graphite).draw(at: CGPoint(x: pad, y: y))
+            text("\(project.name) · Scene \(String(format: "%02d", index))", font: mono(8), color: graphite).draw(at: CGPoint(x: pad, y: y))
             wordmark(at: CGPoint(x: page.width - pad - wordmarkWidth(size: 10), y: y), size: 10)
             y += 14
-            text(scene.name, font: sans(26, medium: true), kern: -0.8)
-                .draw(with: CGRect(x: pad, y: y, width: page.width - pad * 2 - 80, height: 34), options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], context: nil)
-            y += 34
-            let loc = place(of: scene)
-            // scene.note is usually the date already; only add it when it isn't.
-            let date = scene.note.isEmpty ? Format.shortDate(recceDate([scene])) : scene.note
-            let sub = [date, loc?.display].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
-            text(sub, font: mono(9), color: graphite)
-                .draw(with: CGRect(x: pad, y: y, width: page.width - pad * 2, height: 12), options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], context: nil)
-            y += 22
-            // No place, no sun times: leave the strip out rather than fill it with dashes.
+            // The scene number big and orange, the name beside it.
+            let num = text(String(format: "%02d", index), font: big(continued ? 32 : 52), color: sun, kern: -2)
+            num.draw(at: CGPoint(x: pad - 2, y: y))
+            let nx = pad + num.size().width + 12
+            let nb = y + num.size().height
+            text(scene.name + (continued ? " · continued" : ""), font: big(continued ? 14 : 19), kern: -0.5)
+                .draw(with: CGRect(x: nx, y: nb - (continued ? 34 : 44), width: page.width - pad - nx, height: 24), options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], context: nil)
+            let when = scene.note.isEmpty ? Format.shortDate(date) : scene.note
+            var tx = nx
+            let d = text(when, font: mono(8.5), color: graphite)
+            d.draw(at: CGPoint(x: tx, y: nb - 18))
+            tx += d.size().width + 8
+            if let loc {
+                tag("◎ \(loc.label ?? coords(loc)) ↗", at: CGPoint(x: tx, y: nb - 19.5), link: loc.mapURL, ctx: ctx, maxWidth: page.width - pad - tx)
+            }
+            y = nb + 6
             if options.sunTimes, let loc {
-                let t = sunTimes(at: loc, on: recceDate([scene]))
-                y = grid([("Sunrise", t.rise, false), ("Golden hour", t.golden, false), ("Sunset", t.set, false), ("Location", coords(loc), false)], y: y) + 14
-                // The sun path once per scene, on its first page.
+                let t = sunTimes(at: loc, on: date)
+                line(at: y, color: sun, weight: 1.2)
+                y = grid([("Sunrise", t.rise, false), ("Golden", t.golden, true), ("Sunset", t.set, false), ("Location", coords(loc), false)], y: y) + 10
                 if !continued {
-                    y = sunPathChart(scene: scene, at: loc, on: recceDate([scene]), y: y) + 16
+                    y = sunPathChart(scene: scene, at: loc, on: date, y: y) + 10
                 }
+            } else {
+                line(at: y, color: sun, weight: 1.2)
+                y += 10
             }
             for (x, h) in [(cShot, "Shot"), (cFrame, options.frames ? "Frame" : ""), (cDesc, "Description"), (cLens, "Lens"), (cTime, "Time"), (cLight, "Light")] where !h.isEmpty {
-                text(h, font: mono(8.5), color: graphite).draw(at: CGPoint(x: x, y: y))
+                text(h.uppercased(), font: mono(7.5), color: graphite, kern: 0.6).draw(at: CGPoint(x: x, y: y))
             }
-            y += 14
-            line(at: y)
+            y += 12
+            line(at: y, color: ink)
         }
 
-        func finishPage() {
-            footer(left: "Exported from Out & Scout", page: pageNo, of: total)
+        func finishPage(more: String? = nil) {
+            footer(left: more ?? "Exported from Out & Scout", page: pageNo, of: total)
             pageNo += 1
         }
 
         header()
         if scene.shots.isEmpty {
-            text("No shots in this scene yet.", font: sans(11), color: graphite).draw(at: CGPoint(x: pad, y: y + 12))
+            text("No shots in this scene yet.", font: mono(10), color: graphite).draw(at: CGPoint(x: pad, y: y + 12))
             finishPage()
             return
         }
@@ -506,64 +677,64 @@ enum Exporter {
         let perPage = rowsPerPage(options)
         for (i, shot) in scene.shots.enumerated() {
             if i > 0, i % perPage == 0 {
-                finishPage()
+                finishPage(more: "\(shot.number) continues on page \(pageNo + 1)")
                 header(continued: true)
             }
-            let top = y + 9
-            // Every column starts at the top of the row, level with the caption.
-            text(shot.number, font: sans(13.5, medium: true)).draw(at: CGPoint(x: cShot, y: top - 2))
+            let top = y + 8
+            text(shot.number, font: big(14), color: ink).draw(at: CGPoint(x: cShot, y: top - 2))
+            if shot.isGolden { dot(at: CGPoint(x: cShot + 22, y: top + 3), golden: true) }
 
             if options.frames {
                 // The box takes the shot's frame-line shape (a 9:16 shot stays tall).
-                let boxH = rowH - 18
+                let boxH = rowH - 16
                 let aspect = max(shot.aspect.value, 0.3)
                 let boxW = min(frameW, boxH * aspect)
                 let rect = CGRect(x: cFrame, y: top, width: boxW, height: min(boxH, boxW / aspect))
                 if let image = printable(shot, for: rect) {
                     ctx.cgContext.saveGState()
-                    UIBezierPath(roundedRect: rect, cornerRadius: 3).addClip()
+                    UIBezierPath(rect: rect).addClip()
                     // The frame lines crop the still, as on screen.
                     let crop = fitCrop(aspect: shot.aspect.value, in: image.size)
                     image.draw(in: aspectFill(crop: crop, imageSize: image.size, in: rect))
                     ctx.cgContext.restoreGState()
                 } else {
-                    UIColor(red: 0x2B / 255, green: 0x2B / 255, blue: 0x28 / 255, alpha: 1).setFill()
-                    UIBezierPath(roundedRect: rect, cornerRadius: 3).fill()
+                    UIColor(hex: 0xDAD6CD).setFill()
+                    UIRectFill(rect)
                 }
             }
 
-            // Description: the caption, the place, which way the camera faced, a map link.
+            // Description: the caption, then the tags (place, heading, Maps), then the day strip.
             var dy = top
-            text(shot.caption.isEmpty ? "Untitled" : shot.caption, font: sans(10.5))
-                .draw(with: CGRect(x: cDesc, y: dy, width: descW, height: options.frames ? 28 : 14), options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], context: nil)
-            dy += options.frames ? 29 : 14
-            let small = { (s: String, y: CGFloat) in
-                text(s, font: mono(8), color: graphite)
-                    .draw(with: CGRect(x: cDesc, y: y, width: descW, height: 11), options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], context: nil)
+            text(shot.caption.isEmpty ? "Untitled" : shot.caption, font: mono(9.5))
+                .draw(with: CGRect(x: cDesc, y: dy, width: descW, height: options.frames ? 24 : 12), options: [.usesLineFragmentOrigin, .truncatesLastVisibleLine], context: nil)
+            dy += options.frames ? 25 : 13
+            if options.frames || shot.location != nil || shot.bearing != nil {
+                var tx = cDesc
+                if let l = shot.location {
+                    tx += tag("◎ \(l.label ?? coords(l))", at: CGPoint(x: tx, y: dy), maxWidth: descW * 0.5) + 4
+                }
+                if let b = shot.bearing {
+                    tx += tag("\(Int(b.rounded()))° \(HeadingTag.short(b))", at: CGPoint(x: tx, y: dy), heading: b) + 4
+                }
+                if let url = shot.location?.mapURL {
+                    tag("Maps ↗", at: CGPoint(x: tx, y: dy), link: url, ctx: ctx)
+                }
+                dy += 16
             }
-            if let loc = shot.location {
-                small(loc.label ?? coords(loc), dy)
-                dy += 11
-            }
-            if let bearing = shot.bearing, options.frames {
-                small("facing \(Format.bearing(bearing))", dy)
-                dy += 11
-            }
-            if let url = shot.location?.mapURL, options.frames {
-                let link = text("Open in Maps ↗", font: mono(8))
-                let linkRect = CGRect(origin: CGPoint(x: cDesc, y: dy + 1), size: link.size())
-                link.draw(at: linkRect.origin)
-                ctx.setURL(url, for: linkRect)
+            if options.frames, let b = shot.bearing, let l = shot.location {
+                let sd = SunCalculator.day(containing: shot.capturedAt, latitude: l.latitude, longitude: l.longitude)
+                dayStrip(day: sd, heading: b, mark: shot.plannedTime, in: CGRect(x: cDesc, y: dy + 2, width: min(descW, 150), height: 5))
+            } else if options.frames, let b = shot.bearing, let day {
+                dayStrip(day: day, heading: b, mark: shot.plannedTime, in: CGRect(x: cDesc, y: dy + 2, width: min(descW, 150), height: 5))
             }
 
-            text("\(Format.mm(shot.lensMM))mm", font: mono(9)).draw(at: CGPoint(x: cLens, y: top + 1))
-            text(Format.time(shot.plannedTime), font: mono(9)).draw(at: CGPoint(x: cTime, y: top + 1))
-            if shot.isGolden { dot(at: CGPoint(x: cLight, y: top + 4), golden: true) }
-            var lightText = lightWord(shot)
+            text(Format.mm(shot.lensMM), font: mono(9)).draw(at: CGPoint(x: cLens, y: top + 1))
+            text(Format.time(shot.plannedTime), font: mono(9), color: shot.isGolden ? sun : ink).draw(at: CGPoint(x: cTime, y: top + 1))
+            let cw = lightChip(shot.lightClass, at: CGPoint(x: cLight, y: top))
+            _ = cw
             // Where the sun sits in the frame, not its degrees (Elliot: degrees belong on the Viewfinder).
-            if let side = shot.sunSide { lightText += "\n\(side)" }
-            text(lightText, font: mono(9), color: shot.isGolden ? ink : graphite)
-                .draw(with: CGRect(x: cLight + (shot.isGolden ? 9 : 0), y: top + 1, width: 82, height: 26), options: .usesLineFragmentOrigin, context: nil)
+            text(shot.sunSide ?? lightWord(shot), font: mono(7.5), color: graphite)
+                .draw(with: CGRect(x: cLight, y: top + 15, width: 70, height: 20), options: .usesLineFragmentOrigin, context: nil)
 
             y += rowH
             line(at: y)
