@@ -17,6 +17,9 @@ struct ShotListView: View {
     @State private var enlarged: Shot?
     /// The Selects grid, for sending just the stills.
     @State private var selecting = false
+    /// Export and Selects open upright (Elliot, 18 Nov): the layout before them, put back
+    /// when they close. Nil while neither is open.
+    @State private var layoutBefore: Bool?
     /// The shot opened in place in the list.
     @State private var openID: UUID?
     @Environment(\.isPortrait) private var portrait
@@ -71,6 +74,7 @@ struct ShotListView: View {
         }
         .animation(.easeOut(duration: 0.2), value: enlarged?.id)
         .animation(.snappy(duration: 0.28), value: selecting)
+        .onChange(of: store.showingExport || selecting) { _, open in turnUpright(open) }
         .sheet(isPresented: $reordering) {
             let project = store.currentProject
             VStack(alignment: .leading, spacing: 16) {
@@ -190,6 +194,20 @@ struct ShotListView: View {
             sceneFilter = store.currentSceneID
             selectedID = store.currentScene.shots.last?.id
             openID = selectedID
+        }
+    }
+
+    /// Turns the phone upright while Export or Selects is open, then back to how it was.
+    /// Not remembered as the app's own choice, so the camera still opens the usual way.
+    private func turnUpright(_ open: Bool) {
+        guard !LayoutMode.isPad else { return }
+        let mode = LayoutMode.shared
+        if open {
+            if layoutBefore == nil { layoutBefore = mode.portrait }
+            if !mode.portrait { mode.set(portrait: true, remember: false) }
+        } else if let before = layoutBefore {
+            layoutBefore = nil
+            if mode.portrait != before { mode.set(portrait: before, remember: false) }
         }
     }
 

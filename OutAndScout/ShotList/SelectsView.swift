@@ -23,9 +23,6 @@ struct SelectsView: View {
     @State private var peek: Shot?
     @State private var error: String?
     @State private var makeTask: Task<Void, Never>?
-    /// The layout the app was in before Selects, put back on close (the turn here isn't
-    /// remembered as the app's choice).
-    @State private var startedPortrait: Bool?
 
     private struct Item: Identifiable {
         let scene: ScoutScene
@@ -74,10 +71,7 @@ struct SelectsView: View {
             }
         }
         .animation(.easeOut(duration: 0.2), value: peek?.id)
-        .onAppear {
-            allScenes = scene == nil
-            if startedPortrait == nil { startedPortrait = LayoutMode.shared.portrait }
-        }
+        .onAppear { allScenes = scene == nil }
         .sheet(isPresented: Binding(get: { files != nil }, set: { if !$0 { files = nil } })) {
             ActivityView(items: files ?? []) { completed in
                 if completed {
@@ -276,9 +270,6 @@ struct SelectsView: View {
 
     private func close() {
         makeTask?.cancel()
-        if let startedPortrait, startedPortrait != LayoutMode.shared.portrait {
-            LayoutMode.shared.set(portrait: startedPortrait, remember: false)
-        }
         onClose()
     }
 }

@@ -148,7 +148,16 @@ struct ExportPanel: View {
     /// Title, scope, the three tiers, what's included, and the other ways out.
     private func optionsColumn(width: CGFloat?) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Export").font(.osSans(18))
+            HStack {
+                Text("Export").font(.osSans(18))
+                Spacer(minLength: 8)
+                // Opens upright; turn it back if you'd rather (Elliot, 18 Nov).
+                if !LayoutMode.isPad {
+                    OPill(label: portrait ? "↻ Landscape" : "↻ Portrait", size: .small, caps: true) {
+                        LayoutMode.shared.set(portrait: !portrait, remember: false)
+                    }
+                }
+            }
             HStack(spacing: 6) {
                 OPill(label: "This scene", on: !allScenes, size: .small) { allScenes = false }
                 OPill(label: "All scenes", on: allScenes, size: .small) { allScenes = true }
