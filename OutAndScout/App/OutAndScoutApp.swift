@@ -117,6 +117,12 @@ struct RootView: View {
     @State private var opening = true
     /// The start screen (Continue / New project), shown once per launch after the opening.
     @State private var starting = true
+    @State private var shootDay = ShootDay.shared
+    @Environment(\.scenePhase) private var scenePhase
+
+    private func openShootDay() {
+        shootDay.openFromButton { store.toast = $0 }
+    }
 
     var body: some View {
         // The switch decides which way the screen may turn (never the gyro); the layout then
@@ -137,8 +143,35 @@ struct RootView: View {
                 if opening {
                     LaunchMark().transition(.opacity)
                 }
+                // Shoot day: the pinned PDF sits over everything, start screen included, so the
+                // lock-screen button lands straight on it.
+                if shootDay.showing {
+                    ShootDayViewer(shootDay: shootDay)
+                        .transition(.opacity)
+                }
+                if shootDay.showingHowTo {
+                    ShootDayHowTo(shootDay: shootDay)
+                        .transition(.opacity)
+                }
             }
             .font(.osRow)
+            .animation(.easeOut(duration: 0.2), value: shootDay.showing)
+            .animation(.easeOut(duration: 0.2), value: shootDay.showingHowTo)
+        }
+        // A PDF shared in from Mail, WhatsApp or Files gets pinned for the shoot day.
+        .onOpenURL { url in
+            guard url.isFileURL else { return }
+            if shootDay.pin(fileAt: url) {
+                store.toast = "Pinned · \(shootDay.pinnedName ?? "PDF")"
+            } else {
+                store.toast = "That file isn't a PDF Out & Scout can open."
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: ShootDayLink.notification)) { _ in
+            if ShootDayLink.takeRequest() { openShootDay() }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active, ShootDayLink.takeRequest() { openShootDay() }
         }
         .onAppear {
             #if DEBUG

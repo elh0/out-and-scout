@@ -303,6 +303,14 @@ struct ExportPanel: View {
                 .font(Fonts.mono(9)).tracking(0.6).foregroundStyle(Sheet.muted)
             OPill(label: "Send · AirDrop, Mail, Files", on: true, size: .big) { shareItem = ShareItem(url: url) }
                 .padding(.top, 10)
+            // Shoot day: the lock-screen button opens this PDF.
+            OPill(label: "Pin for shoot day", size: .big) {
+                if ShootDay.shared.pin(fileAt: url) {
+                    store.toast = "Pinned for shoot day"
+                } else {
+                    error = "Couldn't pin the PDF. Try again."
+                }
+            }
             Spacer(minLength: 20)
             HStack(spacing: 8) {
                 OPill(label: "Edit again", caps: true) { made = nil }

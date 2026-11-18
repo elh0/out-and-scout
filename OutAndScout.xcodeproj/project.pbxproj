@@ -188,6 +188,7 @@
 				DEVELOPMENT_TEAM = CF8HY3UXL4;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/OutAndScout-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Out & Scout";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "The viewfinder uses the camera to frame shots.";
@@ -226,6 +227,7 @@
 				DEVELOPMENT_TEAM = CF8HY3UXL4;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = "Config/OutAndScout-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = "Out & Scout";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "The viewfinder uses the camera to frame shots.";

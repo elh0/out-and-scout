@@ -10,9 +10,13 @@ targets:
     type: application
     platform: iOS
     sources: [OutAndScout]
+    dependencies:
+      - target: ShootDayWidget
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.outandscout.app
+        # Document types (PDF in, for Shoot day); merged with the generated keys below.
+        INFOPLIST_FILE: Config/OutAndScout-Info.plist
         DEVELOPMENT_TEAM: CF8HY3UXL4
         MARKETING_VERSION: "0.1"
         CURRENT_PROJECT_VERSION: 1
@@ -32,3 +36,24 @@ targets:
         INFOPLIST_KEY_UIStatusBarHidden: YES
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+
+  # Shoot day lock-screen / Control Centre button (iOS 18 control). Opens the app on the
+  # pinned PDF via OpenShootDayIntent, which is compiled into both targets.
+  ShootDayWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - ShootDayWidget
+      - OutAndScout/App/ShootDayIntent.swift
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.outandscout.app.shootday
+        DEVELOPMENT_TEAM: CF8HY3UXL4
+        MARKETING_VERSION: "0.1"
+        CURRENT_PROJECT_VERSION: 1
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        INFOPLIST_FILE: Config/ShootDayWidget-Info.plist
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: "Out & Scout"
+        SKIP_INSTALL: YES
