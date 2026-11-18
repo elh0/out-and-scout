@@ -13,11 +13,12 @@ final class ShootDay {
     private(set) var pinnedName: String?
     /// The full-screen PDF is up.
     var showing = false
-    /// The one-time card showing how to add the lock-screen button.
+    /// The card showing how to add the lock-screen button. Comes up on every pin until
+    /// "Don't show again", and any time from the pinned PDF's "How to" button.
     var showingHowTo = false
 
     private static let nameKey = "shootDayPinnedName"
-    private static let howToKey = "shootDayHowToSeen"
+    private static let howToOffKey = "shootDayHowToOff"
 
     static var folder: URL {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
@@ -47,7 +48,7 @@ final class ShootDay {
         UserDefaults.standard.set(shown, forKey: Self.nameKey)
         // Files that came in from another app land in Documents/Inbox; tidy that copy away.
         if url.path.contains("/Inbox/") { try? FileManager.default.removeItem(at: url) }
-        if !UserDefaults.standard.bool(forKey: Self.howToKey) { showingHowTo = true }
+        if !UserDefaults.standard.bool(forKey: Self.howToOffKey) { showingHowTo = true }
         return true
     }
 
@@ -58,8 +59,13 @@ final class ShootDay {
         showing = false
     }
 
-    func howToSeen() {
-        UserDefaults.standard.set(true, forKey: Self.howToKey)
+    func showHowTo() { showingHowTo = true }
+
+    func hideHowTo() { showingHowTo = false }
+
+    /// "Don't show again": pins stop bringing the card up. "How to" still opens it.
+    func howToOff() {
+        UserDefaults.standard.set(true, forKey: Self.howToOffKey)
         showingHowTo = false
     }
 
@@ -83,6 +89,7 @@ struct ShootDayViewer: View {
                     Text(shootDay.pinnedName ?? "").font(.osSans(15)).lineLimit(1)
                 }
                 Spacer()
+                OPill(label: "How to", caps: true) { shootDay.showHowTo() }
                 OPill(label: "Unpin", caps: true) { confirmUnpin = true }
                 OPill(label: "Close", on: true, caps: true) { shootDay.showing = false }
             }
@@ -117,44 +124,140 @@ private struct PinnedPDF: UIViewRepresentable {
     func updateUIView(_ v: PDFView, context: Context) {}
 }
 
-/// Shown once after the first pin: how to put the button on the lock screen (iOS doesn't
-/// let apps add it themselves).
+/// Shown after a pin (until "Don't show again") and from "How to": how to put the button on
+/// the lock screen (iOS doesn't let apps add it themselves). A small looping picture of a lock
+/// screen plays the four steps, and the step it's on lights up in the list.
 struct ShootDayHowTo: View {
     let shootDay: ShootDay
+    @State private var step = 0
 
     var body: some View {
         ZStack {
             Color.black.opacity(0.55).ignoresSafeArea()
-                .onTapGesture { shootDay.howToSeen() }
-            VStack(alignment: .leading, spacing: 12) {
-                Text("PINNED · \((shootDay.pinnedName ?? "").uppercased())")
-                    .font(Fonts.mono(9)).tracking(0.6).foregroundStyle(Sheet.muted).lineLimit(1)
-                Text("Add the lock-screen button").font(.osSans(18))
-                VStack(alignment: .leading, spacing: 6) {
-                    step(1, "Hold the lock screen")
-                    step(2, "Customise › Lock Screen")
-                    step(3, "Tap the left button (the torch) and remove it")
-                    step(4, "Tap +, then Out & Scout › Shoot day")
+                .onTapGesture { shootDay.hideHowTo() }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    if let name = shootDay.pinnedName {
+                        Text("PINNED · \(name.uppercased())")
+                            .font(Fonts.mono(9)).tracking(0.6).foregroundStyle(Sheet.muted).lineLimit(1)
+                    }
+                    Text("Add the lock-screen button").font(.osSans(18))
+                    LockScreenDemo(step: step)
+                        .frame(maxWidth: .infinity)
+                        .accessibilityHidden(true)
+                    VStack(alignment: .leading, spacing: 6) {
+                        row(0, "Hold the lock screen")
+                        row(1, "Customise › Lock Screen")
+                        row(2, "Tap − on the left button (the torch)")
+                        row(3, "Tap +, then Out & Scout › Shoot day")
+                    }
+                    Text("Then one press opens this PDF, after Face ID. Pin a new one any time from Export, or Share › Out & Scout from Mail or WhatsApp. This card is under How to on the pinned PDF.")
+                        .font(.osDataSmall).foregroundStyle(Sheet.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                    HStack(spacing: 8) {
+                        OPill(label: "Don't show again", caps: true) { shootDay.howToOff() }
+                        Spacer()
+                        OPill(label: "Got it", on: true, size: .big, caps: true) { shootDay.hideHowTo() }
+                    }
                 }
-                Text("Then one press opens this PDF, after Face ID. Pin a new one any time from Export, or Share › Out & Scout from Mail or WhatsApp.")
-                    .font(.osDataSmall).foregroundStyle(Sheet.muted)
-                    .fixedSize(horizontal: false, vertical: true)
-                OPill(label: "Got it", on: true, size: .big, caps: true) { shootDay.howToSeen() }
-                    .frame(maxWidth: .infinity, alignment: .trailing)
+                .padding(18)
+                .frame(maxWidth: 380)
+                .background(RoundedRectangle(cornerRadius: 18).fill(Outline.card))
+                .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Outline.line, lineWidth: 1.5))
+                .foregroundStyle(Sheet.text)
+                .padding(Space.m)
+                .frame(maxWidth: .infinity)
             }
-            .padding(18)
-            .frame(maxWidth: 380)
-            .background(RoundedRectangle(cornerRadius: 18).fill(Outline.card))
-            .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Outline.line, lineWidth: 1.5))
-            .foregroundStyle(Sheet.text)
-            .padding(Space.m)
+            .scrollBounceBehavior(.basedOnSize)
+            .defaultScrollAnchor(.center)
+        }
+        .task {
+            // About 2 s a step, round and round while the card is up.
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(2.2))
+                withAnimation(.easeInOut(duration: 0.45)) { step = (step + 1) % 4 }
+            }
         }
     }
 
-    private func step(_ n: Int, _ text: String) -> some View {
+    private func row(_ n: Int, _ text: String) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
-            Text("\(n)").font(Fonts.mono(10)).foregroundStyle(Palette.sun)
+            Text("\(n + 1)").font(Fonts.mono(10)).foregroundStyle(Palette.sun)
             Text(text).font(.osData)
         }
+        .opacity(step == n ? 1 : 0.45)
+    }
+}
+
+/// A line drawing of a lock screen acting out one step: 0 a finger holds the screen,
+/// 1 the Customise button, 2 the torch button with its − badge, 3 the Shoot day button in its place.
+private struct LockScreenDemo: View {
+    let step: Int
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 26).fill(Color.black)
+            RoundedRectangle(cornerRadius: 26).strokeBorder(Outline.line, lineWidth: 1.5)
+            VStack(spacing: 2) {
+                Text("Wed 18").font(Fonts.mono(8)).foregroundStyle(Palette.paper.opacity(0.7))
+                Text("9:41").font(.system(size: 34, weight: .semibold, design: .rounded))
+                    .foregroundStyle(Palette.paper)
+            }
+            .scaleEffect(step == 1 ? 0.86 : 1)
+            .frame(maxHeight: .infinity, alignment: .top)
+            .padding(.top, 22)
+
+            // Step 0: a finger holding the middle of the screen.
+            Circle()
+                .fill(Palette.paper.opacity(0.25))
+                .overlay(Circle().strokeBorder(Palette.paper.opacity(0.8), lineWidth: 1.5))
+                .frame(width: 34, height: 34)
+                .scaleEffect(step == 0 ? 1 : 0.4)
+                .opacity(step == 0 ? 1 : 0)
+                .offset(y: 18)
+
+            // Step 1: the Customise button.
+            Text("Customise")
+                .font(Fonts.mono(9))
+                .foregroundStyle(Color.black)
+                .padding(.horizontal, 12).padding(.vertical, 6)
+                .background(Palette.paper, in: Capsule())
+                .opacity(step == 1 ? 1 : 0)
+                .offset(y: step == 1 ? 40 : 52)
+
+            // Bottom corners: the left button changes; the camera stays.
+            HStack {
+                leftButton
+                Spacer()
+                corner(Image(systemName: "camera.fill"))
+            }
+            .padding(.horizontal, 16)
+            .padding(.bottom, 16)
+            .frame(maxHeight: .infinity, alignment: .bottom)
+        }
+        .frame(width: 150, height: 250)
+    }
+
+    private var leftButton: some View {
+        ZStack(alignment: .topLeading) {
+            corner(Image(systemName: step == 3 ? "doc.text" : "flashlight.off.fill"))
+                .overlay(Circle().strokeBorder(Palette.sun, lineWidth: step >= 2 ? 1.5 : 0))
+            Image(systemName: step == 3 ? "plus" : "minus")
+                .font(.system(size: 8, weight: .bold))
+                .foregroundStyle(Color.black)
+                .frame(width: 14, height: 14)
+                .background(Palette.paper, in: Circle())
+                .offset(x: -3, y: -3)
+                .opacity(step == 2 ? 1 : 0)
+        }
+    }
+
+    private func corner(_ image: Image) -> some View {
+        image
+            .font(.system(size: 13))
+            .foregroundStyle(Palette.paper)
+            .frame(width: 34, height: 34)
+            .background(Color.white.opacity(0.14), in: Circle())
+            .contentTransition(.opacity)
     }
 }
