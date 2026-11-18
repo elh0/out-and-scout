@@ -155,6 +155,22 @@ struct ProjectsPanel: View {
             }
             .buttonStyle(.plain)
 
+            // Always in reach, so the launch price is seen without hitting a limit first.
+            if !Pro.shared.owned {
+                Button { Pro.shared.paywallReason = "Out & Scout Pro" } label: {
+                    HStack {
+                        Text("Get Pro").font(.osRow)
+                        Spacer()
+                        Text(Pro.shared.price.map { "\($0) once" } ?? "Pay once")
+                            .font(Fonts.mono(10)).foregroundStyle(Palette.sun)
+                    }
+                    .foregroundStyle(Sheet.text.opacity(0.62))
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+
             // TestFlight builds only.
             FoundingTesterCard()
         }
