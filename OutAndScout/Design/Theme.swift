@@ -392,11 +392,12 @@ struct FadingHScroll<Content: View>: View {
     }
 
     var mode: Mode {
-        didSet { UserDefaults.standard.set(mode.rawValue, forKey: "look.mode") }
+        didSet { UserDefaults.standard.set(mode.rawValue, forKey: "look.mode2") }
     }
 
     private init() {
-        mode = Mode(rawValue: UserDefaults.standard.string(forKey: "look.mode") ?? "") ?? .auto
+        // Elliot, 18 Nov: white by default; dark only when picked (··· → Night).
+        mode = Mode(rawValue: UserDefaults.standard.string(forKey: "look.mode2") ?? "") ?? .day
     }
 
     /// Day, then night, then auto.

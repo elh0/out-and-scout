@@ -88,13 +88,20 @@ struct ExportPanel: View {
 
     /// Landscape: options on the left, the pages and buttons on the right.
     private var wideSheet: some View {
+        VStack(spacing: 0) {
+        // Landscape: the tabs run across the top, so they never squeeze into the options column.
+        HStack(spacing: 8) {
+            PaperTabs(current: .export) { go($0) }
+            Spacer(minLength: 8)
+            RotateButton(portrait: portrait)
+        }
         HStack(alignment: .top, spacing: 18) {
             ScrollView {
-                optionsColumn(width: 200)
+                optionsColumn(width: 220)
                     .padding(.vertical, 16)
             }
             .scrollIndicators(.hidden)
-            .frame(width: 200)
+            .frame(width: 220)
 
             Rectangle().fill(Sheet.rule).frame(width: 1)
 
@@ -113,6 +120,7 @@ struct ExportPanel: View {
                         .padding(.vertical, 16)
                 }
             }
+        }
         }
         .padding(.horizontal, 18)
     }
@@ -149,11 +157,13 @@ struct ExportPanel: View {
     /// Title, scope, the three tiers, what's included, and the other ways out.
     private func optionsColumn(width: CGFloat?) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 8) {
-                PaperTabs(current: .export) { go($0) }
-                Spacer(minLength: 8)
-                // Opens upright; turn it back if you'd rather (Elliot, 18 Nov).
-                RotateButton(portrait: portrait)
+            if width == nil {
+                HStack(spacing: 8) {
+                    PaperTabs(current: .export) { go($0) }
+                    Spacer(minLength: 8)
+                    // Opens upright; turn it back if you'd rather (Elliot, 18 Nov).
+                    RotateButton(portrait: portrait)
+                }
             }
             BigNumber(value: "\(shotCount)", label: "Shots", trailing: allScenes ? "All scenes" : thisScene.name,
                       size: portrait ? 48 : 40)
