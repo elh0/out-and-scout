@@ -679,6 +679,8 @@ struct ShotViewer: View {
     let onClose: () -> Void
     @State private var current: UUID
     @State private var saving = false
+    /// True while the still in view is pinched in; hides the labels and stops paging.
+    @State private var zoomed = false
 
     init(shots: [Shot], start: UUID, onClose: @escaping () -> Void) {
         self.shots = shots
@@ -694,15 +696,17 @@ struct ShotViewer: View {
 
             TabView(selection: $current) {
                 ForEach(shots) { s in
-                    StillImage(shot: s, size: .screen)
-                        .aspectRatio(s.aspect.value, contentMode: .fit)
-                        .clipped()
+                    // Pinch or double-tap to zoom; a tap closes only when not zoomed in.
+                    ZoomableStill(shot: s, zoomed: $zoomed) { if !zoomed { onClose() } }
                         .padding(.vertical, Space.xs)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .tag(s.id)
                 }
             }
             .tabViewStyle(.page(indexDisplayMode: .never))
+            // Zoomed in, a swipe moves around the picture instead of changing shot.
+            .scrollDisabled(zoomed)
+            .onChange(of: current) { zoomed = false }
             .ignoresSafeArea()
             // Get the neighbours ready before you swipe to them.
             .task(id: current) {
@@ -722,19 +726,26 @@ struct ShotViewer: View {
                     .padding(.vertical, Space.xxs + 1)
                     .background(Palette.hud, in: RoundedRectangle(cornerRadius: Radius.readout))
                     .padding(.bottom, Space.s)
+                    .opacity(zoomed ? 0 : 1)
+                    .allowsHitTesting(false)
             }
         }
-        .contentShape(Rectangle())
-        .onTapGesture(perform: onClose)
-        // Tapping anywhere closes it; the X makes that obvious.
+        .animation(.easeOut(duration: 0.15), value: zoomed)
+        // Tapping the picture closes it (handled in ZoomableStill); the X makes that obvious.
         .overlay(alignment: .topTrailing) {
-            Image(systemName: "xmark")
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(Sheet.text)
-                .frame(width: 36, height: 36)
-                .background(Palette.hud, in: Circle())
-                .padding(Space.s)
-                .allowsHitTesting(false)
+            Button(action: onClose) {
+                Image(systemName: "xmark")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Sheet.text)
+                    .frame(width: 36, height: 36)
+                    .background(Palette.hud, in: Circle())
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .padding(Space.s - 4)
+            .opacity(zoomed ? 0 : 1)
+            .accessibilityLabel("close full screen")
         }
         // Save just this still to Photos, cropped to its frame lines.
         .overlay(alignment: .bottomTrailing) {
@@ -762,8 +773,8 @@ struct ShotViewer: View {
             .buttonStyle(.plain)
             .disabled(saving)
             .padding(Space.s)
+            .opacity(zoomed ? 0 : 1)
+            .allowsHitTesting(!zoomed)
         }
-        .accessibilityAddTraits(.isButton)
-        .accessibilityLabel("close full screen")
     }
 }
