@@ -84,7 +84,9 @@ enum StillWriter {
             kCGImageSourceShouldCacheImmediately: true,
             kCGImageSourceThumbnailMaxPixelSize: max(w, h),
         ]
-        guard let full = CGImageSourceCreateThumbnailAtIndex(source, 0, upright as CFDictionary) else { return false }
+        guard let decoded = CGImageSourceCreateThumbnailAtIndex(source, 0, upright as CFDictionary) else { return false }
+        // Blur faces (1.1) before the crop, so regions line up with the whole still.
+        let full = BlurFaces.prepared(decoded, shot: shot.id)
 
         var image = full
         let target = shot.aspect.value

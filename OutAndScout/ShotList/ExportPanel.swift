@@ -16,6 +16,7 @@ struct ExportPanel: View {
     var openSelects: () -> Void = {}
 
     @State private var allScenes = false
+    @State private var blurPrefs = BlurPrefs.shared
     @State private var options = Exporter.Options()
     /// A name typed over the default file name, without the extension.
     @State private var customName: String?
@@ -55,7 +56,7 @@ struct ExportPanel: View {
     private var previewKey: String {
         let shots = (target.map { [$0] } ?? project.scenes).flatMap(\.shots)
         let names = shots.map { "\($0.id)\($0.caption)\($0.notes ?? "")" }.joined()
-        return "\(Pro.shared.owned)\(allScenes)\(options.tier)\(options.frames)\(options.sunTimes)\(options.notes)\(project.name)\(names.hashValue)\(forecastReady)"
+        return "\(Pro.shared.owned)\(allScenes)\(options.tier)\(options.frames)\(options.sunTimes)\(options.notes)\(project.name)\(names.hashValue)\(forecastReady)\(blurPrefs.on)\(blurPrefs.version)"
     }
 
     var body: some View {
@@ -176,13 +177,15 @@ struct ExportPanel: View {
                     }
                 }
             }
-            dropdown("Include", value: [options.frames ? "Frames" : nil, options.sunTimes ? "Sun" : nil, options.notes ? "Notes" : nil]
+            dropdown("Include", value: [options.frames ? "Frames" : nil, options.sunTimes ? "Sun" : nil, options.notes ? "Notes" : nil, blurPrefs.on ? "Blur" : nil]
                 .compactMap { $0 }.joined(separator: " · ").ifEmpty("Nothing extra")) {
                 Toggle("Frames", isOn: $options.frames)
                     .menuActionDismissBehavior(.disabled)
                 Toggle("Sun", isOn: $options.sunTimes)
                     .menuActionDismissBehavior(.disabled)
                 Toggle("Notes", isOn: $options.notes)
+                    .menuActionDismissBehavior(.disabled)
+                Toggle("Blur faces", isOn: Binding(get: { blurPrefs.on }, set: { blurPrefs.on = $0 }))
                     .menuActionDismissBehavior(.disabled)
             }
 

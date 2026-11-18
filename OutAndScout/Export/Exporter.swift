@@ -749,7 +749,9 @@ enum Exporter {
         // one go is what stalled a 66-shot export.
         autoreleasepool { () -> UIImage? in
             let px = min(2400, max(rect.width, rect.height) * 6)
-            guard let small = ThumbCache.downsampled(for: shot, maxPixel: px) else { return nil }
+            guard let raw = ThumbCache.downsampled(for: shot, maxPixel: px) else { return nil }
+            // Blur faces (1.1): softened in the export only; the original still is untouched.
+            let small = BlurFaces.prepared(raw, shot: shot.id)
             return small.jpegData(compressionQuality: 0.8).flatMap(UIImage.init(data:))
         }
     }

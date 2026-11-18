@@ -11,6 +11,7 @@
 		00AA963A48067BD611D80EE1 /* Cards.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FDA6C4DC4DF737C24DD3AE4 /* Cards.swift */; };
 		03D45199E849C8217CF21C21 /* ScoutStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE9FFD58C98D37809BA663D4 /* ScoutStore.swift */; };
 		07990A06BFE3E0015C95323D /* PhotoSaver.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5C8667B1690178487CD4425 /* PhotoSaver.swift */; };
+		B1A2F00D0000000000000001 /* BlurFaces.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1A2F00D0000000000000002 /* BlurFaces.swift */; };
 		0C475D109B7E888E82BC14E1 /* SwipeToDelete.swift in Sources */ = {isa = PBXBuildFile; fileRef = 827B2C2493672F4355D9E415 /* SwipeToDelete.swift */; };
 		0DC7B261968ACC91309B6D2E /* RoundIconButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CC42BDAC0B933C52346CAB1 /* RoundIconButton.swift */; };
 		10F23677009FB389D4D41D3F /* Keyboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA83407C698E59A47F7AC661 /* Keyboard.swift */; };
@@ -131,6 +132,7 @@
 		A459D856D9BBEFA7F486E8AF /* ViewfinderFrame.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewfinderFrame.swift; sourceTree = "<group>"; };
 		A494399C35662BCE0CC2A088 /* ShootDayPin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShootDayPin.swift; sourceTree = "<group>"; };
 		A5C8667B1690178487CD4425 /* PhotoSaver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoSaver.swift; sourceTree = "<group>"; };
+		B1A2F00D0000000000000002 /* BlurFaces.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlurFaces.swift; sourceTree = "<group>"; };
 		A861C9FA26EFA8F2DC40CB30 /* ExportPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportPanel.swift; sourceTree = "<group>"; };
 		AA83407C698E59A47F7AC661 /* Keyboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Keyboard.swift; sourceTree = "<group>"; };
 		AA9748309A94A78E5E5E2E56 /* ForecastSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForecastSheet.swift; sourceTree = "<group>"; };
@@ -305,6 +307,7 @@
 			children = (
 				227FD7A37AE1DCB12671EA5A /* Exporter.swift */,
 				A5C8667B1690178487CD4425 /* PhotoSaver.swift */,
+				B1A2F00D0000000000000002 /* BlurFaces.swift */,
 				1495332C5BDB0CBACA6EFA1F /* ShootDay.swift */,
 				B71509817CDF4F0104B34EC2 /* ShotCards.swift */,
 			);
@@ -456,6 +459,7 @@
 				CCD46C2C3A74113C256A119F /* OutAndScoutApp.swift in Sources */,
 				CC9234310182479604A7A16C /* Panels.swift in Sources */,
 				07990A06BFE3E0015C95323D /* PhotoSaver.swift in Sources */,
+				B1A2F00D0000000000000001 /* BlurFaces.swift in Sources */,
 				EF80DEA32465BCD6D97ABB92 /* PortraitViewfinder.swift in Sources */,
 				27C7C7D1D46EC97833B5C521 /* Pro.swift in Sources */,
 				0DC7B261968ACC91309B6D2E /* RoundIconButton.swift in Sources */,

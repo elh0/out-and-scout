@@ -245,6 +245,7 @@ struct LeftRail: View {
 struct RailToggles: View {
     @Environment(ScoutStore.self) private var store
     @State private var look = Look.shared
+    @State private var blur = BlurPrefs.shared
     @Environment(LocationService.self) private var location
     @Environment(MotionService.self) private var motion
     @Environment(\.dismiss) private var dismiss
@@ -256,6 +257,7 @@ struct RailToggles: View {
             RailToggle(symbol: "level", label: "Level", on: store.overlays.level) { store.toggle(\.level) }
             // 1.1 Paper: dark from sunset to sunrise on Auto; Day or Night pins it.
             RailToggle(symbol: "moon", label: "Night · \(look.mode.label)", on: look.mode != .day) { look.cycle() }
+            RailToggle(symbol: "face.dashed", label: "Blur faces", on: blur.on) { blur.on.toggle() }
             // Portrait layout, picked by hand rather than by tilting the phone.
             LayoutSwitch(vertical: true)
         }

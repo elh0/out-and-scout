@@ -7,6 +7,8 @@ import UIKit
 struct ZoomableStill: UIViewRepresentable {
     let shot: Shot
     @Binding var zoomed: Bool
+    /// Changes when Blur faces is flipped or a face is fixed, so the picture redraws.
+    var blurKey: String = ""
     let onTap: () -> Void
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
@@ -24,7 +26,7 @@ struct ZoomableStill: UIViewRepresentable {
 
     func updateUIView(_ v: StillScrollView, context: Context) {
         context.coordinator.parent = self
-        if context.coordinator.shotKey != shot.photoFile.map({ "\($0)\(shot.aspect.value)" }) {
+        if context.coordinator.shotKey != shot.photoFile.map({ "\($0)\(shot.aspect.value)\(blurKey)" }) {
             context.coordinator.load(shot)
         }
     }
@@ -47,13 +49,23 @@ struct ZoomableStill: UIViewRepresentable {
         func load(_ shot: Shot) {
             task?.cancel()
             sharp = false
-            shotKey = shot.photoFile.map { "\($0)\(shot.aspect.value)" }
-            if let hit = ThumbCache.cached(shot, .screen) {
+            shotKey = shot.photoFile.map { "\($0)\(shot.aspect.value)\(parent.blurKey)" }
+            let blur = BlurPrefs.isOn
+            // With Blur faces on, never flash the unblurred picture first.
+            if !blur, let hit = ThumbCache.cached(shot, .screen) {
                 view?.setImage(Self.cropped(hit, to: shot))
             }
             task = Task { [weak self] in
                 guard let image = await ThumbCache.load(shot, .screen), !Task.isCancelled else { return }
-                self?.view?.setImage(Self.cropped(image, to: shot), keepZoom: true)
+                if blur {
+                    let id = shot.id
+                    let soft = await Task.detached(priority: .userInitiated) { BlurFaces.prepared(image, shot: id) }.value
+                    guard !Task.isCancelled else { return }
+                    self?.view?.setImage(Self.cropped(soft, to: shot), keepZoom: true)
+                    BlurPrefs.shared.found += 1
+                } else {
+                    self?.view?.setImage(Self.cropped(image, to: shot), keepZoom: true)
+                }
             }
         }
 
@@ -67,7 +79,7 @@ struct ZoomableStill: UIViewRepresentable {
             let shot = parent.shot
             task = Task { [weak self] in
                 let big = await Task.detached(priority: .userInitiated) {
-                    ThumbCache.downsampled(for: shot, maxPixel: 4400)
+                    ThumbCache.downsampled(for: shot, maxPixel: 4400).map { BlurFaces.prepared($0, shot: shot.id) }
                 }.value
                 guard let big, !Task.isCancelled else { return }
                 self?.view?.setImage(Self.cropped(big, to: shot), keepZoom: true)

@@ -115,6 +115,7 @@ struct SelectsView: View {
             OPill(label: "This scene", on: !allScenes, size: .small) { allScenes = false; trimPicked() }
             OPill(label: "All scenes", on: allScenes, size: .small) { allScenes = true }
             Spacer()
+            BlurSwitch()
             let all = !items.isEmpty && items.allSatisfy { picked.contains($0.id) }
             OPill(label: all ? "None" : "All", size: .small) {
                 picked = all ? [] : Set(items.map(\.id))

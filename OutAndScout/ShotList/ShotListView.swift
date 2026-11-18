@@ -642,6 +642,7 @@ struct ShotListView: View {
             }
             .tint(Sheet.muted)
             .overlay(alignment: .top) { Sheet.rule.frame(height: 1) }
+            BlurSwitch()
             HStack(alignment: .firstTextBaseline, spacing: 6) {
                 Text("Notes").font(Fonts.mono(11)).foregroundStyle(Sheet.muted)
                 EditableName(text: shot.notes ?? "", font: Fonts.mono(11), color: Sheet.text, lineLimit: 4,
@@ -791,6 +792,9 @@ struct ShotViewer: View {
     @State private var saving = false
     /// True while the still in view is pinched in; hides the labels and stops paging.
     @State private var zoomed = false
+    @State private var prefs = BlurPrefs.shared
+    /// Fix: tap a ring to unblur a face, tap an empty spot to add one.
+    @State private var fixing = false
 
     init(shots: [Shot], start: UUID, onClose: @escaping () -> Void) {
         self.shots = shots
@@ -822,15 +826,15 @@ struct ShotViewer: View {
                 TabView(selection: $current) {
                     ForEach(shots) { s in
                         // Pinch or double-tap to zoom; a tap closes only when not zoomed in.
-                        ZoomableStill(shot: s, zoomed: $zoomed) { if !zoomed { onClose() } }
+                        ZoomableStill(shot: s, zoomed: $zoomed, blurKey: "\(prefs.on)\(prefs.version)") { if !zoomed && !fixing { onClose() } }
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .tag(s.id)
                     }
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 // Zoomed in, a swipe moves around the picture instead of changing shot.
-                .scrollDisabled(zoomed)
-                .onChange(of: current) { zoomed = false }
+                .scrollDisabled(zoomed || fixing)
+                .onChange(of: current) { zoomed = false; fixing = false }
                 // Get the neighbours ready before you swipe to them.
                 .task(id: current) {
                     guard let i = shots.firstIndex(where: { $0.id == current }) else { return }
@@ -839,7 +843,11 @@ struct ShotViewer: View {
                     }
                 }
 
-                if !zoomed && shots.count > 1 {
+                if fixing && prefs.on && !zoomed {
+                    BlurFixOverlay(shot: shot)
+                }
+
+                if !zoomed && !fixing && shots.count > 1 {
                     HStack {
                         arrow("‹", enabled: index > 0) { step(-1) }
                         Spacer()
@@ -910,6 +918,21 @@ struct ShotViewer: View {
                     .frame(height: 24)
                     .overlay(Rectangle().strokeBorder(Palette.sun, lineWidth: 1))
                 Spacer(minLength: Space.xs)
+                BlurSwitch()
+                if prefs.on {
+                    let n = BlurFaces.regions(detected: BlurCorrectionsStore.shared.cachedFaces(for: shot.id) ?? [],
+                                              corrections: BlurCorrectionsStore.shared.corrections(for: shot.id)).count
+                    Button { fixing.toggle() } label: {
+                        Text(fixing ? "DONE" : "\(n) FOUND · FIX")
+                            .font(Fonts.mono(10)).tracking(0.6)
+                            .foregroundStyle(fixing ? Palette.sun : Sheet.text)
+                            .underline()
+                            .frame(minHeight: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .id("\(prefs.found)\(prefs.version)")
+                }
                 // Save just this still to Photos, cropped to its frame lines.
                 Button {
                     saving = true
