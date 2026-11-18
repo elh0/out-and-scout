@@ -639,7 +639,8 @@ struct ShotListView: View {
                 .id("notes" + shot.id.uuidString)
             }
             // Frame lines can change after the shot; "Full" shows the whole frame.
-            ScrollView(.horizontal, showsIndicators: false) {
+            // Fades at the edge, so a ratio cut off by the edge reads as "more this way" (Elliot, 18 Nov).
+            FadingHScroll {
                 HStack(spacing: 5) {
                     ForEach([AspectRatio.full(shot.stillAspect ?? AspectRatio.viewfinderValue)] + store.aspectStrip) { a in
                         OPill(label: a.display, on: a.label == shot.aspect.label, size: .small) {
