@@ -12,6 +12,8 @@ struct ExportPanel: View {
     @Environment(\.isPortrait) private var portrait
     /// The scene the Shot List is showing, or nil for all scenes.
     let scene: ScoutScene?
+    /// The Selects tab, opened from here.
+    var openSelects: () -> Void = {}
 
     @State private var allScenes = false
     @State private var options = Exporter.Options()
@@ -60,9 +62,8 @@ struct ExportPanel: View {
         Group {
             if portrait { uprightSheet } else { wideSheet }
         }
-        .background(RoundedRectangle(cornerRadius: 18).fill(Outline.card))
-        .overlay(RoundedRectangle(cornerRadius: 18).strokeBorder(Outline.line, lineWidth: 1.5))
-        .clipShape(RoundedRectangle(cornerRadius: 18))
+        // 1.1 Paper: Export is a tab of its own, on paper, not a card over the list.
+        .background(Sheet.bg.ignoresSafeArea())
         .foregroundStyle(Sheet.text)
         .onAppear {
             allScenes = scene == nil
@@ -94,7 +95,7 @@ struct ExportPanel: View {
             .scrollIndicators(.hidden)
             .frame(width: 200)
 
-            Rectangle().fill(Outline.line).frame(width: 1)
+            Rectangle().fill(Sheet.rule).frame(width: 1)
 
             if let made {
                 doneView(made)
@@ -134,8 +135,7 @@ struct ExportPanel: View {
                 Rectangle().fill(Outline.line).frame(height: 1)
                 HStack(spacing: 8) {
                     OPill(label: "Cancel", size: .big, caps: true) { close() }
-                    Spacer(minLength: 0)
-                    OPill(label: busy ? "Making…" : "Export PDF", on: true, size: .big, caps: true) { exportPDF() }
+                    exportButton
                 }
                 .padding(.horizontal, 18)
                 .padding(.vertical, 10)
@@ -148,29 +148,43 @@ struct ExportPanel: View {
     /// Title, scope, the three tiers, what's included, and the other ways out.
     private func optionsColumn(width: CGFloat?) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Text("Export").font(.osSans(18))
+            HStack(spacing: 8) {
+                PaperTabs(current: .export) { go($0) }
                 Spacer(minLength: 8)
                 // Opens upright; turn it back if you'd rather (Elliot, 18 Nov).
                 RotateButton(portrait: portrait)
             }
+            BigNumber(value: "\(shotCount)", label: "Shots", trailing: allScenes ? "All scenes" : thisScene.name,
+                      size: portrait ? 48 : 40)
+                .padding(.top, 4)
             HStack(spacing: 6) {
                 OPill(label: "This scene", on: !allScenes, size: .small) { allScenes = false }
                 OPill(label: "All scenes", on: allScenes, size: .small) { allScenes = true }
             }
-            .padding(.top, 12)
-            .padding(.bottom, 14)
+            .padding(.top, 8)
+            .padding(.bottom, 4)
 
-            VStack(spacing: 6) {
-                ForEach(Exporter.Tier.allCases, id: \.self) { t in tierCard(t) }
+            // PDF ▾ and Include ▾: the choices folded away, the pick on show.
+            dropdown("PDF", value: options.tier.label) {
+                ForEach(Exporter.Tier.allCases, id: \.self) { t in
+                    Button { options.tier = t } label: {
+                        if options.tier == t {
+                            Label("\(t.label) · \(tierLine(t))", systemImage: "checkmark")
+                        } else {
+                            Text("\(t.label) · \(tierLine(t))")
+                        }
+                    }
+                }
             }
-
-            HStack(spacing: 12) {
-                include("Frames", on: options.frames) { options.frames.toggle() }
-                include("Sun", on: options.sunTimes) { options.sunTimes.toggle() }
-                include("Notes", on: options.notes) { options.notes.toggle() }
+            dropdown("Include", value: [options.frames ? "Frames" : nil, options.sunTimes ? "Sun" : nil, options.notes ? "Notes" : nil]
+                .compactMap { $0 }.joined(separator: " · ").ifEmpty("Nothing extra")) {
+                Toggle("Frames", isOn: $options.frames)
+                    .menuActionDismissBehavior(.disabled)
+                Toggle("Sun", isOn: $options.sunTimes)
+                    .menuActionDismissBehavior(.disabled)
+                Toggle("Notes", isOn: $options.notes)
+                    .menuActionDismissBehavior(.disabled)
             }
-            .padding(.top, 6)
 
             if !Pro.shared.owned {
                 Button { _ = Pro.shared.allow("Clean PDFs") } label: {
@@ -206,12 +220,56 @@ struct ExportPanel: View {
         .frame(maxWidth: width == nil ? .infinity : nil, alignment: .leading)
     }
 
+    /// A ruled row: LABEL on the left, the pick and ▾ on the right; tap for the menu.
+    private func dropdown<Items: View>(_ label: String, value: String, @ViewBuilder items: () -> Items) -> some View {
+        Menu {
+            items()
+        } label: {
+            HStack {
+                Text(label.uppercased()).font(Fonts.mono(9)).tracking(0.8).foregroundStyle(Sheet.muted)
+                Spacer(minLength: 8)
+                Text("\(value) ▾").font(Fonts.mono(11)).foregroundStyle(Sheet.text).lineLimit(1)
+            }
+            .frame(minHeight: 44)
+            .overlay(alignment: .bottom) { Sheet.rule.frame(height: 1) }
+            .contentShape(Rectangle())
+        }
+    }
+
+    private func go(_ tab: PaperTab) {
+        switch tab {
+        case .camera:
+            close()
+            store.showingShotList = false
+        case .shots: close()
+        case .selects:
+            close()
+            openSelects()
+        case .export: break
+        }
+    }
+
+    /// The one orange button.
+    private var exportButton: some View {
+        Button { exportPDF() } label: {
+            Text(busy ? "MAKING…" : "EXPORT PDF")
+                .font(Fonts.mono(11)).tracking(0.8)
+                .foregroundStyle(Color(hex: 0xF1EEE7))
+                .frame(maxWidth: .infinity)
+                .frame(height: 44)
+                .background(Palette.sun)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(OPressRing())
+        .disabled(busy)
+    }
+
     private func tierCard(_ t: Exporter.Tier) -> some View {
         let on = options.tier == t
         return Button { options.tier = t } label: {
             HStack(spacing: 8) {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(t.label).font(.osSans(13))
+                    Text(t.label).font(Fonts.mono(12))
                     Text(tierLine(t)).font(Fonts.mono(9)).foregroundStyle(Sheet.muted)
                         .lineLimit(2).fixedSize(horizontal: false, vertical: true)
                 }
@@ -254,7 +312,7 @@ struct ExportPanel: View {
     /// The real pages, on a dark well.
     private var preview: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 6).fill(Color(hex: 0x0C0C0B))
+            Rectangle().fill(Outline.card)
             if let pdf {
                 PDFPages(data: pdf, scale: zoom.scale)
                     .clipShape(RoundedRectangle(cornerRadius: 6))
@@ -279,7 +337,7 @@ struct ExportPanel: View {
             zoomRow.padding(.top, 10)
             Spacer(minLength: 12)
             OPill(label: "Cancel", size: .big, caps: true) { close() }
-            OPill(label: busy ? "Making…" : "Export PDF", on: true, size: .big, caps: true) { exportPDF() }
+            exportButton
         }
     }
 
@@ -584,4 +642,9 @@ struct ActivityView: UIViewControllerRepresentable {
     }
 
     func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
+}
+
+extension String {
+    /// This string, or `fallback` when it's empty.
+    func ifEmpty(_ fallback: String) -> String { isEmpty ? fallback : self }
 }

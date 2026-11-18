@@ -46,16 +46,9 @@ struct ShotListView: View {
 
             ZStack {
                 if store.showingExport {
-                    // v3c: rgba(17,17,17,0.45) behind the panel; tap it to close.
-                    Color.black.opacity(0.55).ignoresSafeArea()
-                        .onTapGesture { store.showingExport = false }
+                    // 1.1 Paper: Export is a tab, full screen on paper.
+                    ExportPanel(scene: sceneFilter.flatMap(scene(for:))) { selecting = true }
                         .transition(.opacity)
-                    // Round 4: a card centred over the list, just inside the screen's edges.
-                    ExportPanel(scene: sceneFilter.flatMap(scene(for:)))
-                        .frame(maxWidth: portrait ? .infinity : 1000, maxHeight: portrait ? .infinity : 720)
-                        .padding(.horizontal, portrait ? 12 : 18)
-                        .padding(.vertical, portrait ? 8 : 14)
-                        .transition(.opacity.combined(with: .scale(scale: 0.97)))
                 }
             }
             .animation(.snappy(duration: 0.28), value: store.showingExport)

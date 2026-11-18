@@ -39,6 +39,8 @@ struct SelectsView: View {
     private var pickedItems: [Item] { items.filter { picked.contains($0.id) } }
 
     private let gap: CGFloat = 3
+    /// Cell height over width: 2:3, so landscape stills show nearly whole.
+    private let cellRatio: CGFloat = 2.0 / 3.0
 
     var body: some View {
         ZStack {
@@ -85,17 +87,27 @@ struct SelectsView: View {
 
     // MARK: Pieces
 
+    /// 1.1 Paper: the tabs, then the big count of picked stills with "Picked of N".
     private var header: some View {
-        HStack(spacing: 8) {
-            Text(picked.isEmpty ? "Select stills" : "\(picked.count) selected")
-                .font(.osSans(18))
-                .contentTransition(.numericText())
-            Spacer()
-            // Turn the phone upright to see more stills at once, like Photos (Elliot, 18 Nov).
-            RotateButton(portrait: portrait)
-            OPill(label: "Cancel", caps: true) { close() }
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                PaperTabs(current: .selects) { tab in
+                    close()
+                    switch tab {
+                    case .camera: store.showingShotList = false
+                    case .export: store.showingExport = true
+                    case .shots, .selects: break
+                    }
+                }
+                Spacer()
+                // Turn the phone upright to see more stills at once, like Photos (Elliot, 18 Nov).
+                RotateButton(portrait: portrait)
+                OPill(label: "Cancel", caps: true) { close() }
+            }
+            .frame(minHeight: 44)
+            BigNumber(value: "\(picked.count)", label: "Picked of \(items.count)",
+                      trailing: allScenes ? "All scenes" : thisScene.name, size: portrait ? 48 : 40)
         }
-        .frame(minHeight: 44)
     }
 
     private var scopeRow: some View {
@@ -137,11 +149,12 @@ struct SelectsView: View {
     private func cell(_ item: Item, side: CGFloat) -> some View {
         let on = picked.contains(item.id)
         return StillImage(shot: item.shot)
-            .frame(width: side, height: side)
+            .frame(width: side, height: side * cellRatio)
             .clipped()
             .overlay { if on { Color.white.opacity(0.18) } }
             .overlay(alignment: .topLeading) {
-                Text(allScenes ? "\(item.scene.name.prefix(10)) · \(item.shot.number)" : item.shot.number)
+                Text(([allScenes ? "\(item.scene.name.prefix(10)) · \(item.shot.number)" : item.shot.number,
+                       Format.time(item.shot.plannedTime), item.shot.lightClass?.letter].compactMap { $0 }).joined(separator: " · "))
                     .font(Fonts.mono(9))
                     .foregroundStyle(.white)
                     .shadow(color: .black.opacity(0.7), radius: 2)
@@ -178,8 +191,19 @@ struct SelectsView: View {
                     .font(Fonts.mono(9)).tracking(0.6).foregroundStyle(Sheet.muted)
             }
             Spacer()
-            OPill(label: picked.isEmpty ? "Send" : "Send \(picked.count)", on: !picked.isEmpty, size: .big, caps: true) { send() }
-                .disabled(picked.isEmpty)
+            // The one orange button.
+            Button { send() } label: {
+                Text(picked.isEmpty ? "SEND" : "SEND \(picked.count) STILL\(picked.count == 1 ? "" : "S")")
+                    .font(Fonts.mono(11)).tracking(0.8)
+                    .foregroundStyle(Color(hex: 0xF1EEE7))
+                    .padding(.horizontal, 18)
+                    .frame(height: 40)
+                    .background(Palette.sun)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(OPressRing())
+            .disabled(picked.isEmpty)
+            .opacity(picked.isEmpty ? 0.4 : 1)
         }
         .padding(.vertical, 6)
         .overlay(alignment: .top) { Rectangle().fill(Sheet.rule).frame(height: 1) }
@@ -218,7 +242,7 @@ struct SelectsView: View {
     }
 
     private func index(at p: CGPoint, cols: Int, side: CGFloat) -> Int? {
-        let col = Int(p.x / (side + gap)), row = Int(p.y / (side + gap))
+        let col = Int(p.x / (side + gap)), row = Int(p.y / (side * cellRatio + gap))
         guard p.x >= 0, p.y >= 0, col < cols else { return nil }
         let i = row * cols + col
         return items.indices.contains(i) ? i : nil

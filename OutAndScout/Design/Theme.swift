@@ -523,13 +523,6 @@ struct LightChip: View {
     }
 }
 
-extension Shot {
-    /// How the sun falls on this shot, or nil without a heading or with the sun down.
-    var lightClass: LightClass? {
-        guard sunElevation > -1, let b = bearing else { return nil }
-        return LightClass.of(rel: LightRead.rel(sunAzimuth: sunAzimuth, heading: b))
-    }
-}
 
 /// The foot of a paper screen: where the sun is now and today's golden hour. MORE ▴ opens
 /// sunrise, sunset and the weather.
