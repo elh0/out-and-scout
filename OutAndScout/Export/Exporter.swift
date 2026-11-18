@@ -1,3 +1,4 @@
+import PDFKit
 import UIKit
 
 /// Builds the shot list files. PDF: a cover plus a page per scene. CSV: a row per shot.
@@ -26,6 +27,9 @@ enum Exporter {
         var tier = Tier.detailed
         /// The kit the cards' camera, mode, sensor and resolution come from.
         var kit = Kit.default
+        /// Free: "Scouted with Out & Scout · outandscout.com" along the foot of every page.
+        /// Pro turns it off.
+        var credit = true
     }
 
     /// shot-list_night-shift_all-scenes.pdf, shot-list_night-shift_brick-lane.csv
@@ -141,6 +145,38 @@ enum Exporter {
     }
 
     static func pdf(project: Project, scenes: [ScoutScene], options: Options) -> Data {
+        let data = pages(project: project, scenes: scenes, options: options)
+        return options.credit ? withCredit(data) : data
+    }
+
+    static let creditLine = "Scouted with Out & Scout · outandscout.com"
+
+    /// Redraws each page and adds the free credit line at the very foot, centred, under the
+    /// page footer. Vector in, vector out.
+    static func withCredit(_ data: Data) -> Data {
+        guard let doc = PDFDocument(data: data), doc.pageCount > 0 else { return data }
+        let renderer = UIGraphicsPDFRenderer(bounds: page)
+        return renderer.pdfData { ctx in
+            for i in 0..<doc.pageCount {
+                guard let pdfPage = doc.page(at: i) else { continue }
+                autoreleasepool {
+                    let bounds = pdfPage.bounds(for: .mediaBox)
+                    ctx.beginPage(withBounds: bounds, pageInfo: [:])
+                    let cg = ctx.cgContext
+                    cg.saveGState()
+                    cg.translateBy(x: 0, y: bounds.height)
+                    cg.scaleBy(x: 1, y: -1)
+                    pdfPage.draw(with: .mediaBox, to: cg)
+                    cg.restoreGState()
+                    let credit = text(creditLine, font: mono(7.5), color: graphite)
+                    let size = credit.size()
+                    credit.draw(at: CGPoint(x: (bounds.width - size.width) / 2, y: bounds.height - 18))
+                }
+            }
+        }
+    }
+
+    private static func pages(project: Project, scenes: [ScoutScene], options: Options) -> Data {
         switch options.tier {
         case .detailed: return detailedPDF(project: project, scenes: scenes, options: options)
         case .photos: return photosPDF(project: project, scenes: scenes)

@@ -118,6 +118,7 @@ struct RootView: View {
     /// The start screen (Continue / New project), shown once per launch after the opening.
     @State private var starting = true
     @State private var shootDay = ShootDay.shared
+    @State private var pro = Pro.shared
     @Environment(\.scenePhase) private var scenePhase
 
     private func openShootDay() {
@@ -153,10 +154,15 @@ struct RootView: View {
                     ShootDayHowTo(shootDay: shootDay)
                         .transition(.opacity)
                 }
+                if pro.paywallReason != nil {
+                    ProPaywall(pro: pro)
+                        .transition(.opacity)
+                }
             }
             .font(.osRow)
             .animation(.easeOut(duration: 0.2), value: shootDay.showing)
             .animation(.easeOut(duration: 0.2), value: shootDay.showingHowTo)
+            .animation(.easeOut(duration: 0.2), value: pro.paywallReason)
         }
         // A PDF shared in from Mail, WhatsApp or Files gets pinned for the shoot day.
         .onOpenURL { url in
@@ -172,6 +178,7 @@ struct RootView: View {
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active, ShootDayLink.takeRequest() { openShootDay() }
+            if phase == .active { Task { await pro.refresh() } }
         }
         .onAppear {
             #if DEBUG

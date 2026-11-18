@@ -57,7 +57,11 @@ struct StartScreen: View {
     private var list: some View {
         ScrollView(showsIndicators: false) {
             VStack(alignment: .leading, spacing: 0) {
-                Button { withAnimation(.snappy(duration: 0.2)) { naming.toggle(); typing = naming } } label: {
+                Button {
+                    // Free keeps one project; a second opens the Pro card.
+                    if !naming, store.projects.count >= Pro.freeProjects, !Pro.shared.allow("Unlimited projects") { return }
+                    withAnimation(.snappy(duration: 0.2)) { naming.toggle(); typing = naming }
+                } label: {
                     HStack(spacing: 10) {
                         Text("+")
                             .font(Fonts.mono(12))

@@ -53,7 +53,7 @@ struct ExportPanel: View {
     private var previewKey: String {
         let shots = (target.map { [$0] } ?? project.scenes).flatMap(\.shots)
         let names = shots.map { "\($0.id)\($0.caption)\($0.notes ?? "")" }.joined()
-        return "\(allScenes)\(options.tier)\(options.frames)\(options.sunTimes)\(options.notes)\(project.name)\(names.hashValue)\(forecastReady)"
+        return "\(Pro.shared.owned)\(allScenes)\(options.tier)\(options.frames)\(options.sunTimes)\(options.notes)\(project.name)\(names.hashValue)\(forecastReady)"
     }
 
     var body: some View {
@@ -175,6 +175,19 @@ struct ExportPanel: View {
                 include("Notes", on: options.notes) { options.notes.toggle() }
             }
             .padding(.top, 6)
+
+            if !Pro.shared.owned {
+                Button { _ = Pro.shared.allow("Clean PDFs") } label: {
+                    Text("FREE PDFS CARRY A SMALL OUT & SCOUT CREDIT · ")
+                        .foregroundStyle(Sheet.muted)
+                    + Text("REMOVE WITH PRO").underline()
+                }
+                .buttonStyle(.plain)
+                .font(Fonts.mono(8))
+                .tracking(0.6)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 8)
+            }
 
             HStack(spacing: 4) {
                 Text("ALSO:").foregroundStyle(Sheet.muted)
@@ -341,6 +354,7 @@ struct ExportPanel: View {
         building = true
         var picked = options
         picked.kit = store.kit
+        picked.credit = !Pro.shared.owned
         let opts = picked, proj = project
         let scenes = target.map { [$0] } ?? proj.scenes
         let data = await Task.detached(priority: .userInitiated) {
@@ -357,6 +371,7 @@ struct ExportPanel: View {
         error = nil
         var picked = options
         picked.kit = store.kit
+        picked.credit = !Pro.shared.owned
         let opts = picked, proj = project, scene = target, name = customName, ready = building ? nil : pdf
         Task {
             let url = await Task.detached(priority: .userInitiated) { () -> URL? in
@@ -374,6 +389,7 @@ struct ExportPanel: View {
     private func exportCSV() {
         var picked = options
         picked.kit = store.kit
+        picked.credit = !Pro.shared.owned
         let opts = picked, proj = project, scene = target
         Task {
             let url = await Task.detached(priority: .userInitiated) {

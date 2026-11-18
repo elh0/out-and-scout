@@ -17,6 +17,8 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.outandscout.app
         # Document types (PDF in, for Shoot day); merged with the generated keys below.
         INFOPLIST_FILE: Config/OutAndScout-Info.plist
+        # WeatherKit for the forecast (App Store build).
+        CODE_SIGN_ENTITLEMENTS: Config/OutAndScout.entitlements
         DEVELOPMENT_TEAM: CF8HY3UXL4
         MARKETING_VERSION: "1.0"
         CURRENT_PROJECT_VERSION: 3

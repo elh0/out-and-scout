@@ -140,6 +140,8 @@ struct ProjectsPanel: View {
 
             // Pinned under the list: made at once as "Untitled N", straight to the camera.
             Button {
+                // Free keeps one project; a second opens the Pro card.
+                if store.projects.count >= Pro.freeProjects, !Pro.shared.allow("Unlimited projects") { return }
                 let n = store.projects.filter { $0.name.hasPrefix("Untitled") }.count + 1
                 store.addProject(named: "Untitled \(n)")
                 store.panel = nil

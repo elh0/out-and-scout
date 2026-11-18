@@ -55,7 +55,8 @@ protocol ForecastProvider {
 
 /// Only the spot, rounded to about 1 km, is sent. No account, device or user id.
 enum Forecast {
-    static var provider: ForecastProvider = OpenMeteo()
+    /// Apple WeatherKit for the App Store (Open-Meteo is free for non-commercial use only).
+    static var provider: ForecastProvider = AppleWeather()
 
     /// Weather forecasts are off until people turn them on.
     static let optInKey = "weatherForecasts"

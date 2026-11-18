@@ -553,7 +553,7 @@ extension Exporter {
             text("\(Int(d.tempMax.rounded()))°/\(Int(d.tempMin.rounded()))° · \(d.rain)%", font: mono(6.75), color: grey)
                 .draw(at: CGPoint(x: x, y: y + 23))
         }
-        let credit = text(Forecast.provider.credit, font: mono(5.5), color: grey)
+        let credit = text("Weather: Apple Weather · weatherkit.apple.com/legal-attribution.html", font: mono(5.5), color: grey)
         credit.draw(at: CGPoint(x: page.width - pad - credit.size().width, y: top))
         return top + 12 + 34
     }

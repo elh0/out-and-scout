@@ -34,7 +34,12 @@ struct ForecastSheet: View {
                     }
                 }
                 HStack {
-                    Text(Forecast.provider.credit).font(.osDataSmall).foregroundStyle(Sheet.muted)
+                    // Apple asks for its mark and the data-sources link wherever the forecast shows.
+                    HStack(spacing: 6) {
+                        Text("\u{F8FF} Weather").font(.system(size: 11)).foregroundStyle(Sheet.muted)
+                        Link("Data sources", destination: AppleWeather.legalURL)
+                            .font(.osDataSmall).foregroundStyle(Sheet.muted).underline()
+                    }
                     Spacer()
                     Button("Turn off forecasts") { allowed = false; days = [] }
                         .font(.osDataSmall).foregroundStyle(Sheet.muted).buttonStyle(.plain)
