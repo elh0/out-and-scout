@@ -200,10 +200,12 @@ struct ExportPanel: View {
             }
 
             if !Pro.shared.owned {
+                // Two lines, so "Remove with Pro" never breaks in the middle (Elliot, 18 Nov).
                 Button { _ = Pro.shared.allow("Clean PDFs") } label: {
-                    Text("FREE PDFS CARRY A CREDIT · ")
-                        .foregroundStyle(Sheet.muted)
-                    + Text("REMOVE WITH PRO").underline()
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("FREE PDFS CARRY A CREDIT").foregroundStyle(Sheet.muted).lineLimit(1)
+                        Text("REMOVE WITH PRO").underline().lineLimit(1)
+                    }
                 }
                 .buttonStyle(.plain)
                 .font(Fonts.mono(8))
@@ -302,7 +304,7 @@ struct ExportPanel: View {
 
     private func tierLine(_ t: Exporter.Tier) -> String {
         switch t {
-        case .detailed: return "Shot cards: light, sun, best time"
+        case .detailed: return "Shot cards, best time"
         case .summary: return "One line per shot"
         case .photos: return "Just the frames"
         }
