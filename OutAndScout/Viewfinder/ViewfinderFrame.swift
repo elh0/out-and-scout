@@ -542,7 +542,40 @@ struct SunPathOverlay: View {
     var time: Date?
     let projector: Projector
 
+    /// 1.1 (Elliot, 18 Nov: "buggy", "could be cleaner"): the compass and tilt are smoothed and
+    /// small wobbles ignored, so the path sits still on the scene instead of shivering.
+    @State private var steady: (heading: Double, elevation: Double)?
+
+    private var view: Projector {
+        guard let steady else { return projector }
+        var p = projector
+        p.heading = steady.heading
+        p.elevation = steady.elevation
+        return p
+    }
+
     var body: some View {
+        canvas(view)
+            .onAppear { steady = (projector.heading, projector.elevation) }
+            .onChange(of: projector.heading) { follow() }
+            .onChange(of: projector.elevation) { follow() }
+    }
+
+    private func follow() {
+        guard let s = steady else { steady = (projector.heading, projector.elevation); return }
+        let dh = Bearing.difference(projector.heading, s.heading)
+        let de = projector.elevation - s.elevation
+        // A big turn snaps straight there; small changes ease in; tiny ones are noise.
+        if abs(dh) > 25 || abs(de) > 15 {
+            steady = (projector.heading, projector.elevation)
+            return
+        }
+        let h = abs(dh) < 0.35 ? s.heading : s.heading + dh * 0.3
+        let e = abs(de) < 0.35 ? s.elevation : s.elevation + de * 0.3
+        if h != s.heading || e != s.elevation { steady = ((h + 360).truncatingRemainder(dividingBy: 360), e) }
+    }
+
+    private func canvas(_ projector: Projector) -> some View {
         Canvas { ctx, size in
             let bounds = CGRect(origin: .zero, size: size)
             if let day = sunDay {
@@ -569,24 +602,20 @@ struct SunPathOverlay: View {
                 arcRuns.forEach { Self.addSmooth($0, to: &arc) }
                 var golden = Path()
                 goldenRuns.forEach { Self.addSmooth($0, to: &golden) }
-                ctx.stroke(arc, with: .color(Palette.onPicture.opacity(0.55)), lineWidth: 1)
+                ctx.stroke(arc, with: .color(Palette.onPicture.opacity(0.5)), style: StrokeStyle(lineWidth: 1, lineCap: .round))
                 ctx.stroke(golden, with: .color(Palette.sun.opacity(0.85)), style: StrokeStyle(lineWidth: 2, lineCap: .round))
 
                 // Hour labels step aside for the sun and its time, so the two never overlap.
                 let sunAt = moon == nil ? projector.point(azimuth: sun.azimuth, elevation: sun.elevation) : nil
+                // Cleaner (1.1): a small tick each hour, a number only every other hour.
                 for (p, h) in hours where sunAt.map({ hypot($0.x - p.x, $0.y - p.y) > 34 }) ?? true {
-                    ctx.fill(Path(ellipseIn: CGRect(x: p.x - 2, y: p.y - 2, width: 4, height: 4)), with: .color(Palette.onPicture.opacity(0.8)))
-                    let label = Text(String(format: "%02d", h)).font(Fonts.mono(9)).foregroundColor(Palette.onPicture.opacity(0.7))
-                    ctx.draw(label, at: CGPoint(x: p.x, y: p.y + 9), anchor: .top)
+                    ctx.fill(Path(ellipseIn: CGRect(x: p.x - 1.5, y: p.y - 1.5, width: 3, height: 3)), with: .color(Palette.onPicture.opacity(0.75)))
+                    if h % 2 == 0 {
+                        let label = Text(String(format: "%02d", h)).font(Fonts.mono(8)).foregroundColor(Palette.onPicture.opacity(0.65))
+                        ctx.draw(label, at: CGPoint(x: p.x, y: p.y + 7), anchor: .top)
+                    }
                 }
 
-                // Horizon
-                if let l = projector.point(azimuth: projector.heading - 80, elevation: 0),
-                   let r = projector.point(azimuth: projector.heading + 80, elevation: 0) {
-                    var h = Path()
-                    h.move(to: CGPoint(x: 0, y: l.y)); h.addLine(to: CGPoint(x: size.width, y: r.y))
-                    ctx.stroke(h, with: .color(Palette.onPicture.opacity(0.2)), lineWidth: 0.5)
-                }
             }
 
             let sunPoint = projector.point(azimuth: sun.azimuth, elevation: sun.elevation)
