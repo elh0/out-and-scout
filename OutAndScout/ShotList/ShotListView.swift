@@ -238,15 +238,10 @@ struct ShotListView: View {
     private var landscapeList: some View {
         VStack(spacing: 0) {
             paperBar
-            HStack(alignment: .top, spacing: Space.l) {
-                countColumn
-                    .frame(width: 112)
-                VStack(alignment: .leading, spacing: 6) {
-                    ShotArc(shots: visible.map(\.shot), selected: openID) { openID = $0.id; selectedID = $0.id }
-                        .frame(height: 44)
-                    tableHeader(wide: true)
-                    rows(wide: true)
-                }
+            // Elliot, 18 Nov: no big number or arc here, just the table.
+            VStack(alignment: .leading, spacing: 6) {
+                tableHeader(wide: true)
+                rows(wide: true)
             }
             LiveStrip { showingWeather = true }
         }
@@ -462,10 +457,6 @@ struct ShotListView: View {
         VStack(alignment: .leading, spacing: 8) {
             PaperTabs(current: .shots, disabled: visible.isEmpty ? [.selects, .export] : []) { go($0) }
             crumb
-            BigNumber(value: "\(visible.count)", label: visible.count == 1 ? "Shot" : "Shots",
-                      trailing: sceneFilter.flatMap(scene(for:))?.name ?? "\(project.scenes.count) scenes", size: 48)
-            ShotArc(shots: visible.map(\.shot), selected: openID) { openID = $0.id; selectedID = $0.id }
-                .frame(height: 44)
             tableHeader(wide: false)
             rows(wide: false)
             LiveStrip { showingWeather = true }
@@ -584,10 +575,6 @@ struct ShotListView: View {
             // 1.1 Paper shot card: the ID big with its rule, the light, and the plan from above.
             HStack(alignment: .top, spacing: Space.m) {
                 VStack(alignment: .leading, spacing: 5) {
-                    Text(shot.number)
-                        .font(Fonts.sans(40, .medium)).tracking(-1.2)
-                        .foregroundStyle(Palette.sun)
-                    Palette.sun.frame(height: 1.5)
                     if let best = bestTime(shot) {
                         Text("BEST LIGHT · \(best)".uppercased()).font(Fonts.mono(9)).tracking(0.6).foregroundStyle(Sheet.text)
                             .fixedSize(horizontal: false, vertical: true)
@@ -605,12 +592,12 @@ struct ShotListView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                TopDownPlot(shot: shot)
-                    .frame(width: 112, height: 112)
             }
             .padding(.top, 6)
             DisclosureGroup {
                 VStack(alignment: .leading, spacing: 5) {
+                    TopDownPlot(shot: shot)
+                        .frame(width: 112, height: 112)
                     if let b = shot.bearing {
                         HStack(spacing: 6) { detailLabel("Facing"); HeadingTag(heading: b) }
                     }

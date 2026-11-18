@@ -21,7 +21,11 @@ struct OutAndScoutApp: App {
                     .environment(camera)
                     .environment(location)
                     .environment(motion)
+                    // 1.1 Paper: always the paper look, even with the phone in Dark Mode.
+                    // Only the viewfinder and the viewer turn dark, at night (NightAware).
+                    .environment(\.colorScheme, .light)
             }
+            .preferredColorScheme(.light)
             .ignoresSafeArea()
             .statusBarHidden()
             .persistentSystemOverlays(.hidden)
