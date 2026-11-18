@@ -269,8 +269,18 @@ struct SceneButton: View {
     @Environment(ScoutStore.self) private var store
 
     var body: some View {
-        OPill(label: sceneNumber, size: .small) { store.panel = .scenes }
-            .accessibilityLabel("scenes, on \(store.currentScene.name)")
+        // 1.1 Paper: the scene number big and orange, top left. Tap for the scenes.
+        Button { store.panel = .scenes } label: {
+            Text(sceneNumber)
+                .font(Fonts.sans(24, .medium))
+                .tracking(-0.8)
+                .foregroundStyle(Palette.sun)
+                .fixedSize()
+                .frame(minWidth: 44, minHeight: 44, alignment: .leading)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(OPressRing())
+        .accessibilityLabel("scenes, on \(store.currentScene.name)")
     }
 
     /// "01", the open scene's place in the project.
@@ -491,6 +501,15 @@ struct Shutter: View {
             .contentShape(Circle())
         }
         .buttonStyle(.plain)
+        // The shot this press will make, just above the ring.
+        .overlay(alignment: .top) {
+            Text("NEXT \(store.nextShotNumber)")
+                .font(Fonts.mono(8)).tracking(0.6)
+                .foregroundStyle(Palette.paper)
+                .fixedSize()
+                .offset(y: -14)
+                .allowsHitTesting(false)
+        }
         .disabled(capturing)
         .animation(.easeOut(duration: 0.12), value: capturing)
         .accessibilityLabel("take shot \(store.nextShotNumber)")

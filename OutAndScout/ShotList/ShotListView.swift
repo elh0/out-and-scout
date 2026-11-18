@@ -240,98 +240,136 @@ struct ShotListView: View {
 
     // MARK: Outline look, round 4 (locked 8 Oct 2026)
 
-    /// Landscape: Projects, "PROJECT / SHOT LIST", Weather and Export along the top; the
-    /// scenes on the left with "← Camera" at the bottom; the day's arc with every shot on it,
-    /// then calm rows. Tap a row to open it in place, again to close.
+    /// 1.1 Paper, landscape: the tabs and the crumb on top; the big shot count on the left;
+    /// the day's arc and the shot table beside it; the live sun strip along the foot.
     private var landscapeList: some View {
         VStack(spacing: 0) {
-            topBar
-
-            HStack(alignment: .top, spacing: Space.m) {
-                sceneColumn
-                    .frame(width: 104)
+            paperBar
+            HStack(alignment: .top, spacing: Space.l) {
+                countColumn
+                    .frame(width: 112)
                 VStack(alignment: .leading, spacing: 6) {
                     ShotArc(shots: visible.map(\.shot), selected: openID) { openID = $0.id; selectedID = $0.id }
                         .frame(height: 44)
-                    HStack {
-                        Text("\(Self.shots(visible.count))".uppercased())
-                        Spacer()
-                        Text("TAP A SHOT TO OPEN · AGAIN TO CLOSE")
-                    }
-                    .font(Fonts.mono(9)).tracking(0.6).foregroundStyle(Sheet.muted)
+                    tableHeader(wide: true)
                     rows(wide: true)
                 }
             }
+            LiveStrip { showingWeather = true }
         }
         .padding(.horizontal, Space.l)
     }
 
-    /// Projects, "PROJECT / SHOT LIST", Weather and Export.
-    private var topBar: some View {
-        ZStack {
-            HStack(spacing: 4) {
-                EditableName(text: project.name, font: Fonts.mono(11), color: Sheet.text, title: "Rename Project") {
-                    store.renameProject(project.id, to: $0)
-                }
-                Text("/ SHOT LIST").font(Fonts.mono(11)).tracking(0.6).foregroundStyle(Sheet.muted).fixedSize()
-            }
-            // Clear of Projects on the left and Weather · Select · Export on the right.
-            .padding(.horizontal, 270)
-            HStack(spacing: 8) {
-                Button {
-                    store.showingShotList = false
-                    store.panel = .projects
-                } label: {
-                    Text("Projects").font(Fonts.mono(11)).frame(minHeight: 44).contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                Spacer()
-                OPill(label: "Weather", caps: true) { showingWeather = true }
-                OPill(label: "Select", caps: true) { selecting = true }
-                    .disabled(visible.isEmpty)
-                OPill(label: "Export", on: true, caps: true) { store.showingExport = true }
-                    .disabled(visible.isEmpty)
-            }
+    /// The tabs on the left, PROJECT / SCENE ▾ / SHOT on the right.
+    private var paperBar: some View {
+        HStack(spacing: Space.m) {
+            PaperTabs(current: .shots, disabled: visible.isEmpty ? [.selects, .export] : []) { go($0) }
+            Spacer(minLength: Space.s)
+            crumb
         }
         .frame(height: 44)
     }
 
-    /// SCENES: All, each scene with its count, Edit; "← Camera" at the bottom.
-    private var sceneColumn: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            Text("SCENES").font(Fonts.mono(10)).tracking(0.6).foregroundStyle(Sheet.muted).padding(.bottom, 4)
-            ScrollView(showsIndicators: false) {
-                VStack(alignment: .leading, spacing: 0) {
-                    filterButton("All · \(project.scenes.reduce(0) { $0 + $1.shots.count })", on: sceneFilter == nil) { sceneFilter = nil }
-                    ForEach(project.scenes) { sc in
-                        filterButton("\(sc.name) · \(sc.shots.count)", on: sceneFilter == sc.id) {
-                            sceneFilter = sc.id
-                            store.select(project: project.id, scene: sc.id)
-                        }
-                        .contextMenu {
-                            Button("Edit Scenes", systemImage: "arrow.up.arrow.down") { reordering = true }
-                            if project.scenes.count > 1 {
-                                Button("Delete Scene", systemImage: "trash", role: .destructive) { deletingScene = sc }
-                            }
-                        }
-                    }
-                    Button { reordering = true } label: {
-                        Text("Edit").font(Fonts.mono(10)).foregroundStyle(Sheet.muted)
-                            .underline(color: Sheet.rule)
-                            .frame(minHeight: 32).contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("edit scenes: rename, reorder, delete")
-                }
-            }
-            Spacer(minLength: Space.s)
-            Button { store.showingShotList = false } label: {
-                Text("← Camera").font(Fonts.mono(11)).underline(color: Sheet.text)
+    private func go(_ tab: PaperTab) {
+        switch tab {
+        case .camera: store.showingShotList = false
+        case .shots: break
+        case .selects: selecting = true
+        case .export: store.showingExport = true
+        }
+    }
+
+    /// PROJECT / SCENE ▾ / SHOT. The project opens Projects; the scene is the scene picker,
+    /// with Edit scenes and Weather tucked in it.
+    private var crumb: some View {
+        HStack(spacing: 5) {
+            Button {
+                store.showingShotList = false
+                store.panel = .projects
+            } label: {
+                Text(project.name.uppercased()).lineLimit(1).truncationMode(.tail)
                     .frame(minHeight: 44).contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .foregroundStyle(Sheet.muted)
+            .accessibilityHint("all projects")
+            Text("/").foregroundStyle(Sheet.muted)
+            sceneMenu
+            if let id = openID, let shot = visible.first(where: { $0.id == id })?.shot {
+                Text("/").foregroundStyle(Sheet.muted)
+                Text(shot.number).foregroundStyle(Sheet.text).fixedSize()
+            }
         }
-        .padding(.bottom, Space.xs)
+        .font(Fonts.mono(10))
+        .tracking(0.6)
+    }
+
+    private var sceneMenu: some View {
+        Menu {
+            Button("All · \(project.scenes.reduce(0) { $0 + $1.shots.count })") { sceneFilter = nil }
+            ForEach(project.scenes) { sc in
+                Button {
+                    sceneFilter = sc.id
+                    store.select(project: project.id, scene: sc.id)
+                } label: {
+                    if sceneFilter == sc.id {
+                        Label("\(sc.name) · \(sc.shots.count)", systemImage: "checkmark")
+                    } else {
+                        Text("\(sc.name) · \(sc.shots.count)")
+                    }
+                }
+            }
+            Divider()
+            Button("New Scene", systemImage: "plus") {
+                let id = store.addScene()
+                sceneFilter = id
+                store.select(project: project.id, scene: id)
+            }
+            Button("Edit Scenes", systemImage: "arrow.up.arrow.down") { reordering = true }
+            Button("Weather", systemImage: "cloud.sun") { showingWeather = true }
+        } label: {
+            Text("\((sceneFilter.flatMap(scene(for:))?.name ?? "All scenes").uppercased()) ▾")
+                .foregroundStyle(Sheet.text)
+                .lineLimit(1)
+                .frame(minHeight: 44)
+                .contentShape(Rectangle())
+        }
+        .accessibilityLabel("scene: \(sceneFilter.flatMap(scene(for:))?.name ?? "all scenes")")
+    }
+
+    /// The big shot count, its rule, and what's in view.
+    private var countColumn: some View {
+        VStack(alignment: .leading, spacing: Space.s) {
+            BigNumber(value: "\(visible.count)", label: visible.count == 1 ? "Shot" : "Shots",
+                      size: 56)
+            let golden = visible.filter(\.shot.isGolden).count
+            VStack(alignment: .leading, spacing: 4) {
+                Text((sceneFilter.flatMap(scene(for:))?.name ?? "\(project.scenes.count) scenes").uppercased())
+                    .foregroundStyle(Sheet.text)
+                if golden > 0 {
+                    Text("\(golden) golden").foregroundStyle(Palette.sun)
+                }
+            }
+            .font(Fonts.mono(9)).tracking(0.6).lineLimit(2)
+            Spacer(minLength: 0)
+        }
+        .padding(.top, Space.xs)
+    }
+
+    /// N° · SHOT · TIME · LIGHT over the table.
+    private func tableHeader(wide: Bool) -> some View {
+        HStack(spacing: 14) {
+            Text("N°").frame(width: 26, alignment: .leading)
+            Text("").frame(width: 52)
+            Text("SHOT").frame(maxWidth: .infinity, alignment: .leading)
+            if wide {
+                Text("TIME").frame(width: 42, alignment: .leading)
+                Text("LIGHT").frame(width: 124, alignment: .leading)
+            }
+            Text("").frame(width: 14)
+        }
+        .font(Fonts.mono(9)).tracking(0.6).foregroundStyle(Sheet.muted)
+        .padding(.bottom, 2)
     }
 
     private func sortButton(_ label: String, action: @escaping () -> Void) -> some View {
@@ -364,10 +402,10 @@ struct ShotListView: View {
     /// large beside it with everything about it, so the screen is used edge to edge.
     private var padSplit: some View {
         VStack(spacing: 0) {
-            topBar
+            paperBar
             HStack(alignment: .top, spacing: Space.l) {
-                sceneColumn
-                    .frame(width: 104 * Fonts.scale)
+                countColumn
+                    .frame(width: 112 * Fonts.scale)
                 VStack(alignment: .leading, spacing: 6) {
                     ShotArc(shots: visible.map(\.shot), selected: selected?.shot.id) { selectedID = $0.id }
                         .frame(height: 44 * Fonts.scale)
@@ -378,6 +416,7 @@ struct ShotListView: View {
                     }
                     .font(Fonts.mono(9)).tracking(0.6).foregroundStyle(Sheet.muted)
                     rows(wide: false, inPlace: false)
+                    LiveStrip { showingWeather = true }
                 }
                 .frame(maxWidth: .infinity)
                 Sheet.rule.frame(width: 1)
@@ -404,8 +443,8 @@ struct ShotListView: View {
                         .accessibilityAddTraits(.isButton)
                         .accessibilityHint("see it full screen")
                     HStack(alignment: .firstTextBaseline, spacing: 12) {
-                        Text(shot.number).font(.osSans(22)).foregroundStyle(Sheet.text)
-                        EditableName(text: shot.caption, font: .osSans(18), color: Sheet.text, lineLimit: 3, emptyLabel: "Untitled", title: "Edit Caption", pencil: true) {
+                        Text(shot.number).font(Fonts.sans(22, .medium)).foregroundStyle(Sheet.text)
+                        EditableName(text: shot.caption, font: Fonts.mono(14), color: Sheet.text, lineLimit: 3, emptyLabel: "Untitled", title: "Edit Caption", pencil: true) {
                             store.setCaption(shot.id, to: $0)
                         }
                         .id("padcap" + shot.id.uuidString)
@@ -425,39 +464,18 @@ struct ShotListView: View {
         }
     }
 
-    /// Upright: Camera and Weather / Export on top, the project, scene pills, the arc, rows.
+    /// 1.1 Paper, upright: the tabs, the crumb, the big count, the arc, the table, the strip.
     private var portraitOutline: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                Button { store.showingShotList = false } label: {
-                    Text("← Camera").font(Fonts.mono(11)).frame(minHeight: 44).contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                Spacer()
-                OPill(label: "Edit", caps: true) { reordering = true }
-                OPill(label: "Weather", caps: true) { showingWeather = true }
-                OPill(label: "Select", caps: true) { selecting = true }
-                    .disabled(visible.isEmpty)
-                OPill(label: "Export", on: true, caps: true) { store.showingExport = true }
-                    .disabled(visible.isEmpty)
-            }
-            EditableName(text: project.name, font: .osSans(22), color: Sheet.text, title: "Rename Project", pencil: true) {
-                store.renameProject(project.id, to: $0)
-            }
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
-                    OPill(label: "All · \(project.scenes.reduce(0) { $0 + $1.shots.count })", on: sceneFilter == nil, size: .small) { sceneFilter = nil }
-                    ForEach(project.scenes) { sc in
-                        OPill(label: "\(sc.name) · \(sc.shots.count)", on: sceneFilter == sc.id, size: .small) {
-                            sceneFilter = sc.id
-                            store.select(project: project.id, scene: sc.id)
-                        }
-                    }
-                }
-            }
+            PaperTabs(current: .shots, disabled: visible.isEmpty ? [.selects, .export] : []) { go($0) }
+            crumb
+            BigNumber(value: "\(visible.count)", label: visible.count == 1 ? "Shot" : "Shots",
+                      trailing: sceneFilter.flatMap(scene(for:))?.name ?? "\(project.scenes.count) scenes", size: 48)
             ShotArc(shots: visible.map(\.shot), selected: openID) { openID = $0.id; selectedID = $0.id }
                 .frame(height: 44)
+            tableHeader(wide: false)
             rows(wide: false)
+            LiveStrip { showingWeather = true }
         }
         .padding(.horizontal, Space.l)
     }
@@ -493,29 +511,37 @@ struct ShotListView: View {
         let open = inPlace && openID == shot.id
         let picked = !inPlace && selected?.shot.id == shot.id
         return HStack(alignment: .top, spacing: 14) {
+            HStack(spacing: 3) {
+                Text(shot.number).font(Fonts.mono(11)).foregroundStyle(Sheet.text)
+                if shot.isGolden { Circle().fill(Palette.sun).frame(width: 5, height: 5) }
+            }
+            .frame(width: 26, alignment: .leading).padding(.top, 3)
+            // 1.1 Paper: the thumbnail always opens the big viewer; the row opens the shot.
             ShotThumb(shot: shot)
                 .frame(width: open ? 128 : 52, height: open ? 72 : 30)
-                .clipShape(RoundedRectangle(cornerRadius: 4, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 4, style: .continuous).strokeBorder(open ? Sheet.text : Sheet.rule, lineWidth: 1))
-                .onTapGesture { if open { enlarged = shot } else if inPlace { toggle(shot) } else { selectedID = shot.id } }
+                .clipShape(RoundedRectangle(cornerRadius: 2, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 2, style: .continuous).strokeBorder(open ? Sheet.text : Sheet.rule, lineWidth: 1))
+                .onTapGesture { enlarged = shot }
                 .accessibilityAddTraits(.isButton)
-                .accessibilityHint(open ? "see it full screen" : "open")
-            Text(shot.number).font(Fonts.mono(11)).foregroundStyle(Sheet.text).frame(width: 26, alignment: .leading).padding(.top, 3)
+                .accessibilityHint("see it full screen")
 
             VStack(alignment: .leading, spacing: 3) {
                 if open {
-                    EditableName(text: shot.caption, font: .osSans(13), color: Sheet.text, lineLimit: 3, emptyLabel: "Untitled", title: "Edit Caption", pencil: true) {
+                    EditableName(text: shot.caption, font: Fonts.mono(12), color: Sheet.text, lineLimit: 3, emptyLabel: "Untitled", title: "Edit Caption", pencil: true) {
                         store.setCaption(shot.id, to: $0)
                     }
                     .id("cap" + shot.id.uuidString)
                 } else {
-                    Text(shot.caption.isEmpty ? "Untitled" : shot.caption).font(.osSans(13)).foregroundStyle(Sheet.text).lineLimit(1)
+                    Text(shot.caption.isEmpty ? "Untitled" : shot.caption).font(Fonts.mono(12)).foregroundStyle(Sheet.text).lineLimit(1)
                 }
                 Text("\(item.scene.name) · \(Format.mm(shot.lensMM))mm".uppercased())
                     .font(Fonts.mono(9)).tracking(0.6).foregroundStyle(Sheet.muted).lineLimit(1)
                 if !wide {
-                    Text("\(Format.time(shot.plannedTime)) · \(shortRead(shot))".uppercased())
-                        .font(Fonts.mono(9)).tracking(0.6).foregroundStyle(shot.isGolden ? Palette.sun : Sheet.muted)
+                    HStack(spacing: 6) {
+                        LightChip(light: shot.lightClass)
+                        Text("\(Format.time(shot.plannedTime)) · \(shortRead(shot))".uppercased())
+                            .font(Fonts.mono(9)).tracking(0.6).foregroundStyle(shot.isGolden ? Palette.sun : Sheet.muted)
+                    }
                 }
                 if open { openDetails(item) }
             }
@@ -525,9 +551,12 @@ struct ShotListView: View {
                 Text(Format.time(shot.plannedTime)).font(Fonts.mono(10))
                     .foregroundStyle(shot.isGolden ? Palette.sun : (open ? Sheet.text : Sheet.muted))
                     .frame(width: 42, alignment: .leading).padding(.top, 3)
-                Text(shortRead(shot).uppercased()).font(Fonts.mono(10)).tracking(0.4).foregroundStyle(Sheet.text)
-                    .lineLimit(1).minimumScaleFactor(0.8)
-                    .frame(width: 124, alignment: .leading).padding(.top, 3)
+                HStack(spacing: 6) {
+                    LightChip(light: shot.lightClass)
+                    Text(shortRead(shot).uppercased()).font(Fonts.mono(9)).tracking(0.4).foregroundStyle(Sheet.muted)
+                        .lineLimit(1).minimumScaleFactor(0.7)
+                }
+                .frame(width: 124, alignment: .leading).padding(.top, 1)
             }
             if inPlace {
                 Text(open ? "–" : "+").font(Fonts.mono(13)).foregroundStyle(Sheet.muted).frame(width: 14).padding(.top, 1)
@@ -560,7 +589,7 @@ struct ShotListView: View {
         let shot = item.shot
         return VStack(alignment: .leading, spacing: 8) {
             VStack(alignment: .leading, spacing: 3) {
-                Text(longRead(shot)).font(.osSans(13)).foregroundStyle(Sheet.text)
+                Text(longRead(shot)).font(Fonts.mono(12)).foregroundStyle(Sheet.text)
                 if let best = bestTime(shot) {
                     Text("BEST TIME · \(best)".uppercased()).font(Fonts.mono(9)).tracking(0.6).foregroundStyle(Sheet.text)
                 }
@@ -573,8 +602,8 @@ struct ShotListView: View {
             }
             .padding(.top, 6)
             HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text("Notes").font(.osSans(12)).foregroundStyle(Sheet.muted)
-                EditableName(text: shot.notes ?? "", font: .osSans(12), color: Sheet.text, lineLimit: 4,
+                Text("Notes").font(Fonts.mono(11)).foregroundStyle(Sheet.muted)
+                EditableName(text: shot.notes ?? "", font: Fonts.mono(11), color: Sheet.text, lineLimit: 4,
                              emptyLabel: "Access, power, parking", title: "Notes", pencil: true) {
                     store.setNotes(shot.id, to: $0)
                 }
@@ -726,91 +755,155 @@ struct ShotViewer: View {
 
     private var shot: Shot { shots.first { $0.id == current } ?? shots[0] }
 
+    private var index: Int { shots.firstIndex { $0.id == current } ?? 0 }
+
+    private func step(_ d: Int) {
+        let i = index + d
+        guard shots.indices.contains(i) else { return }
+        withAnimation(.snappy(duration: 0.25)) { current = shots[i].id }
+    }
+
+    /// 1.1 Paper (Elliot, 18 Nov 2026: the key screen for showing directors): white by day,
+    /// dark at night. The ID big on top, swipe, ‹ › or the dots to move, the light underneath.
     var body: some View {
-        ZStack {
-            Color.black.ignoresSafeArea()
+        NightAware { viewer }
+    }
 
-            TabView(selection: $current) {
-                ForEach(shots) { s in
-                    // Pinch or double-tap to zoom; a tap closes only when not zoomed in.
-                    ZoomableStill(shot: s, zoomed: $zoomed) { if !zoomed { onClose() } }
-                        .padding(.vertical, Space.xs)
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .tag(s.id)
+    private var viewer: some View {
+        VStack(spacing: 0) {
+            if !zoomed { header.transition(.opacity) }
+
+            ZStack {
+                TabView(selection: $current) {
+                    ForEach(shots) { s in
+                        // Pinch or double-tap to zoom; a tap closes only when not zoomed in.
+                        ZoomableStill(shot: s, zoomed: $zoomed) { if !zoomed { onClose() } }
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .tag(s.id)
+                    }
+                }
+                .tabViewStyle(.page(indexDisplayMode: .never))
+                // Zoomed in, a swipe moves around the picture instead of changing shot.
+                .scrollDisabled(zoomed)
+                .onChange(of: current) { zoomed = false }
+                // Get the neighbours ready before you swipe to them.
+                .task(id: current) {
+                    guard let i = shots.firstIndex(where: { $0.id == current }) else { return }
+                    for j in [i + 1, i - 1, i + 2] where shots.indices.contains(j) {
+                        _ = await ThumbCache.load(shots[j], .screen)
+                    }
+                }
+
+                if !zoomed && shots.count > 1 {
+                    HStack {
+                        arrow("‹", enabled: index > 0) { step(-1) }
+                        Spacer()
+                        arrow("›", enabled: index < shots.count - 1) { step(1) }
+                    }
                 }
             }
-            .tabViewStyle(.page(indexDisplayMode: .never))
-            // Zoomed in, a swipe moves around the picture instead of changing shot.
-            .scrollDisabled(zoomed)
-            .onChange(of: current) { zoomed = false }
-            .ignoresSafeArea()
-            // Get the neighbours ready before you swipe to them.
-            .task(id: current) {
-                guard let i = shots.firstIndex(where: { $0.id == current }) else { return }
-                for j in [i + 1, i - 1, i + 2] where shots.indices.contains(j) {
-                    _ = await ThumbCache.load(shots[j], .screen)
-                }
-            }
 
-            VStack {
-                Spacer()
-                Text("\(shot.number) · \(shot.caption.isEmpty ? "Untitled" : shot.caption) · \(Format.mm(shot.lensMM))mm · \(shot.aspect.display)"
-                     + (shots.count > 1 ? "   \((shots.firstIndex { $0.id == current } ?? 0) + 1) / \(shots.count)" : ""))
-                    .font(.osData)
-                    .foregroundStyle(Sheet.text)
-                    .padding(.horizontal, Space.xs)
-                    .padding(.vertical, Space.xxs + 1)
-                    .background(Palette.hud, in: RoundedRectangle(cornerRadius: Radius.readout))
-                    .padding(.bottom, Space.s)
-                    .opacity(zoomed ? 0 : 1)
-                    .allowsHitTesting(false)
-            }
+            if !zoomed { footer.transition(.opacity) }
         }
+        .padding(.horizontal, zoomed ? 0 : Space.l)
+        .background(Sheet.bg.ignoresSafeArea())
+        .foregroundStyle(Sheet.text)
         .animation(.easeOut(duration: 0.15), value: zoomed)
-        // Tapping the picture closes it (handled in ZoomableStill); the X makes that obvious.
-        .overlay(alignment: .topTrailing) {
+    }
+
+    /// 2A big, SCENE · LENS · TIME, n / N and ✕.
+    private var header: some View {
+        HStack(alignment: .firstTextBaseline, spacing: Space.m) {
+            Text(shot.number)
+                .font(Fonts.sans(34, .medium))
+                .tracking(-1)
+                .foregroundStyle(Palette.sun)
+            Text([store.scene(containing: shot.id)?.name, "\(Format.mm(shot.lensMM))mm · \(shot.aspect.display)", Format.time(shot.plannedTime)]
+                .compactMap { $0 }.joined(separator: " · ").uppercased())
+                .font(Fonts.mono(10)).tracking(0.6)
+                .foregroundStyle(Sheet.muted)
+                .lineLimit(1)
+            Spacer(minLength: Space.s)
+            if shots.count > 1 {
+                Text("\(index + 1) / \(shots.count)").font(Fonts.mono(10)).tracking(0.6).foregroundStyle(Sheet.muted)
+            }
             Button(action: onClose) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(Sheet.text)
-                    .frame(width: 36, height: 36)
-                    .background(Palette.hud, in: Circle())
+                Text("✕").font(Fonts.mono(14))
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .padding(Space.s - 4)
-            .opacity(zoomed ? 0 : 1)
             .accessibilityLabel("close full screen")
         }
-        // Save just this still to Photos, cropped to its frame lines.
-        .overlay(alignment: .bottomTrailing) {
-            Button {
-                saving = true
-                Task {
-                    do {
-                        try await PhotoSaver.save([shot])
-                        store.toast = "Saved \(shot.number) to Photos"
-                    } catch {
-                        store.toast = "Couldn't save to Photos. Check access in Settings."
+        .overlay(alignment: .bottom) { Palette.sun.frame(height: 1.5) }
+        .padding(.bottom, Space.xs)
+    }
+
+    /// The light chip, golden dot and caption; the dots; Save to Photos.
+    private var footer: some View {
+        VStack(spacing: 6) {
+            if shots.count > 1 && shots.count <= 40 {
+                HStack(spacing: 5) {
+                    ForEach(shots) { s in
+                        Circle()
+                            .fill(s.id == current ? Palette.sun : Sheet.rule)
+                            .frame(width: 5, height: 5)
+                            .frame(width: 9, height: 20)
+                            .contentShape(Rectangle())
+                            .onTapGesture { withAnimation(.snappy(duration: 0.25)) { current = s.id } }
                     }
-                    saving = false
                 }
-            } label: {
-                Label("Save to Photos", systemImage: "square.and.arrow.down")
-                    .font(.osData)
-                    .foregroundStyle(Sheet.text)
-                    .padding(.horizontal, 12)
-                    .frame(height: 36)
-                    .background(Palette.hud, in: Capsule())
-                    .frame(minHeight: 44)
-                    .contentShape(Rectangle())
+                .accessibilityHidden(true)
             }
-            .buttonStyle(.plain)
-            .disabled(saving)
-            .padding(Space.s)
-            .opacity(zoomed ? 0 : 1)
-            .allowsHitTesting(!zoomed)
+            HStack(spacing: Space.s) {
+                LightChip(light: shot.lightClass)
+                if shot.isGolden { Circle().fill(Palette.sun).frame(width: 6, height: 6) }
+                Text(shot.caption.isEmpty ? "Untitled" : shot.caption)
+                    .font(Fonts.mono(11))
+                    .lineLimit(1)
+                    .padding(.horizontal, 8)
+                    .frame(height: 24)
+                    .overlay(Rectangle().strokeBorder(Palette.sun, lineWidth: 1))
+                Spacer(minLength: Space.xs)
+                // Save just this still to Photos, cropped to its frame lines.
+                Button {
+                    saving = true
+                    Task {
+                        do {
+                            try await PhotoSaver.save([shot])
+                            store.toast = "Saved \(shot.number) to Photos"
+                        } catch {
+                            store.toast = "Couldn't save to Photos. Check access in Settings."
+                        }
+                        saving = false
+                    }
+                } label: {
+                    Text("SAVE TO PHOTOS ↓")
+                        .font(Fonts.mono(10)).tracking(0.6)
+                        .foregroundStyle(Sheet.muted)
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(saving)
+            }
+            .overlay(alignment: .top) { Sheet.rule.frame(height: 1) }
         }
+        .padding(.top, Space.xxs)
+    }
+
+    private func arrow(_ glyph: String, enabled: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(glyph)
+                .font(Fonts.mono(22))
+                .foregroundStyle(Sheet.text)
+                .frame(width: 36, height: 56)
+                .background(Sheet.bg.opacity(0.7))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .opacity(enabled ? 1 : 0)
+        .disabled(!enabled)
+        .accessibilityLabel(glyph == "‹" ? "previous shot" : "next shot")
     }
 }

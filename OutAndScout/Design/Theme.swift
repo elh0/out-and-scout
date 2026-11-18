@@ -433,3 +433,138 @@ struct NightAware<Content: View>: View {
         }
     }
 }
+
+// MARK: - 1.1 Paper kit: tabs, the big number, the light chip, the live strip
+
+/// The four places in the app, along the top of every paper screen.
+enum PaperTab: String, CaseIterable {
+    case camera = "Camera", shots = "Shots", selects = "Selects", export = "Export"
+}
+
+/// CAMERA · SHOTS · SELECTS · EXPORT, the current one in ink with an orange underline.
+struct PaperTabs: View {
+    let current: PaperTab
+    var disabled: Set<PaperTab> = []
+    let go: (PaperTab) -> Void
+
+    var body: some View {
+        HStack(spacing: 16) {
+            ForEach(PaperTab.allCases, id: \.self) { t in
+                let on = t == current
+                Button { if !on { go(t) } } label: {
+                    Text(t.rawValue.uppercased())
+                        .font(Fonts.mono(10))
+                        .tracking(0.8)
+                        .foregroundStyle(on ? Sheet.text : Sheet.muted)
+                        .padding(.bottom, 4)
+                        .overlay(alignment: .bottom) { if on { Palette.sun.frame(height: 1.5) } }
+                        .fixedSize()
+                        .frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .disabled(disabled.contains(t))
+                .opacity(disabled.contains(t) ? 0.4 : 1)
+                .accessibilityAddTraits(on ? .isSelected : [])
+            }
+        }
+    }
+}
+
+/// One big orange number with a rule and a label under it: the first thing on a paper screen.
+struct BigNumber: View {
+    let value: String
+    let label: String
+    var trailing: String? = nil
+    var size: CGFloat = 56
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(value)
+                .font(Fonts.sans(size, .medium))
+                .tracking(-size * 0.03)
+                .foregroundStyle(Palette.sun)
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
+            Palette.sun.frame(height: 1.5)
+            HStack(spacing: 6) {
+                Text(label.uppercased()).lineLimit(1)
+                Spacer(minLength: 0)
+                if let trailing { Text(trailing.uppercased()).lineLimit(1) }
+            }
+            .font(Fonts.mono(9))
+            .tracking(0.8)
+            .foregroundStyle(Sheet.muted)
+        }
+        .accessibilityElement(children: .combine)
+    }
+}
+
+/// B / ¾B / S / ¾F / F, shaded from solid (backlit) to an outline (front lit).
+struct LightChip: View {
+    let light: LightClass?
+
+    var body: some View {
+        let fill: Double = switch light {
+        case .backlit: 1
+        case .threeQuarterBack: 0.62
+        case .side: 0.3
+        case .threeQuarterFront: 0.12
+        case .front, .none: 0
+        }
+        Text(light?.letter ?? "–")
+            .font(Fonts.mono(9))
+            .foregroundStyle(fill > 0.5 ? Sheet.bg : Sheet.text)
+            .frame(minWidth: 24, minHeight: 16)
+            .padding(.horizontal, 2)
+            .background(Sheet.text.opacity(fill))
+            .overlay(Rectangle().strokeBorder(Sheet.text.opacity(light == nil ? 0.3 : 1), lineWidth: 1))
+            .accessibilityLabel(light?.title ?? "no heading")
+    }
+}
+
+extension Shot {
+    /// How the sun falls on this shot, or nil without a heading or with the sun down.
+    var lightClass: LightClass? {
+        guard sunElevation > -1, let b = bearing else { return nil }
+        return LightClass.of(rel: LightRead.rel(sunAzimuth: sunAzimuth, heading: b))
+    }
+}
+
+/// The foot of a paper screen: where the sun is now and today's golden hour. MORE ▴ opens
+/// sunrise, sunset and the weather.
+struct LiveStrip: View {
+    @Environment(LocationService.self) private var location
+    var more: (() -> Void)? = nil
+
+    var body: some View {
+        TimelineView(.everyMinute) { tl in
+            let c = location.coordinate
+            let sun = SunCalculator.position(at: tl.date, latitude: c.latitude, longitude: c.longitude)
+            let day = SunCalculator.day(containing: tl.date, latitude: c.latitude, longitude: c.longitude)
+            let golden = day.goldenWindows.first { $0.upperBound > tl.date } ?? day.goldenWindows.last
+            HStack(spacing: 14) {
+                Text("SUN \(Int(sun.azimuth.rounded()))° · \(Int(sun.elevation.rounded()))°")
+                    .foregroundStyle(Sheet.text)
+                if let golden {
+                    Text("GOLDEN \(Format.time(golden.lowerBound))–\(Format.time(golden.upperBound))")
+                        .foregroundStyle(Palette.sun)
+                }
+                Spacer(minLength: 0)
+                if let more {
+                    Button(action: more) {
+                        Text("MORE ▴").foregroundStyle(Sheet.muted)
+                            .frame(minHeight: 36).contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("sunrise, sunset and weather")
+                }
+            }
+            .font(Fonts.mono(9))
+            .tracking(0.6)
+            .lineLimit(1)
+            .frame(minHeight: 30)
+            .overlay(alignment: .top) { Sheet.rule.frame(height: 1) }
+        }
+    }
+}
