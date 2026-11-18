@@ -152,11 +152,7 @@ struct ExportPanel: View {
                 Text("Export").font(.osSans(18))
                 Spacer(minLength: 8)
                 // Opens upright; turn it back if you'd rather (Elliot, 18 Nov).
-                if !LayoutMode.isPad {
-                    OPill(label: portrait ? "↻ Landscape" : "↻ Portrait", size: .small, caps: true) {
-                        LayoutMode.shared.set(portrait: !portrait, remember: false)
-                    }
-                }
+                RotateButton(portrait: portrait)
             }
             HStack(spacing: 6) {
                 OPill(label: "This scene", on: !allScenes, size: .small) { allScenes = false }
@@ -178,7 +174,7 @@ struct ExportPanel: View {
 
             if !Pro.shared.owned {
                 Button { _ = Pro.shared.allow("Clean PDFs") } label: {
-                    Text("FREE PDFS CARRY A SMALL OUT & SCOUT CREDIT · ")
+                    Text("FREE PDFS CARRY A CREDIT · ")
                         .foregroundStyle(Sheet.muted)
                     + Text("REMOVE WITH PRO").underline()
                 }
@@ -323,17 +319,19 @@ struct ExportPanel: View {
             Text(url.lastPathComponent).font(.osSans(20)).lineLimit(3)
             Text("\(pageCount) PAGE\(pageCount == 1 ? "" : "S") · \(ShotListView.shots(shotCount).uppercased()) · \(options.tier.label.uppercased())")
                 .font(Fonts.mono(9)).tracking(0.6).foregroundStyle(Sheet.muted)
-            OPill(label: "Send · AirDrop, Mail, Files", on: true, size: .big) { shareItem = ShareItem(url: url) }
+            OPill(label: "Send", on: true, size: .big, caps: true) { shareItem = ShareItem(url: url) }
                 .padding(.top, 10)
             // Shoot day: the lock-screen button opens this PDF.
-            OPill(label: "Pin for shoot day", size: .big) {
-                if ShootDay.shared.pin(fileAt: url) {
-                    store.toast = "Pinned for shoot day"
-                } else {
-                    error = "Couldn't pin the PDF. Try again."
+            HStack(spacing: 4) {
+                OPill(label: "Pin for shoot day", size: .big, caps: true) {
+                    if ShootDay.shared.pin(fileAt: url) {
+                        store.toast = "Pinned for shoot day"
+                    } else {
+                        error = "Couldn't pin the PDF. Try again."
+                    }
                 }
+                ShootDayInfoButton()
             }
-            OPill(label: "How the lock-screen button works", size: .small) { ShootDay.shared.showHowTo() }
             Spacer(minLength: 20)
             HStack(spacing: 8) {
                 OPill(label: "Edit again", caps: true) { made = nil }

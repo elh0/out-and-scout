@@ -92,11 +92,7 @@ struct SelectsView: View {
                 .contentTransition(.numericText())
             Spacer()
             // Turn the phone upright to see more stills at once, like Photos (Elliot, 18 Nov).
-            if !LayoutMode.isPad {
-                OPill(label: portrait ? "↻ Landscape" : "↻ Portrait", caps: true) {
-                    LayoutMode.shared.set(portrait: !portrait, remember: false)
-                }
-            }
+            RotateButton(portrait: portrait)
             OPill(label: "Cancel", caps: true) { close() }
         }
         .frame(minHeight: 44)
@@ -128,13 +124,13 @@ struct SelectsView: View {
                 }
             }
             .coordinateSpace(name: "selects")
-            // Drag sideways across stills to tick (or untick) a run, like Photos. Vertical
-            // drags still scroll.
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 12, coordinateSpace: .named("selects"))
-                    .onChanged { g in dragChanged(g, cols: cols, side: side) }
-                    .onEnded { _ in dragTicks = nil; dragStart = nil }
-            )
+            // Drag sideways across stills to tick (or untick) a run, like Photos. A UIKit pan
+            // that only begins on a sideways start, so an up-down flick goes straight to the
+            // scroll view instead of fighting a SwiftUI drag.
+            .gesture(SidewaysPan(
+                changed: { start, now in dragChanged(start: start, now: now, cols: cols, side: side) },
+                ended: { dragTicks = nil; dragStart = nil }
+            ))
         }
     }
 
@@ -166,7 +162,8 @@ struct SelectsView: View {
             }
             .contentShape(Rectangle())
             .onTapGesture { toggle(item.id) }
-            .onLongPressGesture(minimumDuration: 0.45) { peek = item.shot }
+            // A long press that doesn't hold up the scroll view (it only claims the touch at 0.45 s).
+            .gesture(LongPressGesture(minimumDuration: 0.45).onEnded { _ in peek = item.shot })
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Shot \(item.shot.number), \(item.shot.caption)")
             .accessibilityAddTraits(on ? [.isButton, .isSelected] : .isButton)
@@ -227,17 +224,16 @@ struct SelectsView: View {
         return items.indices.contains(i) ? i : nil
     }
 
-    private func dragChanged(_ g: DragGesture.Value, cols: Int, side: CGFloat) {
+    private func dragChanged(start startPoint: CGPoint, now nowPoint: CGPoint, cols: Int, side: CGFloat) {
         if dragTicks == nil {
-            // Only a sideways start selects; an up-down start is a scroll.
-            guard abs(g.translation.width) > abs(g.translation.height) * 1.2,
-                  let start = index(at: g.startLocation, cols: cols, side: side) else { return }
+            // SidewaysPan only begins on a sideways start, so this is always a select run.
+            guard let start = index(at: startPoint, cols: cols, side: side) else { return }
             dragStart = start
             beforeDrag = picked
             dragTicks = !picked.contains(items[start].id)
         }
         guard let ticks = dragTicks, let start = dragStart,
-              let now = index(at: g.location, cols: cols, side: side) else { return }
+              let now = index(at: nowPoint, cols: cols, side: side) else { return }
         let run = Set(items[min(start, now)...max(start, now)].map(\.id))
         picked = ticks ? beforeDrag.union(run) : beforeDrag.subtracting(run)
     }
@@ -271,5 +267,49 @@ struct SelectsView: View {
     private func close() {
         makeTask?.cancel()
         onClose()
+    }
+}
+
+/// A pan that begins only when the finger starts sideways (|vx| > 1.2 |vy|), reporting the
+/// start and current points in the grid's own coordinates. Anything else never begins, so the
+/// enclosing ScrollView scrolls as normal.
+private struct SidewaysPan: UIGestureRecognizerRepresentable {
+    let changed: (CGPoint, CGPoint) -> Void
+    let ended: () -> Void
+
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        var start: CGPoint = .zero
+        func gestureRecognizerShouldBegin(_ g: UIGestureRecognizer) -> Bool {
+            guard let pan = g as? UIPanGestureRecognizer else { return false }
+            let v = pan.velocity(in: pan.view)
+            return abs(v.x) > abs(v.y) * 1.2
+        }
+        func gestureRecognizer(_ g: UIGestureRecognizer,
+                               shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool { false }
+    }
+
+    func makeCoordinator(converter: CoordinateSpaceConverter) -> Coordinator { Coordinator() }
+
+    func makeUIGestureRecognizer(context: Context) -> UIPanGestureRecognizer {
+        let pan = UIPanGestureRecognizer()
+        pan.delegate = context.coordinator
+        pan.maximumNumberOfTouches = 1
+        return pan
+    }
+
+    func handleUIGestureRecognizerAction(_ pan: UIPanGestureRecognizer, context: Context) {
+        let here = context.converter.localLocation
+        switch pan.state {
+        case .began:
+            // Where the finger first went down: back out the distance already travelled.
+            let t = context.converter.localTranslation ?? .zero
+            context.coordinator.start = CGPoint(x: here.x - t.x, y: here.y - t.y)
+            changed(context.coordinator.start, here)
+        case .changed:
+            changed(context.coordinator.start, here)
+        case .ended, .cancelled, .failed:
+            ended()
+        default: break
+        }
     }
 }

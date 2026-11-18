@@ -75,6 +75,10 @@ struct ShotListView: View {
         .animation(.easeOut(duration: 0.2), value: enlarged?.id)
         .animation(.snappy(duration: 0.28), value: selecting)
         .onChange(of: store.showingExport || selecting) { _, open in turnUpright(open) }
+        #if DEBUG
+        // Screenshot testing: -openPanel selects opens Selects over the Shot List.
+        .task { if UserDefaults.standard.string(forKey: "openPanel") == "selects" { selecting = true } }
+        #endif
         .sheet(isPresented: $reordering) {
             let project = store.currentProject
             VStack(alignment: .leading, spacing: 16) {

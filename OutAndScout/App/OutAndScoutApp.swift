@@ -280,6 +280,8 @@ struct RootView: View {
             case "export":
                 store.showingShotList = true
                 store.showingExport = true
+            case "selects": store.showingShotList = true
+            case "howto": ShootDay.shared.showHowTo()
             default: break
             }
             #endif

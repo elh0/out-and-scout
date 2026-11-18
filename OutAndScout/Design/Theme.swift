@@ -93,15 +93,24 @@ struct OPressRing: ButtonStyle {
     }
 }
 
-/// A small tick box: hairline square, filled paper when on.
+/// A tick box: hairline square when off; filled paper with a dark tick when on, so "on" reads
+/// at a glance (Elliot, 18 Nov: Frames, Sun and Notes looked unticked).
 struct TickBox: View {
     let on: Bool
     var round = false
     var body: some View {
-        RoundedRectangle(cornerRadius: round ? 6 : 3)
+        let shape = RoundedRectangle(cornerRadius: round ? 8 : 4)
+        shape
             .fill(on ? Sheet.text : .clear)
-            .overlay(RoundedRectangle(cornerRadius: round ? 6 : 3).strokeBorder(on ? Sheet.text : Outline.line, lineWidth: 1))
-            .frame(width: 11, height: 11)
+            .overlay(shape.strokeBorder(on ? Sheet.text : Outline.line, lineWidth: 1))
+            .overlay {
+                if on {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 9, weight: .bold))
+                        .foregroundStyle(Sheet.bg)
+                }
+            }
+            .frame(width: 16, height: 16)
     }
 }
 

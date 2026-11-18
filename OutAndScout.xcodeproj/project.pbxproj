@@ -12,6 +12,7 @@
 		03D45199E849C8217CF21C21 /* ScoutStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE9FFD58C98D37809BA663D4 /* ScoutStore.swift */; };
 		07990A06BFE3E0015C95323D /* PhotoSaver.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5C8667B1690178487CD4425 /* PhotoSaver.swift */; };
 		0C475D109B7E888E82BC14E1 /* SwipeToDelete.swift in Sources */ = {isa = PBXBuildFile; fileRef = 827B2C2493672F4355D9E415 /* SwipeToDelete.swift */; };
+		0DC7B261968ACC91309B6D2E /* RoundIconButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CC42BDAC0B933C52346CAB1 /* RoundIconButton.swift */; };
 		10F23677009FB389D4D41D3F /* Keyboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA83407C698E59A47F7AC661 /* Keyboard.swift */; };
 		143C18405B55E9879AC7A86A /* EditableName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28571D6A40BBE070622B8A29 /* EditableName.swift */; };
 		160874D5D66B81BC0E1DF9DB /* ShootDay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1495332C5BDB0CBACA6EFA1F /* ShootDay.swift */; };
@@ -113,6 +114,7 @@
 		41A4E4C5B1A0354C6D3E0C36 /* OutAndScout.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = OutAndScout.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		4626224FF6DE0A2D2369A9BE /* KitCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KitCatalog.swift; sourceTree = "<group>"; };
 		471A42435447254EEAB968D4 /* Geist-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; path = "Geist-Regular.ttf"; sourceTree = "<group>"; };
+		4CC42BDAC0B933C52346CAB1 /* RoundIconButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RoundIconButton.swift; sourceTree = "<group>"; };
 		4E1C19756097B74E224CB17E /* FoundingTester.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoundingTester.swift; sourceTree = "<group>"; };
 		536B756A0CC39CD76547B072 /* Pro.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pro.swift; sourceTree = "<group>"; };
 		5E340EFF0CCE8EC47C3FC20C /* MotionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MotionService.swift; sourceTree = "<group>"; };
@@ -315,6 +317,7 @@
 				28571D6A40BBE070622B8A29 /* EditableName.swift */,
 				07CAC6AEAFE2D45BC3E7F66C /* Fonts.swift */,
 				AA83407C698E59A47F7AC661 /* Keyboard.swift */,
+				4CC42BDAC0B933C52346CAB1 /* RoundIconButton.swift */,
 				827B2C2493672F4355D9E415 /* SwipeToDelete.swift */,
 				8B886A2DCC5718C31BCBE6F7 /* Theme.swift */,
 			);
@@ -455,6 +458,7 @@
 				07990A06BFE3E0015C95323D /* PhotoSaver.swift in Sources */,
 				EF80DEA32465BCD6D97ABB92 /* PortraitViewfinder.swift in Sources */,
 				27C7C7D1D46EC97833B5C521 /* Pro.swift in Sources */,
+				0DC7B261968ACC91309B6D2E /* RoundIconButton.swift in Sources */,
 				03D45199E849C8217CF21C21 /* ScoutStore.swift in Sources */,
 				C0C5D6E3A451422E69F05AC2 /* SelectsView.swift in Sources */,
 				160874D5D66B81BC0E1DF9DB /* ShootDay.swift in Sources */,
