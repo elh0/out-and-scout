@@ -1,0 +1,683 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Out & Scout Paper</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@500&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: studio wall, one screen per phone. Every paper screen shares one frame: tabs + crumb on top, body, live data strip at the foot. Geist Mono for all words; Geist only for the big numbers. Single light look by choice. */
+:root{
+  --wall:#E4E2DC;--paper:#F1EEE7;--line:#CFCBC2;--ink:#151513;--grey:#8A877F;
+  --sun:#E2531F;--sunN:#FF5A1F;--night:#0B0B0A;--nightText:#ECEBE6;--nightMuted:#8A8A83;--bezel:#121211;
+  --num:"Geist",ui-sans-serif,system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
+  --mono:"Geist Mono",ui-monospace,"SF Mono",Menlo,monospace;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+body{background:var(--wall);color:var(--ink);font-family:var(--mono);margin:0;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1040px;margin:0 auto;padding-block:48px 80px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:72px}
+.lab{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--grey)}
+header{display:grid;gap:14px}
+header h1{font-family:var(--num);font-weight:500;font-size:clamp(28px,5vw,44px);letter-spacing:-.03em;margin:0;line-height:1.05;text-wrap:balance}
+header h1 span{color:var(--sun)}
+header p{margin:0;max-width:60ch;font-size:13px;line-height:1.6;color:#4a4842}
+figure{margin:0;display:grid;gap:18px;justify-items:center}
+figcaption{display:flex;gap:14px;align-items:baseline;width:min(100%,900px);font-size:12.5px;line-height:1.55;color:#4a4842}
+figcaption b{font-weight:400;font-size:11px;letter-spacing:.08em;color:var(--sun);flex:none;min-width:150px}
+
+.phone{width:min(100%,900px);aspect-ratio:2.17/1;background:var(--bezel);border-radius:clamp(22px,5.4vw,50px);padding:clamp(6px,1.25vw,12px);position:relative;box-shadow:0 30px 60px -30px rgba(20,18,14,.45)}
+.phone::before{content:"";position:absolute;left:clamp(14px,3vw,28px);top:50%;width:clamp(8px,1.7vw,16px);height:clamp(30px,6.6vw,62px);background:#000;border-radius:20px;transform:translateY(-50%);z-index:3}
+.screen{width:100%;height:100%;background:var(--paper);border-radius:clamp(16px,4.4vw,40px);overflow:hidden;container-type:inline-size;position:relative}
+.screen.dark{background:var(--night)}
+
+/* 1 --u = 1 iPhone point (844 wide) */
+.s{--u:calc(100cqw / 844);position:absolute;inset:0;font-size:calc(var(--u)*11);line-height:1.35;letter-spacing:.01em}
+.k{font-size:calc(var(--u)*8.5);letter-spacing:.08em;text-transform:uppercase;color:var(--grey)}
+.k.o{color:var(--sun)} .k.i{color:var(--ink)}
+.num{font-family:var(--num);font-weight:500;color:var(--sun);font-size:calc(var(--u)*86);line-height:.8;letter-spacing:-.05em;font-variant-numeric:tabular-nums}
+.rule{border-top:calc(var(--u)*1.2) solid var(--sun);padding-top:calc(var(--u)*5);color:var(--sun);display:flex;justify-content:space-between;gap:calc(var(--u)*12);white-space:nowrap;font-size:calc(var(--u)*9.5);letter-spacing:.06em;text-transform:uppercase}
+.box{border:calc(var(--u)*1.1) solid var(--sun);padding:calc(var(--u)*6) calc(var(--u)*9);color:var(--sun);font-size:calc(var(--u)*9.5);line-height:1.5;letter-spacing:.04em;text-transform:uppercase}
+.ph{background-size:cover;background-position:center}
+.btn{border:calc(var(--u)*1.1) solid var(--sun);font-size:calc(var(--u)*9.5);letter-spacing:.08em;padding:calc(var(--u)*9) calc(var(--u)*16);text-transform:uppercase;white-space:nowrap;background:var(--sun);color:var(--paper);text-align:center}
+.g{display:grid}.col{display:flex;flex-direction:column}
+.tn{font-variant-numeric:tabular-nums}
+
+/* THE FRAME: tabs + crumb / body / data strip */
+.shell{display:grid;grid-template-rows:calc(var(--u)*30) 1fr calc(var(--u)*24);padding:calc(var(--u)*10) calc(var(--u)*26) calc(var(--u)*8) calc(var(--u)*60);gap:calc(var(--u)*14)}
+.tabs{display:flex;justify-content:space-between;align-items:center;border-bottom:calc(var(--u)*1) solid var(--ink);gap:calc(var(--u)*16)}
+.tabs nav{display:flex;gap:calc(var(--u)*18);align-self:stretch}
+.tabs nav span{font-size:calc(var(--u)*9.5);letter-spacing:.08em;color:var(--grey);display:flex;align-items:center;border-bottom:calc(var(--u)*2) solid transparent;margin-bottom:calc(var(--u)*-1.5)}
+.tabs nav span.on{color:var(--ink);border-bottom-color:var(--sun)}
+.crumb{font-size:calc(var(--u)*9.5);letter-spacing:.08em;color:var(--grey);white-space:nowrap}
+.crumb b{font-weight:400;color:var(--ink)}
+.data{display:flex;gap:calc(var(--u)*16);align-items:center;border-top:calc(var(--u)*1) solid var(--line);font-size:calc(var(--u)*8.5);letter-spacing:.08em;color:var(--grey);white-space:nowrap;overflow:hidden}
+.data b{font-weight:400;color:var(--ink)}
+.data .o{color:var(--sun)}
+.body{min-height:0;display:grid}
+
+/* tables */
+.tbl{display:grid;border-top:calc(var(--u)*1) solid var(--ink)}
+.tbl .r{display:grid;align-items:baseline;gap:calc(var(--u)*12);padding:calc(var(--u)*6.5) 0;border-bottom:calc(var(--u)*1) solid var(--line)}
+.tbl .h{padding:calc(var(--u)*4) 0}
+.spec{display:grid;border-top:calc(var(--u)*1) solid var(--ink)}
+.spec div{display:grid;grid-template-columns:calc(var(--u)*50) 1fr;gap:calc(var(--u)*8);padding:calc(var(--u)*5) 0;border-bottom:calc(var(--u)*1) solid var(--line);align-items:baseline}
+.plot{width:100%;height:auto;display:block;overflow:visible}
+
+/* viewfinder (from round 2, dark) */
+.vfd{display:grid;grid-template-columns:calc(var(--u)*64) 1fr calc(var(--u)*100);grid-template-rows:calc(var(--u)*30) 1fr calc(var(--u)*40);column-gap:calc(var(--u)*12);padding:calc(var(--u)*12) calc(var(--u)*22) calc(var(--u)*10) calc(var(--u)*54);color:var(--nightText);font-size:calc(var(--u)*13)}
+.vfd .k{color:var(--nightMuted)}
+.vfd .sc{grid-row:1 / 3;grid-column:1;display:flex;flex-direction:column;gap:calc(var(--u)*5)}
+.vfd .sc .n{font-family:var(--num);font-weight:500;color:var(--sunN);font-size:calc(var(--u)*34);line-height:.85;letter-spacing:-.04em}
+.vfd .sc .rule{border-color:var(--sunN);color:var(--sunN);font-size:calc(var(--u)*8.5)}
+.vfd .top{grid-column:2;grid-row:1;display:flex;justify-content:space-between;align-items:center;border-bottom:calc(var(--u)*1) solid rgba(236,235,230,.22);font-size:calc(var(--u)*9.5);letter-spacing:.07em;color:var(--nightMuted);white-space:nowrap;gap:calc(var(--u)*12)}
+.vfd .top b{font-weight:400;color:var(--nightText)}
+.vfd .frame{grid-column:2;grid-row:2;position:relative;margin-block:calc(var(--u)*8);border:calc(var(--u)*1) solid var(--nightText)}
+.vfd .frame .sun{position:absolute;left:calc(var(--u)*8);top:calc(7% + var(--u)*6);font-size:calc(var(--u)*9.5);letter-spacing:.07em;color:var(--sunN)}
+.vfd .frame .cap{position:absolute;left:calc(var(--u)*8);bottom:calc(var(--u)*8);border:calc(var(--u)*1.1) solid var(--sunN);background:rgba(11,11,10,.62);color:var(--nightText);font-size:calc(var(--u)*9.5);letter-spacing:.07em;padding:calc(var(--u)*5) calc(var(--u)*8);line-height:1.4}
+.vfd .frame .cap span{color:var(--sunN)}
+.vfd .frame .crop{position:absolute;inset:7% 0;border-block:calc(var(--u)*1) solid rgba(236,235,230,.55)}
+.vfd .bot{grid-column:2;grid-row:3;display:grid;grid-template-columns:auto auto 1fr auto;align-items:center;gap:calc(var(--u)*12)}
+.pill{border:calc(var(--u)*1) solid rgba(236,235,230,.42);border-radius:99px;padding:calc(var(--u)*4) calc(var(--u)*10);font-size:calc(var(--u)*9.5);letter-spacing:.06em;white-space:nowrap;color:var(--nightText)}
+.lr{font-size:calc(var(--u)*9.5);letter-spacing:.07em;color:var(--sunN);white-space:nowrap}
+.strip{position:relative;height:calc(var(--u)*20)}
+.strip::before{content:"";position:absolute;left:0;right:0;top:50%;border-top:calc(var(--u)*1) solid rgba(236,235,230,.35)}
+.strip i{position:absolute;top:50%;width:calc(var(--u)*10);height:calc(var(--u)*10);border-radius:50%;background:var(--sunN);transform:translate(-50%,-50%)}
+.strip em{position:absolute;top:50%;height:calc(var(--u)*7);border-left:calc(var(--u)*1) solid rgba(236,235,230,.5);transform:translateY(-50%)}
+.strip .gold{position:absolute;top:50%;height:0;border-top:calc(var(--u)*2) solid var(--sunN);transform:translateY(-50%)}
+.vfd .left-bot{grid-column:1;grid-row:3;display:flex;align-items:center}
+.vfd .rr{grid-column:3;grid-row:1 / 4;display:flex;flex-direction:column;align-items:center;justify-content:space-between}
+.vfd .lens{display:flex;align-items:baseline;gap:calc(var(--u)*3)}
+.vfd .lens b{font-family:var(--num);font-weight:500;font-size:calc(var(--u)*40);line-height:.9;letter-spacing:-.04em}
+.vfd .shut{display:grid;justify-items:center;gap:calc(var(--u)*7)}
+.vfd .shut .ring{width:calc(var(--u)*58);height:calc(var(--u)*58);border-radius:50%;border:calc(var(--u)*1.5) solid var(--nightText);display:grid;place-items:center}
+.vfd .shut .ring::after{content:"";width:calc(var(--u)*46);height:calc(var(--u)*46);border-radius:50%;background:var(--sunN)}
+.vfd .last{width:calc(var(--u)*40);height:calc(var(--u)*40);border:calc(var(--u)*1) solid rgba(236,235,230,.5);position:relative}
+.vfd .last span{position:absolute;right:calc(var(--u)*-8);top:calc(var(--u)*-8);background:var(--nightText);color:var(--night);border-radius:99px;font-size:calc(var(--u)*8.5);padding:0 calc(var(--u)*5);line-height:calc(var(--u)*15)}
+
+/* thumbs */
+.thumbs{display:grid;grid-template-columns:repeat(5,1fr);gap:calc(var(--u)*10)}
+.thumbs .t{display:flex;flex-direction:column;gap:calc(var(--u)*5)}
+.thumbs .t .ph{flex:1;position:relative}
+.thumbs .t.off .ph{opacity:.35}
+.thumbs .t .ph::after{content:"";position:absolute;right:calc(var(--u)*5);top:calc(var(--u)*5);width:calc(var(--u)*12);height:calc(var(--u)*12);border-radius:50%;border:calc(var(--u)*1.1) solid var(--paper)}
+.thumbs .t.on .ph::after{background:var(--sun);border-color:var(--sun)}
+
+/* export */
+.tier{display:grid;border-top:calc(var(--u)*1) solid var(--ink)}
+.tier div{display:grid;grid-template-columns:1fr auto;padding:calc(var(--u)*7) 0;border-bottom:calc(var(--u)*1) solid var(--line);align-items:center}
+.tick{width:calc(var(--u)*11);height:calc(var(--u)*11);border-radius:50%;border:calc(var(--u)*1.1) solid var(--grey)}
+.tick.on{background:var(--sun);border-color:var(--sun)}
+.chk{display:flex;flex-wrap:wrap;gap:calc(var(--u)*6) calc(var(--u)*12)}
+.chk span{display:flex;align-items:center;gap:calc(var(--u)*5)}
+.chk span::before{content:"";width:calc(var(--u)*9);height:calc(var(--u)*9);border:calc(var(--u)*1.1) solid var(--ink)}
+.chk span.on::before{background:var(--ink)}
+.chk span.new{color:var(--sun)} .chk span.new::before{border-color:var(--sun)}
+.well{background:#E2DFD8;display:grid;place-items:center;padding:calc(var(--u)*10);min-height:0}
+.mini{height:100%;aspect-ratio:210/297;background:var(--paper);box-shadow:0 calc(var(--u)*6) calc(var(--u)*16) rgba(20,18,14,.18);padding:calc(var(--u)*11);display:flex;flex-direction:column;gap:calc(var(--u)*5)}
+.mini .num{font-size:calc(var(--u)*38)}
+.mini .rule{border-top-width:calc(var(--u)*.8);padding-top:calc(var(--u)*3);font-size:calc(var(--u)*5.5)}
+.mini .ln{height:calc(var(--u)*3);background:var(--line)} .mini .ln.d{background:#B9B5AB;width:70%}
+
+/* pdf */
+.a4wrap{width:min(100%,560px)}
+.a4{aspect-ratio:210/297;background:var(--paper);container-type:inline-size;box-shadow:0 30px 60px -30px rgba(20,18,14,.45);position:relative}
+.a4 .s{--u:calc(100cqw / 595);padding:calc(var(--u)*40);display:flex;flex-direction:column;gap:calc(var(--u)*16);font-size:calc(var(--u)*10.5)}
+.a4 .num{font-size:calc(var(--u)*120)}
+.wx{display:grid;grid-template-columns:repeat(5,1fr);gap:calc(var(--u)*10)}
+.wx div{display:grid;gap:calc(var(--u)*3)}
+.drive{padding:calc(var(--u)*3) 0 calc(var(--u)*3) calc(var(--u)*132);border-bottom:calc(var(--u)*.8) solid var(--line)}
+
+.notes{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.note{background:var(--paper);padding:16px 16px 18px;display:grid;gap:10px;align-content:start;font-size:12.5px;line-height:1.5}
+.note b{font-weight:500}
+.when{border-top:1px solid var(--ink);padding-top:14px;display:flex;flex-wrap:wrap;gap:8px 28px;font-size:12.5px}
+.when span{color:var(--sun)}
+
+/* dropdowns (round 4): tap to open, tap again to close */
+details.dd{position:relative}
+details.dd>summary{list-style:none;cursor:pointer;display:inline-flex;align-items:center;gap:calc(var(--u)*4);white-space:nowrap}
+details.dd>summary::-webkit-details-marker{display:none}
+details.dd>summary:focus-visible{outline:calc(var(--u)*1.5) solid var(--sun);outline-offset:calc(var(--u)*2)}
+details.dd>summary .car{display:inline-block;transition:transform .15s}
+details.dd[open]>summary .car{transform:rotate(180deg)}
+.panel{position:absolute;z-index:6;background:var(--paper);border:calc(var(--u)*1) solid var(--ink);padding:calc(var(--u)*6) calc(var(--u)*10);min-width:calc(var(--u)*170);box-shadow:0 calc(var(--u)*8) calc(var(--u)*20) rgba(20,18,14,.14)}
+.panel.r{right:0;top:calc(100% + var(--u)*6)}
+.panel.l{left:0;top:calc(100% + var(--u)*6)}
+.panel.up{right:0;bottom:calc(100% + var(--u)*6)}
+.panel .it{display:flex;justify-content:space-between;gap:calc(var(--u)*14);padding:calc(var(--u)*5) 0;border-bottom:calc(var(--u)*1) solid var(--line);font-size:calc(var(--u)*10);letter-spacing:.04em}
+.panel .it:last-child{border-bottom:0}
+.panel .it.on{color:var(--sun)}
+.data{overflow:visible}
+.tog{display:inline-flex;align-items:center;gap:calc(var(--u)*6);font:inherit;font-size:calc(var(--u)*9);letter-spacing:.08em;text-transform:uppercase;color:var(--ink);background:none;border:calc(var(--u)*1) solid var(--ink);padding:calc(var(--u)*6) calc(var(--u)*10);cursor:pointer;white-space:nowrap}
+.tog i{width:calc(var(--u)*16);height:calc(var(--u)*9);border-radius:99px;border:calc(var(--u)*1) solid var(--ink);position:relative}
+.tog i::after{content:"";position:absolute;top:calc(var(--u)*1);left:calc(var(--u)*1);width:calc(var(--u)*5);height:calc(var(--u)*5);border-radius:50%;background:var(--ink);transition:left .15s}
+.tog[aria-pressed="true"]{border-color:var(--sun);color:var(--sun)}
+.tog[aria-pressed="true"] i{border-color:var(--sun);background:var(--sun)}
+.tog[aria-pressed="true"] i::after{left:calc(var(--u)*8);background:var(--paper)}
+.fb{position:absolute;border-radius:50%;backdrop-filter:blur(calc(var(--u)*5));-webkit-backdrop-filter:blur(calc(var(--u)*5));opacity:0;transition:opacity .2s}
+.blur-on .fb{opacity:1}
+.vpop{position:absolute;left:0;bottom:calc(100% + var(--u)*6);background:rgba(26,26,25,.96);border:calc(var(--u)*1) solid rgba(236,235,230,.42);border-radius:calc(var(--u)*10);padding:calc(var(--u)*6) calc(var(--u)*10);min-width:calc(var(--u)*120);z-index:6}
+.vpop .it{display:flex;align-items:center;gap:calc(var(--u)*7);padding:calc(var(--u)*5) 0;font-size:calc(var(--u)*9.5);letter-spacing:.05em;color:var(--nightText);white-space:nowrap}
+.vpop .it::before{content:"";width:calc(var(--u)*9);height:calc(var(--u)*9);border:calc(var(--u)*1) solid var(--nightText)}
+.vpop .it.on::before{background:var(--nightText)}
+.vpop .it.new{color:var(--sunN)} .vpop .it.new::before{border-color:var(--sunN);background:var(--sunN)}
+.vfd .left-bot{position:relative}
+
+.wm{font-family:var(--num);font-weight:500;font-size:calc(var(--u)*15);letter-spacing:-.01em;word-spacing:.25em;display:flex;align-items:baseline;white-space:nowrap}
+.wm i{display:inline-block;width:calc(var(--u)*4.5);height:calc(var(--u)*4.5);border-radius:50%;background:var(--sun);margin:0 calc(var(--u)*4);transform:translateY(calc(var(--u)*-7))}
+.tbl .r.pr{padding:calc(var(--u)*5) 0;cursor:pointer}
+.fb{border-radius:50%;backdrop-filter:blur(calc(var(--u)*6));-webkit-backdrop-filter:blur(calc(var(--u)*6));-webkit-mask-image:radial-gradient(closest-side,#000 45%,transparent 100%);mask-image:radial-gradient(closest-side,#000 45%,transparent 100%)}
+.vtoast{position:absolute;left:50%;top:calc(7% + var(--u)*8);transform:translateX(-50%);display:flex;gap:calc(var(--u)*14);align-items:center;background:rgba(11,11,10,.78);border:calc(var(--u)*1.1) solid var(--sunN);color:var(--nightText);font-size:calc(var(--u)*9.5);letter-spacing:.07em;padding:calc(var(--u)*6) calc(var(--u)*10);white-space:nowrap}
+.vtoast b{font-weight:400;color:var(--sunN);cursor:pointer;border-bottom:calc(var(--u)*1) solid var(--sunN)}
+.flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none;transition:opacity .25s}
+.flash.go{opacity:.7;transition:none}
+.ptoast{position:absolute;left:50%;bottom:calc(var(--u)*44);transform:translateX(-50%);background:var(--ink);color:var(--paper);font-size:calc(var(--u)*10);letter-spacing:.07em;text-transform:uppercase;padding:calc(var(--u)*8) calc(var(--u)*14);z-index:9;white-space:nowrap}
+[data-go],[data-act]{cursor:pointer}
+.proto{display:grid;gap:18px;justify-items:center}
+.proto .phone{width:min(100%,1000px)}
+.steps{display:flex;flex-wrap:wrap;gap:6px 14px;justify-content:center;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--grey)}
+.steps button{font:inherit;letter-spacing:inherit;text-transform:inherit;color:var(--grey);background:none;border:0;border-bottom:1px solid transparent;padding:2px 0;cursor:pointer}
+.steps button.on{color:var(--ink);border-bottom-color:var(--sun)}
+.steps button:focus-visible{outline:2px solid var(--sun);outline-offset:3px}
+.hint{font-size:12.5px;color:#4a4842;text-align:center;max-width:70ch;line-height:1.55}
+
+.kitgrid{--u:1.3px;display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.kc{background:var(--paper);padding:16px;display:grid;gap:8px;align-content:start;font-size:12px;line-height:1.5;color:#4a4842}
+.kc b{font-weight:500;color:var(--ink)}
+.kv{min-height:44px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.lc{display:inline-grid;place-items:center;min-width:calc(var(--u)*20);height:calc(var(--u)*13);padding:0 calc(var(--u)*4);font-family:var(--mono);font-size:calc(var(--u)*8);letter-spacing:.04em;border:calc(var(--u)*1) solid var(--ink)}
+.lc.b{background:var(--ink);color:var(--paper)}
+.lc.qb{background:#6E6B64;border-color:#6E6B64;color:var(--paper)}
+.lc.sd{background:#B9B5AB;border-color:#B9B5AB;color:var(--ink)}
+.lc.qf{background:#DAD6CD;border-color:#DAD6CD;color:var(--ink)}
+.lc.f{background:transparent}
+.hd{display:inline-flex;align-items:center;gap:calc(var(--u)*3);font-family:var(--mono);font-size:calc(var(--u)*8);letter-spacing:.04em;white-space:nowrap}
+.hd svg{width:calc(var(--u)*8);height:calc(var(--u)*8)}
+.loc{font-family:var(--mono);font-size:calc(var(--u)*8);letter-spacing:.04em;white-space:nowrap;border-bottom:calc(var(--u)*.8) solid var(--line)}
+.ms{position:relative;display:block;width:calc(var(--u)*90);height:calc(var(--u)*6);background:var(--line)}
+.ms i{position:absolute;top:0;bottom:0}
+.ms em{position:absolute;top:calc(var(--u)*-2);bottom:calc(var(--u)*-2);border-left:calc(var(--u)*1.2) solid var(--ink)}
+.idt{font-family:var(--num);font-weight:500;color:var(--sun);font-size:calc(var(--u)*16);letter-spacing:-.03em}
+.gd{display:inline-block;width:calc(var(--u)*6);height:calc(var(--u)*6);border-radius:50%;background:var(--sun)}
+.kt{font-family:var(--mono);font-size:calc(var(--u)*8);border:calc(var(--u)*1) solid var(--ink);padding:calc(var(--u)*1) calc(var(--u)*4)}
+.a4pair{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px;width:min(100%,960px)}
+.a4pair .a4 .s{gap:calc(var(--u)*12)}
+.a4pair .a4 .num{font-size:calc(var(--u)*96)}
+.sid{font-family:var(--num);font-weight:500;color:var(--sun);font-size:calc(var(--u)*14);letter-spacing:-.02em}
+.stbl .r{grid-template-columns:calc(var(--u)*28) 1fr calc(var(--u)*150) calc(var(--u)*56) calc(var(--u)*30);align-items:start}
+.rtbl .r{grid-template-columns:calc(var(--u)*26) calc(var(--u)*80) 1fr calc(var(--u)*24) calc(var(--u)*34) calc(var(--u)*62);align-items:start;padding:calc(var(--u)*7) 0}
+.rtbl .fr{height:calc(var(--u)*50)}
+.rtbl .ds{gap:calc(var(--u)*4);min-width:0}
+.tags{display:flex;flex-wrap:wrap;gap:calc(var(--u)*4) calc(var(--u)*8);align-items:center}
+.lt{gap:calc(var(--u)*3);justify-items:start}
+
+.thumbs .t .ph{flex:none;aspect-ratio:1100/618}
+.thumbs{align-content:center}
+.th{display:block;height:calc(var(--u)*25);cursor:zoom-in}
+.tbl .r .th{align-self:center}
+/* viewer */
+.vw{background:var(--night);color:var(--nightText);display:grid;grid-template-rows:auto 1fr auto;padding:calc(var(--u)*12) calc(var(--u)*24) calc(var(--u)*10) calc(var(--u)*56);gap:calc(var(--u)*8);touch-action:pan-y;user-select:none}
+.vw .k{color:var(--nightMuted)}
+.vw .vt{display:flex;justify-content:space-between;align-items:flex-end;gap:calc(var(--u)*14)}
+.vw .vt .id{font-family:var(--num);font-weight:500;color:var(--sunN);font-size:calc(var(--u)*34);line-height:.85;letter-spacing:-.04em}
+.vw .stage{position:relative;min-height:0;display:flex;align-items:center;justify-content:center}
+.vw .pic{position:relative;height:100%;max-width:100%;display:inline-block;transition:transform .22s ease,opacity .22s}
+.vw .pic img{height:100%;width:auto;max-width:100%;display:block;object-fit:contain;pointer-events:none}
+.vw .arr{position:absolute;top:50%;transform:translateY(-50%);background:none;border:0;color:var(--nightText);font:inherit;font-size:calc(var(--u)*22);width:calc(var(--u)*36);height:calc(var(--u)*60);cursor:pointer;opacity:.8}
+.vw .arr.l{left:calc(var(--u)*-30)} .vw .arr.r{right:calc(var(--u)*-22)}
+.vw .vb{display:flex;align-items:center;gap:calc(var(--u)*12);border-top:calc(var(--u)*1) solid rgba(236,235,230,.22);padding-top:calc(var(--u)*7);font-size:calc(var(--u)*10);white-space:nowrap}
+.vw .vb .cap{flex:1;overflow:hidden;text-overflow:ellipsis}
+.vw .dots{display:flex;gap:calc(var(--u)*4)} .vw .dots i{width:calc(var(--u)*4);height:calc(var(--u)*4);border-radius:50%;background:rgba(236,235,230,.3)} .vw .dots i.on{background:var(--sunN)}
+.vw .tg{font:inherit;font-size:calc(var(--u)*9);letter-spacing:.08em;text-transform:uppercase;color:var(--nightText);background:none;border:calc(var(--u)*1) solid rgba(236,235,230,.42);border-radius:99px;padding:calc(var(--u)*4) calc(var(--u)*10);cursor:pointer}
+.vw .tg.on{border-color:var(--sunN);color:var(--sunN)}
+.vw .fx{position:absolute;border-radius:50%;cursor:pointer}
+.vw .fx .fb{inset:0;width:100%;height:100%;left:0;top:0;opacity:1}
+.vw .fx.off .fb{opacity:0}
+.vw.fixing .fx{outline:calc(var(--u)*1) dashed rgba(236,235,230,.85);outline-offset:calc(var(--u)*1)}
+.vw.fixing .fx.off{outline-color:rgba(236,235,230,.4)}
+.vw.fixing .pic{cursor:crosshair}
+.vw .hintx{font-size:calc(var(--u)*8.5);letter-spacing:.08em;color:var(--sunN);text-transform:uppercase}
+.vw.noblur .fx .fb{opacity:0}
+
+[hidden]{display:none!important}
+/* ALL WHITE (Elliot 18 Nov 19:35): viewfinder and viewer on paper; .night brings the dark back */
+.screen.dark{background:var(--paper)}
+.vfd,.vw{--nightText:var(--ink);--nightMuted:var(--grey);--sunN:var(--sun);--hair:rgba(21,21,19,.22);--pillLine:rgba(21,21,19,.45);--scrim:rgba(241,238,231,.88);background:var(--paper);color:var(--ink)}
+.vfd .top{border-bottom-color:var(--hair)}
+.vfd .frame{border-color:var(--ink)}
+.vfd .frame .crop{border-color:rgba(241,238,231,.8)}
+.vfd .frame .cap,.vtoast{background:var(--scrim);color:var(--nightText)}
+.pill{border-color:var(--pillLine);color:var(--nightText)}
+.strip::before{border-top-color:var(--pillLine)}
+.strip em{border-left-color:var(--pillLine)}
+.vfd .last{border-color:var(--pillLine)}
+.vfd .last span{background:var(--ink);color:var(--paper)}
+.vpop{background:var(--paper);border-color:var(--ink);box-shadow:0 calc(var(--u)*8) calc(var(--u)*20) rgba(20,18,14,.14)}
+.vpop .it{color:var(--ink)} .vpop .it::before{border-color:var(--ink)} .vpop .it.on::before{background:var(--ink)}
+.vw .vb{border-top-color:var(--hair)}
+.vw .dots i{background:rgba(21,21,19,.2)}
+.vw .tg{border-color:var(--pillLine);color:var(--nightText)}
+.vw.fixing .fx{outline-color:rgba(255,255,255,.95)}
+.vw .arr{color:var(--ink)}
+/* night */
+.night .vfd,.night .vw{--nightText:#ECEBE6;--nightMuted:#8A8A83;--sunN:#FF5A1F;--hair:rgba(236,235,230,.22);--pillLine:rgba(236,235,230,.42);--scrim:rgba(11,11,10,.62);background:var(--night);color:#ECEBE6}
+.night .vfd .frame{border-color:#ECEBE6}
+.night .vfd .last span{background:#ECEBE6;color:var(--night)}
+.night .vpop{background:rgba(26,26,25,.96);border-color:rgba(236,235,230,.42)}
+.night .vpop .it{color:#ECEBE6} .night .vpop .it::before{border-color:#ECEBE6} .night .vpop .it.on::before{background:#ECEBE6}
+.night .vw .dots i{background:rgba(236,235,230,.3)}
+.night .vw .arr{color:#ECEBE6}
+.screen.night:has(> .vfd),.screen.night:has(> .vw){background:var(--night)}
+.nightbtn{font:inherit;font-size:11px;letter-spacing:.08em;text-transform:uppercase;background:none;border:1px solid var(--ink);color:var(--ink);padding:5px 12px;cursor:pointer}
+.nightbtn[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+@media (max-width:560px){figcaption{flex-direction:column;gap:4px}figcaption b{min-width:0}}
+</style>
+
+<div class="wrap">
+<header>
+  <div class="lab">Out &amp; Scout · 1.1 look · click-through · all white · mockup only</div>
+  <h1>Click through <span>Out &amp; Scout.</span></h1>
+  <p>One phone, the real flow. It opens on Projects. Tap a project, take a shot, open the shot list, pick Selects, export. Every screen is laid out below it too.</p>
+</header>
+<section class="proto" aria-label="Click-through">
+  <div class="phone" id="pphone"><div class="screen" id="pscreen"><div class="flash"></div><div class="ptoast" hidden></div></div></div>
+  <div class="steps" id="steps"><button data-step="start">Projects</button><button data-step="vf">Camera</button><button data-step="shots">Shots</button><button data-step="view">Big photo</button><button data-step="card">Shot 2A</button><button data-step="selects">Selects</button><button data-step="export">Export</button></div>
+  <button class="nightbtn" id="nightbtn" type="button" aria-pressed="false">Night mode</button>
+  <p class="hint">Try: Ridge Recce · the shutter (auto scene) · the last-shot square · a thumbnail, then swipe · Fix on 3A · Blur faces on Selects · Export PDF.</p>
+</section>
+<div class="lab" style="border-top:1px solid var(--ink);padding-top:14px">Every screen</div>
+
+
+<!-- PROJECTS -->
+<figure>
+  <div class="phone"><div class="screen" data-screen="start"><div class="s shell">
+    <div class="tabs"><span class="wm">Out &amp; Sc<i></i>out</span><span class="crumb">PROJECTS · <b>3</b></span></div>
+    <div class="body" style="grid-template-columns:calc(var(--u)*240) 1fr;gap:calc(var(--u)*30)">
+      <div class="col" style="gap:calc(var(--u)*8)">
+        <span class="k o" style="cursor:pointer">+ New project</span>
+        <div class="tbl">
+          <div class="r pr" data-go="vf" style="grid-template-columns:calc(var(--u)*44) 1fr auto;align-items:center;background:rgba(226,83,31,.06)"><span class="ph" style="height:calc(var(--u)*26);background-image:url(img/s1.jpg)"></span><span class="g"><span>Ridge Recce</span><span class="k">18 Nov 2026</span></span><span class="tn">11</span></div>
+          <div class="r pr" style="grid-template-columns:calc(var(--u)*44) 1fr auto;align-items:center"><span class="ph" style="height:calc(var(--u)*26);background-image:url(img/s5.jpg)"></span><span class="g"><span>Night Shift</span><span class="k">12 Nov 2026</span></span><span class="tn k">6</span></div>
+          <div class="r pr" style="grid-template-columns:calc(var(--u)*44) 1fr auto;align-items:center"><span class="ph" style="height:calc(var(--u)*26);background-image:url(img/s3.jpg)"></span><span class="g"><span>First Recce</span><span class="k">4 Oct 2026</span></span><span class="tn k">14</span></div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1.05fr 1fr;gap:calc(var(--u)*22);min-height:0">
+        <div class="col" style="gap:calc(var(--u)*8)">
+          <div class="num">11</div>
+          <div class="rule"><span>Ridge Recce</span><span>3 sc</span></div>
+          <div class="ph" style="flex:1;background-image:url(img/glacier.jpg);margin-top:calc(var(--u)*3)"></div>
+        </div>
+        <div class="col" style="justify-content:space-between;gap:calc(var(--u)*10)">
+          <div class="spec">
+            <div><span class="k">Scene 1</span><span>Lake edge · 3</span></div>
+            <div><span class="k">Scene 2</span><span>Glacier ridge · 5</span></div>
+            <div><span class="k">Scene 3</span><span>Hut track · 3</span></div>
+          </div>
+          <div class="box">Next good light<br>2A · 15:10–15:55 · ¾ back</div>
+          <div class="g" style="gap:calc(var(--u)*8)">
+            <span class="btn" data-go="vf" style="cursor:pointer">Open camera</span>
+            <div style="display:flex;justify-content:space-between"><span class="k i" data-go="shots" style="cursor:pointer">Shots →</span><span class="k i" data-go="export" style="cursor:pointer">Export →</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="data"><span>SUN <b class="tn">231° · 6.4°</b></span><span>GOLDEN <b class="o tn">15:10–15:55</b></span><details class="dd" style="margin-left:auto"><summary class="k i">More <span class="car">▴</span></summary><div class="panel up"><div class="it"><span class="k">Sunrise</span><span>07:24</span></div><div class="it"><span class="k">Sunset</span><span>16:02</span></div><div class="it"><span class="k">Weather</span><span>Clear · 4° · 8 km/h</span></div><div class="it"><span class="k">Position</span><span>51.2876N 0.1563E</span></div><div class="it"><span class="k">Kit</span><span>Alexa 35 · S35 · primes</span></div><div class="it"><span class="k">Moon</span><span>Rises 13:40 · 62%</span></div></div></details></div>
+  </div></div></div>
+  <figcaption><b>00 PROJECTS</b><span>Still opens on your projects. Pick one, Open camera.</span></figcaption>
+</figure>
+
+
+<!-- VIEWFINDER -->
+<figure>
+  <div class="phone"><div class="screen dark" data-screen="vf"><div class="s vfd">
+    <div class="sc">
+      <div class="n">02</div>
+      <div class="rule"><span>SCENE</span></div>
+    </div>
+    <div class="top"><span><b data-go="start" style="cursor:pointer">PROJECTS</b> · RIDGE RECCE / <span class="scn">GLACIER RIDGE</span> · FACING SW</span><span>ALEXA 35 · 15:02</span></div>
+    <div class="frame ph" style="background-image:url(img/glacier.jpg)">
+      <div class="crop"></div>
+      <div class="sun">← SUN</div>
+      <div class="vtoast" hidden><span class="vtm">NEW SCENE · GLACIER RIDGE</span><b data-act="undo">UNDO</b></div>
+      <div class="cap"><span>¾ BACKLIT</span> · SUN BEHIND LEFT<br>THREE SKIERS ON A SNOW RIDGE</div>
+    </div>
+    <div class="left-bot"><details class="dd" open><summary class="pill">···</summary><div class="vpop"><div class="it on">Sun path</div><div class="it">Grid</div><div class="it">Level</div><div class="it">Portrait</div><div class="it new">Blur faces</div></div></details></div>
+    <div class="bot">
+      <span class="pill">2.39 ▾</span>
+      <span class="lr">15:02 · ¾ BACKLIT · LEFT</span>
+      <div class="strip"><em style="left:4%"></em><span class="gold" style="left:72%;width:18%"></span><i style="left:66%"></i><em style="left:96%"></em></div>
+      <span class="pill">HIDE</span>
+    </div>
+    <div class="rr">
+      <div class="lens"><b>35</b><span class="k">MM</span></div>
+      <div class="shut"><span class="k nxt" style="color:var(--sunN)">NEXT 2C</span><div class="ring" data-act="shoot" role="button" tabindex="0" aria-label="Take shot" style="cursor:pointer"></div></div>
+      <div class="last ph" data-go="shots" style="cursor:pointer;background-image:url(img/s6.jpg)"><span class="cnt">8</span></div>
+    </div>
+  </div></div></div>
+  <figcaption><b>01 VIEWFINDER · WHITE</b><span>Now on paper, like the rest of the app. Night mode (under the phone) brings the dark one back after sunset. The ··· menu (shown open) gets Blur faces next to Sun path, Grid and Level. Turn it on once and every still from then on is blurred on export.</span></figcaption>
+</figure>
+
+
+<!-- SHOT LIST -->
+<figure>
+  <div class="phone"><div class="screen" data-screen="shots"><div class="s shell">
+    <div class="tabs"><nav><span data-go="vf">CAMERA</span><span class="on" data-go="shots">SHOTS</span><span data-go="selects">SELECTS</span><span data-go="export">EXPORT</span></nav><span class="crumb" style="display:flex;gap:calc(var(--u)*6);align-items:center"><span data-go="start">RIDGE RECCE</span> / <details class="dd"><summary><b>ALL SCENES</b> <span class="car">▾</span></summary><div class="panel r"><div class="it on"><span>All</span><span>11</span></div><div class="it"><span>Lake edge</span><span>3</span></div><div class="it"><span>Glacier ridge</span><span>5</span></div><div class="it"><span>Hut track</span><span>3</span></div><div class="it" style="color:var(--grey)"><span>+ Scene</span><span></span></div></div></details></span></div>
+    <div class="body" style="grid-template-columns:calc(var(--u)*150) 1fr;gap:calc(var(--u)*26)">
+      <div class="col" style="gap:calc(var(--u)*8)">
+        <div class="num">11</div>
+        <div class="rule"><span>Shots</span><span>3 sc</span></div>
+        <span style="flex:1"></span>
+        <div class="box">Next good light<br>2A · 15:10–15:55</div>
+      </div>
+      <div class="col" style="gap:calc(var(--u)*6);min-width:0">
+        <svg viewBox="0 0 600 40" preserveAspectRatio="none" style="width:100%;height:calc(var(--u)*34);display:block" aria-hidden="true">
+          <line x1="0" y1="34" x2="600" y2="34" stroke="#151513" stroke-width="1" vector-effect="non-scaling-stroke"/>
+          <path d="M8 34 Q300 -14 592 34" fill="none" stroke="#8A877F" stroke-width="1" stroke-dasharray="2 3" vector-effect="non-scaling-stroke"/>
+          <g stroke="#8A877F" vector-effect="non-scaling-stroke"><line x1="8" y1="31" x2="8" y2="37"/><line x1="154" y1="31" x2="154" y2="37"/><line x1="300" y1="31" x2="300" y2="37"/><line x1="446" y1="31" x2="446" y2="37"/><line x1="592" y1="31" x2="592" y2="37"/></g>
+          <line x1="500" y1="34" x2="570" y2="34" stroke="#E2531F" stroke-width="3" vector-effect="non-scaling-stroke"/>
+          <circle cx="70" cy="22" r="3" fill="#151513"/><circle cx="80" cy="21" r="3" fill="#151513"/><circle cx="300" cy="10" r="3" fill="#151513"/><circle cx="430" cy="14" r="3" fill="#151513"/><circle cx="515" cy="24" r="4.5" fill="#E2531F"/><circle cx="535" cy="27" r="3" fill="#151513"/>
+        </svg>
+        <div style="display:flex;justify-content:space-between"><span class="k tn">07:24</span><span class="k tn">09:00</span><span class="k tn">11:45</span><span class="k tn">14:00</span><span class="k tn">16:02</span></div>
+        <div class="tbl">
+          <div class="r h" style="grid-template-columns:calc(var(--u)*26) calc(var(--u)*44) 1fr calc(var(--u)*40) calc(var(--u)*110)"><span class="k">N°</span><span class="k"></span><span class="k">Shot</span><span class="k">Time</span><span class="k">Light</span></div>
+          <div class="r" data-go="card" style="cursor:pointer;grid-template-columns:calc(var(--u)*26) calc(var(--u)*44) 1fr calc(var(--u)*40) calc(var(--u)*110)"><span style="color:var(--sun)">1A</span><span class="ph th" data-act="view" data-i="0" style="background-image:url(img/s5.jpg)"></span><span>Wide, lake at first light</span><span class="tn">08:02</span><span class="k">¾ front · R</span></div>
+          <div class="r" data-go="card" style="cursor:pointer;grid-template-columns:calc(var(--u)*26) calc(var(--u)*44) 1fr calc(var(--u)*40) calc(var(--u)*110)"><span style="color:var(--sun)">1B</span><span class="ph th" data-act="view" data-i="1" style="background-image:url(img/s2.jpg)"></span><span>Close, hands on the rail</span><span class="tn">08:10</span><span class="k">Backlit · R</span></div>
+          <div class="r" data-go="card" style="cursor:pointer;grid-template-columns:calc(var(--u)*26) calc(var(--u)*44) 1fr calc(var(--u)*40) calc(var(--u)*110);background:rgba(226,83,31,.06)"><span style="color:var(--sun)">2A</span><span class="ph th" data-act="view" data-i="2" style="background-image:url(img/s1.jpg)"></span><span>Three skiers on the ridge</span><span class="tn">15:18</span><span class="k o">Golden · ¾ back</span></div>
+          <div class="r" data-go="card" style="cursor:pointer;grid-template-columns:calc(var(--u)*26) calc(var(--u)*44) 1fr calc(var(--u)*40) calc(var(--u)*110)"><span style="color:var(--sun)">2B</span><span class="ph th" data-act="view" data-i="3" style="background-image:url(img/s6.jpg)"></span><span>Close, boots in the snow</span><span class="tn">15:24</span><span class="k o">Golden · backlit</span></div>
+          <div class="r" data-go="card" style="cursor:pointer;grid-template-columns:calc(var(--u)*26) calc(var(--u)*44) 1fr calc(var(--u)*40) calc(var(--u)*110)"><span style="color:var(--sun)">3A</span><span class="ph th" data-act="view" data-i="4" style="background-image:url(img/bluehour.jpg)"></span><span>Mid, hut door</span><span class="tn">09:52</span><span class="k">Side · L</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="data"><span>SUN <b class="tn">231° · 6.4°</b></span><span>GOLDEN <b class="o tn">15:10–15:55</b></span><details class="dd" style="margin-left:auto"><summary class="k i">More <span class="car">▴</span></summary><div class="panel up"><div class="it"><span class="k">Sunrise</span><span>07:24</span></div><div class="it"><span class="k">Sunset</span><span>16:02</span></div><div class="it"><span class="k">Weather</span><span>Clear · 4° · 8 km/h</span></div><div class="it"><span class="k">Position</span><span>51.2876N 0.1563E</span></div><div class="it"><span class="k">Kit</span><span>Alexa 35 · S35 · primes</span></div><div class="it"><span class="k">Moon</span><span>Rises 13:40 · 62%</span></div></div></details></div>
+  </div></div></div>
+  <figcaption><b>02 SHOTS</b><span>Thumbnails are back. Tap one for the big photo and swipe through. Tap the words for the shot card.</span></figcaption>
+</figure>
+
+<!-- VIEWER -->
+<figure>
+  <div class="phone"><div class="screen dark" data-screen="view"><div class="s vw fixing" data-i="4"></div></div></div>
+  <figcaption><b>02B BIG PHOTO</b><span>Tap a thumbnail and the shot fills the screen. Swipe, arrow keys or ‹ › for the next one. Blur faces finds every face; Fix shows the rings. Tap a face to unblur it, tap anywhere else to add one.</span></figcaption>
+</figure>
+
+<!-- SHOT CARD -->
+<figure>
+  <div class="phone"><div class="screen" data-screen="card"><div class="s shell">
+    <div class="tabs"><nav><span data-go="vf">CAMERA</span><span class="on" data-go="shots">SHOTS</span><span data-go="selects">SELECTS</span><span data-go="export">EXPORT</span></nav><span class="crumb"><span data-go="start">RIDGE RECCE</span> / <span data-go="shots">GLACIER RIDGE</span> / <b>2A</b></span></div>
+    <div class="body" style="grid-template-columns:calc(var(--u)*290) calc(var(--u)*120) 1fr;gap:calc(var(--u)*22)">
+      <div class="col" style="gap:calc(var(--u)*8)">
+        <div class="num">2A</div>
+        <div class="rule"><span>Glacier ridge · wide</span><span>6 / 11</span></div>
+        <div class="ph" data-act="view" data-i="2" style="flex:1;background-image:url(img/s1.jpg);margin-top:calc(var(--u)*3)"></div>
+      </div>
+      <div class="col" style="justify-content:space-between;padding-top:calc(var(--u)*2)">
+        <div class="g" style="gap:calc(var(--u)*3)"><span class="k">Best light</span><span class="tn" style="font-size:calc(var(--u)*17);letter-spacing:-.02em;line-height:1.15">15:18<br>15:52</span></div>
+        <svg class="plot" viewBox="-8 -8 136 136" role="img" aria-label="Sun and camera plot: facing 247 degrees, sun at 231 degrees, 4 degrees up">
+<g stroke="var(--ink)" stroke-width="0.8" fill="none"><circle cx="60" cy="60" r="50"/><circle cx="60" cy="60" r="25" stroke="var(--line)"/><line x1="60.0" y1="10.0" x2="60.0" y2="16.0"/><line x1="72.9" y1="11.7" x2="72.2" y2="14.6"/><line x1="85.0" y1="16.7" x2="83.5" y2="19.3"/><line x1="95.4" y1="24.6" x2="93.2" y2="26.8"/><line x1="103.3" y1="35.0" x2="100.7" y2="36.5"/><line x1="108.3" y1="47.1" x2="105.4" y2="47.8"/><line x1="110.0" y1="60.0" x2="104.0" y2="60.0"/><line x1="108.3" y1="72.9" x2="105.4" y2="72.2"/><line x1="103.3" y1="85.0" x2="100.7" y2="83.5"/><line x1="95.4" y1="95.4" x2="93.2" y2="93.2"/><line x1="85.0" y1="103.3" x2="83.5" y2="100.7"/><line x1="72.9" y1="108.3" x2="72.2" y2="105.4"/><line x1="60.0" y1="110.0" x2="60.0" y2="104.0"/><line x1="47.1" y1="108.3" x2="47.8" y2="105.4"/><line x1="35.0" y1="103.3" x2="36.5" y2="100.7"/><line x1="24.6" y1="95.4" x2="26.8" y2="93.2"/><line x1="16.7" y1="85.0" x2="19.3" y2="83.5"/><line x1="11.7" y1="72.9" x2="14.6" y2="72.2"/><line x1="10.0" y1="60.0" x2="16.0" y2="60.0"/><line x1="11.7" y1="47.1" x2="14.6" y2="47.8"/><line x1="16.7" y1="35.0" x2="19.3" y2="36.5"/><line x1="24.6" y1="24.6" x2="26.8" y2="26.8"/><line x1="35.0" y1="16.7" x2="36.5" y2="19.3"/><line x1="47.1" y1="11.7" x2="47.8" y2="14.6"/></g>
+<path d="M60 60 L22.6 93.1 A50 50 0 0 1 10.2 63.9 Z" fill="var(--ink)" fill-opacity=".08" stroke="var(--ink)" stroke-width="0.8"/>
+<path d="M99.4 90.8 L96.4 92.8 L93.3 94.5 L90.2 96.0 L87.1 97.3 L84.0 98.4 L80.9 99.3 L77.8 100.0 L74.8 100.5 L71.7 101.0 L68.8 101.3 L65.8 101.5 L62.9 101.6 L60.0 101.7 L57.1 101.6 L54.2 101.5 L51.2 101.3 L48.3 101.0 L45.2 100.5 L42.2 100.0 L39.1 99.3 L36.0 98.4 L32.9 97.3 L29.8 96.0 L26.7 94.5 L23.6 92.8 L20.6 90.8" fill="none" stroke="var(--sun)" stroke-width="0.9" stroke-dasharray="2 2"/>
+<line x1="60" y1="60" x2="22.9" y2="90.0" stroke="var(--sun)" stroke-width="0.8"/>
+<circle cx="22.9" cy="90.0" r="3.6" fill="var(--sun)"/>
+<g font-family="Geist Mono, ui-monospace, monospace" font-size="7" fill="var(--grey)" text-anchor="middle"><text x="60" y="-1">N</text><text x="125" y="62">E</text><text x="60" y="126">S</text><text x="-3" y="62">W</text></g>
+</svg>
+        <span class="k" style="text-align:center">Facing · sun · path</span>
+      </div>
+      <div class="col" style="justify-content:space-between;gap:calc(var(--u)*10)">
+        <div class="g" style="gap:calc(var(--u)*10)">
+          <div class="g" style="gap:calc(var(--u)*3)"><span class="k">Light</span><span style="font-size:calc(var(--u)*15)">¾ backlit, left</span></div>
+          <details class="dd"><summary class="k i">Details <span class="car">▾</span></summary><div class="panel l" style="min-width:calc(var(--u)*230);padding-top:calc(var(--u)*2)"><div class="spec" style="border-top:0">
+          <div><span class="k">Light</span><span>¾ backlit, left</span></div>
+          <div><span class="k">Facing</span><span class="tn">247° SW</span></div>
+          <div><span class="k">Sun</span><span class="tn">231° · 4.1° up</span></div>
+          <div><span class="k">Lens</span><span class="tn">35mm · 2.39</span></div>
+          <div><span class="k">Kit</span><span>Alexa 35 · S35</span></div>
+          <div><span class="k">Taken</span><span class="tn">18 Nov · 14:58</span></div>
+        </div></details>
+          <button class="tog" type="button" aria-pressed="false" data-blur="card" style="justify-self:start"><i></i>Blur faces</button>
+        </div>
+        <div class="box">Three skiers on the ridge line<br>golden hour · clear</div>
+      </div>
+    </div>
+    <div class="data"><span>SUN <b class="tn">231° · 6.4°</b></span><span>GOLDEN <b class="o tn">15:10–15:55</b></span><details class="dd" style="margin-left:auto"><summary class="k i">More <span class="car">▴</span></summary><div class="panel up"><div class="it"><span class="k">Sunrise</span><span>07:24</span></div><div class="it"><span class="k">Sunset</span><span>16:02</span></div><div class="it"><span class="k">Weather</span><span>Clear · 4° · 8 km/h</span></div><div class="it"><span class="k">Position</span><span>51.2876N 0.1563E</span></div><div class="it"><span class="k">Kit</span><span>Alexa 35 · S35 · primes</span></div><div class="it"><span class="k">Moon</span><span>Rises 13:40 · 62%</span></div></div></details></div>
+  </div></div></div>
+  <figcaption><b>03 SHOT CARD</b><span>Plot stays out, the full spec folds into Details ▾. Blur faces is one tap. Try both.</span></figcaption>
+</figure>
+
+<!-- SELECTS -->
+<figure>
+  <div class="phone"><div class="screen" data-screen="selects"><div class="s shell">
+    <div class="tabs"><nav><span data-go="vf">CAMERA</span><span data-go="shots">SHOTS</span><span class="on" data-go="selects">SELECTS</span><span data-go="export">EXPORT</span></nav><span class="crumb" style="display:flex;gap:calc(var(--u)*6);align-items:center"><span data-go="start">RIDGE RECCE</span> / <details class="dd"><summary><b>ALL SCENES</b> <span class="car">▾</span></summary><div class="panel r"><div class="it on"><span>All</span><span>11</span></div><div class="it"><span>Lake edge</span><span>3</span></div><div class="it"><span>Glacier ridge</span><span>5</span></div><div class="it"><span>Hut track</span><span>3</span></div><div class="it" style="color:var(--grey)"><span>+ Scene</span><span></span></div></div></details></span></div>
+    <div class="body" style="grid-template-rows:auto 1fr;gap:calc(var(--u)*14)">
+      <div style="display:grid;grid-template-columns:calc(var(--u)*180) 1fr auto;gap:calc(var(--u)*24);align-items:end">
+        <div class="g" style="gap:calc(var(--u)*8)"><div class="num pickn">04</div><div class="rule"><span>Picked</span><span>of 11</span></div></div>
+        <span class="k">Tap to pick · light read goes with each still</span>
+        <span style="display:flex;gap:calc(var(--u)*8);align-items:center"><button class="tog" type="button" aria-pressed="true" data-blur="sel"><i></i>Blur faces</button><span class="btn sendb" data-act="send" style="cursor:pointer">Send 4 stills</span></span>
+      </div>
+      <div class="thumbs blur-on" >
+        <div class="t on" data-act="pick"><div class="ph" style="background-image:url(img/s1.jpg)"></div><span class="k o tn">2A · 15:18 · ¾B</span></div>
+        <div class="t on" data-act="pick"><div class="ph" style="background-image:url(img/s2.jpg)"></div><span class="k o tn">1B · 08:10 · B</span></div>
+        <div class="t off" data-act="pick"><div class="ph" style="background-image:url(img/s3.jpg)"></div><span class="k tn">2C · 15:30 · S</span></div>
+        <div class="t on" data-act="pick"><div class="ph" style="background-image:url(img/bluehour.jpg)"><span class="fb" style="left:15%;top:18.4%;width:7.3%;height:16.5%"></span><span class="fb" style="left:27.1%;top:28.4%;width:5.8%;height:12.1%"></span><span class="fb" style="left:43.8%;top:25.9%;width:5.1%;height:10.7%"></span></div><span class="k o tn">3A · 09:52 · S</span></div>
+        <div class="t on" data-act="pick"><div class="ph" style="background-image:url(img/glacier.jpg)"></div><span class="k o tn">2D · 15:40 · ¾B</span></div>
+      </div>
+    </div>
+    <div class="data"><span>SUN <b class="tn">231° · 6.4°</b></span><span>GOLDEN <b class="o tn">15:10–15:55</b></span><details class="dd" style="margin-left:auto"><summary class="k i">More <span class="car">▴</span></summary><div class="panel up"><div class="it"><span class="k">Sunrise</span><span>07:24</span></div><div class="it"><span class="k">Sunset</span><span>16:02</span></div><div class="it"><span class="k">Weather</span><span>Clear · 4° · 8 km/h</span></div><div class="it"><span class="k">Position</span><span>51.2876N 0.1563E</span></div><div class="it"><span class="k">Kit</span><span>Alexa 35 · S35 · primes</span></div><div class="it"><span class="k">Moon</span><span>Rises 13:40 · 62%</span></div></div></details></div>
+  </div></div></div>
+  <figcaption><b>04 SELECTS</b><span>Blur faces is on here, so faces in 3A are softened before sending. Tap it to see the original. Originals are never changed.</span></figcaption>
+</figure>
+
+<!-- EXPORT -->
+<figure>
+  <div class="phone"><div class="screen" data-screen="export"><div class="s shell">
+    <div class="tabs"><nav><span data-go="vf">CAMERA</span><span data-go="shots">SHOTS</span><span data-go="selects">SELECTS</span><span class="on" data-go="export">EXPORT</span></nav><span class="crumb" style="display:flex;gap:calc(var(--u)*6);align-items:center"><span data-go="start">RIDGE RECCE</span> / <details class="dd"><summary><b>ALL SCENES</b> <span class="car">▾</span></summary><div class="panel r"><div class="it on"><span>All</span><span>11</span></div><div class="it"><span>Lake edge</span><span>3</span></div><div class="it"><span>Glacier ridge</span><span>5</span></div><div class="it"><span>Hut track</span><span>3</span></div><div class="it" style="color:var(--grey)"><span>+ Scene</span><span></span></div></div></details></span></div>
+    <div class="body" style="grid-template-columns:calc(var(--u)*230) 1fr calc(var(--u)*170);gap:calc(var(--u)*22)">
+      <div class="col" style="gap:calc(var(--u)*12)">
+        <details class="dd"><summary style="display:flex;justify-content:space-between;width:100%;border-top:calc(var(--u)*1) solid var(--ink);border-bottom:calc(var(--u)*1) solid var(--line);padding:calc(var(--u)*7) 0"><span class="g"><span class="k">PDF</span><span>Detailed</span></span><span class="car">▾</span></summary><div class="panel l" style="width:100%"><div class="it on"><span>Detailed</span><span class="k">Shoot day, light, best time</span></div><div class="it"><span>Summary</span><span class="k">One line per shot</span></div><div class="it"><span>Photos only</span><span class="k">Just the frames</span></div></div></details>
+        <details class="dd"><summary style="display:flex;justify-content:space-between;width:100%;border-bottom:calc(var(--u)*1) solid var(--line);padding:calc(var(--u)*7) 0"><span class="g"><span class="k">Include</span><span>Frames · Sun · Notes · <span style="color:var(--sun)">Blur</span></span></span><span class="car">▾</span></summary><div class="panel l" style="width:100%"><div class="it"><span>Frames</span><span>✓</span></div><div class="it"><span>Sun</span><span>✓</span></div><div class="it"><span>Notes</span><span>✓</span></div><div class="it on"><span>Blur faces</span><span>✓</span></div></div></details>
+        <span class="k">Also: spreadsheet · Photos app</span>
+      </div>
+      <div class="well">
+        <div class="mini"><div class="num">21</div><div class="rule"><span>Shoot day</span></div><div class="ln"></div><div class="ln d"></div><div class="ln"></div><div class="ln d"></div><div class="ph" style="flex:1;background-image:url(img/s1.jpg);margin-top:calc(var(--u)*4)"></div></div>
+      </div>
+      <div class="col" style="justify-content:space-between">
+        <div class="spec">
+          <div><span class="k">File</span><span style="white-space:nowrap">ridge-recce.pdf</span></div>
+          <div><span class="k">Pages</span><span class="tn">4 · A4</span></div>
+          <div><span class="k">Size</span><span class="tn">3.1 MB</span></div>
+        </div>
+        <div class="g" style="gap:calc(var(--u)*6)"><span class="k">Tap words on the page to edit</span><span class="btn" data-act="export" style="cursor:pointer">Export PDF</span></div>
+      </div>
+    </div>
+    <div class="data"><span>SUN <b class="tn">231° · 6.4°</b></span><span>GOLDEN <b class="o tn">15:10–15:55</b></span><details class="dd" style="margin-left:auto"><summary class="k i">More <span class="car">▴</span></summary><div class="panel up"><div class="it"><span class="k">Sunrise</span><span>07:24</span></div><div class="it"><span class="k">Sunset</span><span>16:02</span></div><div class="it"><span class="k">Weather</span><span>Clear · 4° · 8 km/h</span></div><div class="it"><span class="k">Position</span><span>51.2876N 0.1563E</span></div><div class="it"><span class="k">Kit</span><span>Alexa 35 · S35 · primes</span></div><div class="it"><span class="k">Moon</span><span>Rises 13:40 · 62%</span></div></div></details></div>
+  </div></div></div>
+  <figcaption><b>05 EXPORT</b><span>Two rows instead of seven: PDF type ▾ and Include ▾. Blur faces is in Include. One button.</span></figcaption>
+</figure>
+
+
+<!-- KIT -->
+<section class="g" style="gap:18px" id="kit">
+  <div class="lab" style="border-top:1px solid var(--ink);padding-top:14px">Design kit · small parts that replace words</div>
+  <div class="kitgrid">
+    <div class="kc"><div class="kv"><span class="lc b">B</span><span class="lc qb">¾B</span><span class="lc sd">S</span><span class="lc qf">¾F</span><span class="lc f">F</span></div><b>Light chip</b><span>Five tones, darkest is backlit. Reads at a glance, no words.</span></div>
+    <div class="kc"><div class="kv"><span class="hd"><svg viewBox="0 0 10 10" style="transform:rotate(247deg)" aria-hidden="true"><path d="M5 1 L8 9 L5 7 L2 9 Z" fill="currentColor"/></svg>247° SW</span></div><b>Heading tag</b><span>The arrow turns to the way the camera faced.</span></div>
+    <div class="kc"><div class="kv"><span class="loc">◎ Glacier ridge</span><span class="loc">Maps ↗</span></div><b>Place tag</b><span>Place name, tap for directions. Coordinates under it on paper.</span></div>
+    <div class="kc"><div class="kv"><span class="ms"><i style="left:0;width:18%;background:#B9B5AB"></i><i style="left:18%;width:30%;background:#DAD6CD"></i><i style="left:48%;width:30%;background:#6E6B64"></i><i style="left:78%;width:22%;background:var(--sun)"></i><em style="left:84%"></em></span></div><b>Day strip</b><span>The day for this heading. Orange is golden hour, the tick is the shot.</span></div>
+    <div class="kc"><div class="kv"><span class="idt">2A</span><span class="gd"></span><span class="kt">35 · 2.39</span></div><b>ID, golden dot, kit</b><span>Shot ID in Geist, a dot for golden, lens and ratio in one tag.</span></div>
+  </div>
+</section>
+
+<!-- SUMMARY PDF -->
+<figure id="summary">
+  <div class="a4pair">
+    <div class="a4"><div class="s">
+      <div style="display:flex;justify-content:space-between;align-items:baseline"><span class="wm" style="--u:calc(100cqw / 595);font-size:calc(var(--u)*13)">Out &amp; Sc<i></i>out</span><span class="k">Summary · all scenes</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:calc(var(--u)*10)">
+        <div class="num">11</div>
+        <div style="text-align:right;display:grid;gap:calc(var(--u)*3)"><span class="k">Shots</span><span class="k i">3 scenes</span></div>
+      </div>
+      <div class="rule"><span>Ridge Recce</span><span>Recce 18 Nov 2026</span></div>
+      <span class="k i">Dir. Sam · DP Alex · Alexa 35 · S35 · Primes</span>
+      <div class="wx" style="grid-template-columns:repeat(4,1fr)">
+        <div><span class="k">Sunrise</span><span class="tn">07:24</span></div>
+        <div><span class="k">Golden</span><span class="tn" style="color:var(--sun)">15:10–15:55</span></div>
+        <div><span class="k">Sunset</span><span class="tn">16:02</span></div>
+        <div><span class="k">Blue</span><span class="tn">16:02–16:40</span></div>
+      </div>
+      <div class="tbl stbl">
+        <div class="r h"><span class="k">#</span><span class="k">Scene</span><span class="k">Location</span><span class="k">Light</span><span class="k">Shots</span></div>
+        <div class="r"><span class="sid">01</span><span class="g"><span>Lake edge</span><span class="k">Page 2</span></span><span class="g"><span class="loc">◎ North shore</span><span class="k tn">51.2902N 0.1488E</span></span><span><span class="lc qf">¾F</span></span><span class="tn">3</span></div>
+        <div class="r"><span class="sid">02</span><span class="g"><span>Glacier ridge</span><span class="k">Page 3</span></span><span class="g"><span class="loc">◎ Ridge col</span><span class="k tn">51.2876N 0.1563E</span></span><span style="display:flex;gap:calc(var(--u)*4);align-items:center"><span class="gd"></span><span class="lc qb">¾B</span></span><span class="tn">5</span></div>
+        <div class="r"><span class="sid">03</span><span class="g"><span>Hut track</span><span class="k">Page 4</span></span><span class="g"><span class="loc">◎ Hut gate</span><span class="k tn">51.2851N 0.1611E</span></span><span><span class="lc sd">S</span></span><span class="tn">3</span></div>
+      </div>
+      <span style="flex:1"></span>
+      <div style="display:flex;justify-content:space-between"><span class="k">Exported from Out &amp; Scout · 18 Nov 2026, 19:02</span><span class="k">1 / 4</span></div>
+    </div></div>
+
+    <div class="a4"><div class="s">
+      <div style="display:flex;justify-content:space-between;align-items:baseline"><span class="k">Ridge Recce · Scene 02</span><span class="wm" style="font-size:calc(var(--u)*11)">Out &amp; Sc<i></i>out</span></div>
+      <div style="display:flex;gap:calc(var(--u)*14);align-items:flex-end">
+        <div class="num" style="font-size:calc(var(--u)*64)">02</div>
+        <div class="g" style="gap:calc(var(--u)*3);padding-bottom:calc(var(--u)*3)"><span style="font-family:var(--num);font-weight:500;font-size:calc(var(--u)*22);letter-spacing:-.03em">Glacier ridge</span><span class="k">18 Nov 2026 · <span class="loc" style="font-size:inherit">◎ Ridge col ↗</span></span></div>
+      </div>
+      <div class="wx" style="grid-template-columns:repeat(4,1fr);border-top:calc(var(--u)*1.2) solid var(--sun);padding-top:calc(var(--u)*6)">
+        <div><span class="k">Sunrise</span><span class="tn">07:24</span></div>
+        <div><span class="k">Golden</span><span class="tn" style="color:var(--sun)">15:10–15:55</span></div>
+        <div><span class="k">Sunset</span><span class="tn">16:02</span></div>
+        <div><span class="k">Location</span><span class="tn">51.2876N 0.1563E</span></div>
+      </div>
+      <div class="g" style="gap:calc(var(--u)*4)"><span class="k">Sun path · shot headings</span><svg viewBox="-4 -4 523 118" style="width:100%;height:auto;display:block" role="img" aria-label="Sun path across the compass with each shot heading"><g stroke="var(--line)" stroke-width="0.75"><line x1="0.0" y1="0" x2="0.0" y2="96"/><line x1="128.8" y1="0" x2="128.8" y2="96"/><line x1="257.5" y1="0" x2="257.5" y2="96"/><line x1="386.2" y1="0" x2="386.2" y2="96"/><line x1="515.0" y1="0" x2="515.0" y2="96"/></g><line x1="0" y1="55.3" x2="515" y2="55.3" stroke="var(--ink)" stroke-width="0.75"/><path d="M179.1 59.2 L180.5 57.8 L182.0 56.4 L183.4 55.0 L184.8 53.7 L186.3 52.3 L187.7 51.0 L189.1 49.7 L190.6 48.3 L192.0 47.0 L193.5 45.7 L194.9 44.4 L196.3 43.1 L197.8 41.8 L199.2 40.5 L200.6 39.3 L202.1 38.0 L203.5 36.8 L204.9 35.6 L206.4 34.4 L207.8 33.2 L209.2 32.1 L210.7 31.0 L212.1 29.8 L213.6 28.8 L215.0 27.7 L216.4 26.7 L217.9 25.7 L219.3 24.7 L220.7 23.7 L222.2 22.8 L223.6 21.9 L225.0 21.0 L226.5 20.2 L227.9 19.4 L229.4 18.6 L230.8 17.9 L232.2 17.2 L233.7 16.5 L235.1 15.9 L236.5 15.3 L238.0 14.8 L239.4 14.2 L240.8 13.8 L242.3 13.3 L243.7 12.9 L245.1 12.5 L246.6 12.2 L248.0 11.9 L249.5 11.7 L250.9 11.5 L252.3 11.3 L253.8 11.2 L255.2 11.1 L256.6 11.1 L258.1 11.1 L259.5 11.1 L260.9 11.2 L262.4 11.3 L263.8 11.4 L265.3 11.6 L266.7 11.9 L268.1 12.2 L269.6 12.5 L271.0 12.8 L272.4 13.2 L273.9 13.7 L275.3 14.1 L276.7 14.7 L278.2 15.2 L279.6 15.8 L281.1 16.4 L282.5 17.1 L283.9 17.8 L285.4 18.5 L286.8 19.2 L288.2 20.0 L289.7 20.9 L291.1 21.7 L292.5 22.6 L294.0 23.5 L295.4 24.5 L296.8 25.5 L298.3 26.5 L299.7 27.5 L301.2 28.5 L302.6 29.6 L304.0 30.7 L305.5 31.9 L306.9 33.0 L308.3 34.2 L309.8 35.4 L311.2 36.6 L312.6 37.8 L314.1 39.0 L315.5 40.3 L317.0 41.6 L318.4 42.8 L319.8 44.1 L321.3 45.4 L322.7 46.7 L324.1 48.1 L325.6 49.4 L327.0 50.7 L328.4 52.1 L329.9 53.4 L331.3 54.7 L332.8 56.1 L334.2 57.5 L335.6 58.9 L337.1 60.3" fill="none" stroke="var(--grey)" stroke-width="1"/><path d="M314.1 39.0 L315.5 40.3 L317.0 41.6 L318.4 42.8 L319.8 44.1 L321.3 45.4 L322.7 46.7 L324.1 48.1 L325.6 49.4 L327.0 50.7 L328.4 52.1 L329.9 53.4 L331.3 54.7 L332.8 56.1 L334.2 57.5 L335.6 58.9 L337.1 60.3" fill="none" stroke="var(--sun)" stroke-width="2.2" stroke-linecap="round"/><circle cx="193.5" cy="45.7" r="1.6" fill="var(--ink)"/><text x="193.5" y="40.7" font-size="7" text-anchor="middle" fill="var(--grey)" font-family="Geist Mono,monospace">08</text><circle cx="227.9" cy="19.4" r="1.6" fill="var(--ink)"/><text x="227.9" y="14.4" font-size="7" text-anchor="middle" fill="var(--grey)" font-family="Geist Mono,monospace">10</text><circle cx="262.4" cy="11.3" r="1.6" fill="var(--ink)"/><text x="262.4" y="6.3" font-size="7" text-anchor="middle" fill="var(--grey)" font-family="Geist Mono,monospace">12</text><circle cx="296.8" cy="25.5" r="1.6" fill="var(--ink)"/><text x="296.8" y="20.5" font-size="7" text-anchor="middle" fill="var(--grey)" font-family="Geist Mono,monospace">14</text><circle cx="331.3" cy="54.7" r="1.6" fill="var(--ink)"/><text x="331.3" y="49.7" font-size="7" text-anchor="middle" fill="var(--grey)" font-family="Geist Mono,monospace">16</text><text x="0.0" y="106" font-size="7.5" text-anchor="start" fill="var(--grey)" font-family="Geist Mono,monospace">N</text><text x="128.8" y="106" font-size="7.5" text-anchor="middle" fill="var(--grey)" font-family="Geist Mono,monospace">E</text><text x="257.5" y="106" font-size="7.5" text-anchor="middle" fill="var(--grey)" font-family="Geist Mono,monospace">S</text><text x="386.2" y="106" font-size="7.5" text-anchor="middle" fill="var(--grey)" font-family="Geist Mono,monospace">W</text><text x="515.0" y="106" font-size="7.5" text-anchor="end" fill="var(--grey)" font-family="Geist Mono,monospace">N</text><line x1="353.3" y1="55.3" x2="353.3" y2="62.3" stroke="var(--ink)" stroke-width="1"/><text x="353.3" y="70.3" font-size="7" text-anchor="middle" fill="var(--sun)" font-family="Geist Mono,monospace">2A</text><line x1="360.5" y1="55.3" x2="360.5" y2="62.3" stroke="var(--ink)" stroke-width="1"/><text x="360.5" y="78.3" font-size="7" text-anchor="middle" fill="var(--sun)" font-family="Geist Mono,monospace">2B</text><line x1="337.6" y1="55.3" x2="337.6" y2="62.3" stroke="var(--ink)" stroke-width="1"/><text x="337.6" y="78.3" font-size="7" text-anchor="middle" fill="var(--sun)" font-family="Geist Mono,monospace">2C</text><line x1="369.1" y1="55.3" x2="369.1" y2="62.3" stroke="var(--ink)" stroke-width="1"/><text x="369.1" y="70.3" font-size="7" text-anchor="middle" fill="var(--sun)" font-family="Geist Mono,monospace">2D</text></svg></div>
+      <div class="tbl rtbl">
+        <div class="r h"><span class="k">Shot</span><span class="k">Frame</span><span class="k">Description</span><span class="k">Lens</span><span class="k">Time</span><span class="k">Light</span></div>
+        <div class="r"><span class="sid">2A</span><span class="ph fr" style="background-image:url(img/s1.jpg)"></span><span class="g ds"><span>Three skiers on the ridge line</span><span class="tags"><span class="loc">◎ Ridge col</span><span class="hd"><svg viewBox="0 0 10 10" style="transform:rotate(247deg)" aria-hidden="true"><path d="M5 1 L8 9 L5 7 L2 9 Z" fill="currentColor"/></svg>247° SW</span><span class="loc">Maps ↗</span></span><span class="ms"><i style="left:0;width:18%;background:#B9B5AB"></i><i style="left:18%;width:30%;background:#DAD6CD"></i><i style="left:48%;width:30%;background:#6E6B64"></i><i style="left:78%;width:22%;background:var(--sun)"></i><em style="left:84%"></em></span></span><span class="tn">35</span><span class="tn" style="color:var(--sun)">15:18</span><span class="g lt"><span style="display:flex;gap:calc(var(--u)*4);align-items:center"><span class="gd"></span><span class="lc qb">¾B</span></span><span class="k">Sun left</span></span></div>
+        <div class="r"><span class="sid">2B</span><span class="ph fr" style="background-image:url(img/s6.jpg)"></span><span class="g ds"><span>Close, boots in the snow</span><span class="tags"><span class="loc">◎ Ridge col</span><span class="hd"><svg viewBox="0 0 10 10" style="transform:rotate(252deg)" aria-hidden="true"><path d="M5 1 L8 9 L5 7 L2 9 Z" fill="currentColor"/></svg>252° WSW</span><span class="loc">Maps ↗</span></span><span class="ms"><i style="left:0;width:20%;background:#B9B5AB"></i><i style="left:20%;width:26%;background:#DAD6CD"></i><i style="left:46%;width:32%;background:var(--ink)"></i><i style="left:78%;width:22%;background:var(--sun)"></i><em style="left:87%"></em></span></span><span class="tn">85</span><span class="tn" style="color:var(--sun)">15:24</span><span class="g lt"><span style="display:flex;gap:calc(var(--u)*4);align-items:center"><span class="gd"></span><span class="lc b">B</span></span><span class="k">Sun behind</span></span></div>
+        <div class="r"><span class="sid">2C</span><span class="ph fr" style="background-image:url(img/s3.jpg)"></span><span class="g ds"><span>Wide, the peaks from the col</span><span class="tags"><span class="loc">◎ West col</span><span class="hd"><svg viewBox="0 0 10 10" style="transform:rotate(236deg)" aria-hidden="true"><path d="M5 1 L8 9 L5 7 L2 9 Z" fill="currentColor"/></svg>236° SW</span><span class="loc">Maps ↗</span></span><span class="ms"><i style="left:0;width:24%;background:#DAD6CD"></i><i style="left:24%;width:36%;background:#9C988F"></i><i style="left:60%;width:18%;background:#6E6B64"></i><i style="left:78%;width:22%;background:var(--sun)"></i><em style="left:52%"></em></span></span><span class="tn">24</span><span class="tn">12:40</span><span class="g lt"><span class="lc sd">S</span><span class="k">Sun right</span></span></div>
+        <div class="r"><span class="sid">2D</span><span class="ph fr" style="background-image:url(img/glacier.jpg)"></span><span class="g ds"><span>Wide, line of skiers, peaks behind</span><span class="tags"><span class="loc">◎ Ridge col</span><span class="hd"><svg viewBox="0 0 10 10" style="transform:rotate(258deg)" aria-hidden="true"><path d="M5 1 L8 9 L5 7 L2 9 Z" fill="currentColor"/></svg>258° W</span><span class="loc">Maps ↗</span></span><span class="ms"><i style="left:0;width:18%;background:#B9B5AB"></i><i style="left:18%;width:30%;background:#DAD6CD"></i><i style="left:48%;width:30%;background:#6E6B64"></i><i style="left:78%;width:22%;background:var(--sun)"></i><em style="left:90%"></em></span></span><span class="tn">18</span><span class="tn" style="color:var(--sun)">15:40</span><span class="g lt"><span style="display:flex;gap:calc(var(--u)*4);align-items:center"><span class="gd"></span><span class="lc qb">¾B</span></span><span class="k">Sun left</span></span></div>
+      </div>
+      <span style="flex:1"></span>
+      <div style="display:flex;justify-content:space-between"><span class="k">2E continues on page 4</span><span class="k">3 / 4</span></div>
+    </div></div>
+  </div>
+  <figcaption><b>07 SUMMARY PDF</b><span>Your detailed summary from early October, back and tighter. Cover with a scene table (place, coordinates, light). Scene pages with the sun path, every heading, and per shot: place, facing, Maps link, lens, time, light.</span></figcaption>
+</figure>
+
+<!-- PDF -->
+<figure>
+  <div class="a4wrap"><div class="a4"><div class="s">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start">
+      <div class="num">21</div>
+      <div style="text-align:right;display:grid;gap:calc(var(--u)*3)"><span class="k">Shoot day</span><span class="k i">Ridge Recce</span><span class="k tn">51.2876N 0.1563E</span></div>
+    </div>
+    <div class="rule"><span>Saturday November</span><span>3 scenes · 11 shots</span></div>
+    <div class="wx">
+      <div><span class="k">Sunrise</span><span class="tn">07:24</span></div>
+      <div><span class="k">Golden</span><span class="tn" style="color:var(--sun)">15:10</span></div>
+      <div><span class="k">Sunset</span><span class="tn">16:02</span></div>
+      <div><span class="k">Sun max</span><span class="tn">15.2°</span></div>
+      <div><span class="k">Sky</span><span>Clear 4°</span></div>
+    </div>
+    <div class="tbl">
+      <div class="r" style="grid-template-columns:calc(var(--u)*100) calc(var(--u)*22) 1fr auto"><span class="tn">09:40–10:40</span><span style="color:var(--sun)">3</span><span>Hut track</span><span class="k">Side lit</span></div>
+      <div class="drive k">↓ 18 min drive</div>
+      <div class="r" style="grid-template-columns:calc(var(--u)*100) calc(var(--u)*22) 1fr auto"><span class="tn">13:30–14:20</span><span style="color:var(--sun)">1</span><span>Lake edge</span><span class="k">¾ front</span></div>
+      <div class="drive k">↓ 25 min drive</div>
+      <div class="r" style="grid-template-columns:calc(var(--u)*100) calc(var(--u)*22) 1fr auto"><span class="tn">15:10–15:55</span><span style="color:var(--sun)">2</span><span>Glacier ridge</span><span class="k o">Golden · ¾ back</span></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1.3fr calc(var(--u)*110) 1fr;gap:calc(var(--u)*16);height:calc(var(--u)*270)">
+      <div class="ph" style="background-image:url(img/s1.jpg)"></div>
+      <div class="col" style="justify-content:space-between;gap:calc(var(--u)*8)"><span class="k o">Shot 2A</span><svg class="plot" viewBox="-8 -8 136 136" role="img" aria-label="Sun and camera plot: facing 247 degrees, sun at 231 degrees, 4 degrees up">
+<g stroke="var(--ink)" stroke-width="0.8" fill="none"><circle cx="60" cy="60" r="50"/><circle cx="60" cy="60" r="25" stroke="var(--line)"/><line x1="60.0" y1="10.0" x2="60.0" y2="16.0"/><line x1="72.9" y1="11.7" x2="72.2" y2="14.6"/><line x1="85.0" y1="16.7" x2="83.5" y2="19.3"/><line x1="95.4" y1="24.6" x2="93.2" y2="26.8"/><line x1="103.3" y1="35.0" x2="100.7" y2="36.5"/><line x1="108.3" y1="47.1" x2="105.4" y2="47.8"/><line x1="110.0" y1="60.0" x2="104.0" y2="60.0"/><line x1="108.3" y1="72.9" x2="105.4" y2="72.2"/><line x1="103.3" y1="85.0" x2="100.7" y2="83.5"/><line x1="95.4" y1="95.4" x2="93.2" y2="93.2"/><line x1="85.0" y1="103.3" x2="83.5" y2="100.7"/><line x1="72.9" y1="108.3" x2="72.2" y2="105.4"/><line x1="60.0" y1="110.0" x2="60.0" y2="104.0"/><line x1="47.1" y1="108.3" x2="47.8" y2="105.4"/><line x1="35.0" y1="103.3" x2="36.5" y2="100.7"/><line x1="24.6" y1="95.4" x2="26.8" y2="93.2"/><line x1="16.7" y1="85.0" x2="19.3" y2="83.5"/><line x1="11.7" y1="72.9" x2="14.6" y2="72.2"/><line x1="10.0" y1="60.0" x2="16.0" y2="60.0"/><line x1="11.7" y1="47.1" x2="14.6" y2="47.8"/><line x1="16.7" y1="35.0" x2="19.3" y2="36.5"/><line x1="24.6" y1="24.6" x2="26.8" y2="26.8"/><line x1="35.0" y1="16.7" x2="36.5" y2="19.3"/><line x1="47.1" y1="11.7" x2="47.8" y2="14.6"/></g>
+<path d="M60 60 L22.6 93.1 A50 50 0 0 1 10.2 63.9 Z" fill="var(--ink)" fill-opacity=".08" stroke="var(--ink)" stroke-width="0.8"/>
+<path d="M99.4 90.8 L96.4 92.8 L93.3 94.5 L90.2 96.0 L87.1 97.3 L84.0 98.4 L80.9 99.3 L77.8 100.0 L74.8 100.5 L71.7 101.0 L68.8 101.3 L65.8 101.5 L62.9 101.6 L60.0 101.7 L57.1 101.6 L54.2 101.5 L51.2 101.3 L48.3 101.0 L45.2 100.5 L42.2 100.0 L39.1 99.3 L36.0 98.4 L32.9 97.3 L29.8 96.0 L26.7 94.5 L23.6 92.8 L20.6 90.8" fill="none" stroke="var(--sun)" stroke-width="0.9" stroke-dasharray="2 2"/>
+<line x1="60" y1="60" x2="22.9" y2="90.0" stroke="var(--sun)" stroke-width="0.8"/>
+<circle cx="22.9" cy="90.0" r="3.6" fill="var(--sun)"/>
+<g font-family="Geist Mono, ui-monospace, monospace" font-size="7" fill="var(--grey)" text-anchor="middle"><text x="60" y="-1">N</text><text x="125" y="62">E</text><text x="60" y="126">S</text><text x="-3" y="62">W</text></g>
+</svg></div>
+      <div class="col" style="justify-content:space-between;gap:calc(var(--u)*10)">
+        <div class="spec"><div><span class="k">Facing</span><span class="tn">247° SW</span></div><div><span class="k">Lens</span><span class="tn">35 · 2.39</span></div><div><span class="k">Best</span><span class="tn">15:18–15:52</span></div></div>
+        <div class="box">¾ backlit<br>sun behind left</div>
+      </div>
+    </div>
+    <span style="flex:1"></span><div style="display:flex;justify-content:space-between"><span class="k">Page 1 of 4</span><span class="k">Made with Out &amp; Scout</span></div>
+  </div></div></div>
+  <figcaption><b>08 DETAILED PDF</b><span>Same frame on paper. Coordinates, sun height and the plot for each scene, so it reads like a proper recce report.</span></figcaption>
+</figure>
+
+<section class="g" style="gap:18px">
+  <div class="lab">What changed from round 3</div>
+  <div class="notes">
+    <div class="note"><b>Dropdowns</b>Scenes, More, Details, PDF type and Include. Closed by default, so each screen shows only what you need on a recce.</div>
+    <div class="note"><b>Tech kept</b>Sun angle and golden hour never hide. Plot and lens stay on the card. The rest is one tap away.</div>
+    <div class="note"><b>Blur faces</b>Switch in the ··· menu, on the shot card and on Selects, plus Include in Export. Originals untouched.</div>
+    <div class="note"><b>Shot list</b>Down to four columns: number, shot, time, light.</div>
+  </div>
+  <div class="when"><span>When</span>1.0 ships as it is. This goes in 1.1 with face blur.</div>
+</section>
+</div>
+
+<script>
+(function(){
+var screens={};document.querySelectorAll('figure [data-screen]').forEach(function(sc){screens[sc.dataset.screen]=sc;});
+var ps=document.getElementById('pscreen'),flash=ps.querySelector('.flash'),toast=ps.querySelector('.ptoast'),cur=null,tt;
+var shots={n:8,next:'C'};
+function go(name,vi){if(!screens[name])return;var old=ps.querySelector(':scope>.s');if(old)old.remove();
+ var c=screens[name].querySelector('.s').cloneNode(true);ps.insertBefore(c,flash);if(name==='view'){var vv=c.classList.contains('vw')?c:c.querySelector('.vw');vv.classList.remove('fixing');renderView(vv,vi==null?2:vi);}cur=name;
+ document.querySelectorAll('#steps button').forEach(function(b){b.classList.toggle('on',b.dataset.step===name);});
+ if(name==='vf'){c.querySelector('.cnt').textContent=shots.n;c.querySelector('.nxt').textContent='NEXT 2'+shots.next;var d=c.querySelector('.left-bot details');if(d)d.removeAttribute('open');}}
+function say(t){toast.textContent=t;toast.hidden=false;clearTimeout(tt);tt=setTimeout(function(){toast.hidden=true;},2200);}
+ps.addEventListener('click',function(e){var g=e.target.closest('[data-go]');var a=e.target.closest('[data-act]');
+ if(a&&ps.contains(a)){var act=a.dataset.act;
+  if(act==='shoot'){flash.classList.add('go');requestAnimationFrame(function(){requestAnimationFrame(function(){flash.classList.remove('go');});});
+   shots.n++;shots.next=String.fromCharCode(shots.next.charCodeAt(0)+1);ps.querySelector('.cnt').textContent=shots.n;ps.querySelector('.nxt').textContent='NEXT 2'+shots.next;
+   var v=ps.querySelector('.vtoast');var m=ps.querySelector('.vtm');m.textContent=shots.n===9?'NEW SCENE · GLACIER RIDGE':'2'+String.fromCharCode(shots.next.charCodeAt(0)-1)+' SAVED · ¾ BACKLIT · 247° SW';v.hidden=false;clearTimeout(v._t);v._t=setTimeout(function(){v.hidden=true;},2600);return;}
+  if(act==='undo'){var v2=ps.querySelector('.vtoast');ps.querySelector('.vtm').textContent='BACK IN SCENE 1 · LAKE EDGE';setTimeout(function(){v2.hidden=true;},1600);return;}
+  if(act==='pick'){var t=a;t.classList.toggle('on');t.classList.toggle('off');var lab=t.querySelector('.k');lab.classList.toggle('o',t.classList.contains('on'));var n=ps.querySelectorAll('.thumbs .t.on').length;ps.querySelector('.pickn').textContent=('0'+n).slice(-2);ps.querySelector('.sendb').textContent='Send '+n+' still'+(n===1?'':'s');return;}
+  if(act==='send'){say('Sent · '+ps.querySelectorAll('.thumbs .t.on').length+' stills with light read');return;}
+  if(act==='export'){say('ridge-recce.pdf ready · share');return;}
+  if(act==='view'){go('view',+a.dataset.i);return;}}
+ if(g&&ps.contains(g)){e.preventDefault();go(g.dataset.go);}});
+document.getElementById('nightbtn').addEventListener('click',function(){var on=this.getAttribute('aria-pressed')!=='true';this.setAttribute('aria-pressed',on?'true':'false');ps.classList.toggle('night',on);});
+document.getElementById('steps').addEventListener('click',function(e){var b=e.target.closest('button');if(b)go(b.dataset.step);});
+document.addEventListener('click',function(e){var tg=e.target.closest('.tog[data-blur]');if(tg){var on=tg.getAttribute('aria-pressed')!=='true';tg.setAttribute('aria-pressed',on?'true':'false');if(tg.dataset.blur==='sel'){var th=tg.closest('.s').querySelector('.thumbs');if(th)th.classList.toggle('blur-on',on);}}
+ document.querySelectorAll('details.dd[open]').forEach(function(d){if(!d.contains(e.target)&&!d.querySelector('.vpop'))d.removeAttribute('open');});});
+
+var SHOTS=[
+ {id:'1A',img:'img/s5.jpg',sc:'Lake edge',lens:24,t:'08:02',lc:'qf',lt:'¾F',cap:'Wide, lake at first light',faces:[]},
+ {id:'1B',img:'img/s2.jpg',sc:'Lake edge',lens:50,t:'08:10',lc:'b',lt:'B',cap:'Close, hands on the rail',faces:[]},
+ {id:'2A',img:'img/s1.jpg',sc:'Glacier ridge',lens:35,t:'15:18',lc:'qb',lt:'¾B',cap:'Three skiers on the ridge line',faces:[],g:1},
+ {id:'2B',img:'img/s6.jpg',sc:'Glacier ridge',lens:85,t:'15:24',lc:'b',lt:'B',cap:'Close, boots in the snow',faces:[],g:1},
+ {id:'3A',img:'img/bluehour.jpg',sc:'Hut track',lens:40,t:'09:52',lc:'sd',lt:'S',cap:'Mid, crew at the hut door',faces:[[15,18.4,7.3,16.5],[27.1,28.4,5.8,12.1],[43.8,25.9,5.1,10.7]]},
+ {id:'2D',img:'img/glacier.jpg',sc:'Glacier ridge',lens:18,t:'15:40',lc:'qb',lt:'¾B',cap:'Wide, line of skiers, peaks behind',faces:[],g:1}];
+var blurOn=true;
+function renderView(el,i){i=(i+SHOTS.length)%SHOTS.length;el.dataset.i=i;var d=SHOTS[i];
+ var faces=d.faces.map(function(f,k){return '<span class="fx" data-face="'+k+'" style="left:'+f[0]+'%;top:'+f[1]+'%;width:'+f[2]+'%;height:'+f[3]+'%"><span class="fb"></span></span>';}).join('');
+ var dots=SHOTS.map(function(_,k){return '<i'+(k===i?' class="on"':'')+'></i>';}).join('');
+ var nf=d.faces.length;
+ el.classList.toggle('noblur',!blurOn);
+ el.innerHTML='<div class="vt"><div style="display:flex;gap:calc(var(--u)*12);align-items:flex-end"><span class="id">'+d.id+'</span><span class="k">'+d.sc.toUpperCase()+' · '+d.lens+'MM · '+d.t+'</span></div><div style="display:flex;gap:calc(var(--u)*14);align-items:center"><span class="k">'+(i+1)+' / '+SHOTS.length+'</span><span class="k" data-go="shots" style="color:var(--nightText);font-size:calc(var(--u)*13)">✕</span></div></div>'+
+ '<div class="stage"><button class="arr l" data-act="prev" aria-label="Previous shot">‹</button><div class="pic"><img src="'+d.img+'" alt="Shot '+d.id+'">'+faces+'</div><button class="arr r" data-act="next" aria-label="Next shot">›</button></div>'+
+ '<div class="vb"><span class="lc '+d.lc+'" style="--u:inherit">'+d.lt+'</span>'+(d.g?'<span class="gd"></span>':'')+'<span class="cap">'+d.cap+'</span><span class="dots">'+dots+'</span>'+
+ '<button class="tg'+(blurOn?' on':'')+'" data-act="blur">Blur faces</button>'+(blurOn&&nf?'<button class="tg'+(el.classList.contains('fixing')?' on':'')+'" data-act="fix">'+nf+' found · Fix</button>':'')+'</div>'+
+ (el.classList.contains('fixing')&&blurOn&&nf?'':'');
+}
+document.querySelectorAll('[data-screen="view"] .vw').forEach(function(v){renderView(v,+v.dataset.i);});
+function vwAct(v,act,e){var i=+v.dataset.i;
+ if(act==='next'){renderView(v,i+1);return true}
+ if(act==='prev'){renderView(v,i-1);return true}
+ if(act==='blur'){blurOn=!blurOn;renderView(v,i);return true}
+ if(act==='fix'){v.classList.toggle('fixing');renderView(v,i);return true}
+ return false}
+document.addEventListener('click',function(e){var v=e.target.closest('.vw');if(!v)return;
+ var a=e.target.closest('[data-act]');if(a&&vwAct(v,a.dataset.act,e)){e.stopPropagation();return}
+ if(!v.classList.contains('fixing')||!blurOn)return;
+ var fx=e.target.closest('.fx');if(fx){fx.classList.toggle('off');e.stopPropagation();return}
+ var pic=e.target.closest('.pic');if(pic){var r=pic.getBoundingClientRect();var x=(e.clientX-r.left)/r.width*100,y=(e.clientY-r.top)/r.height*100;
+  var n=document.createElement('span');n.className='fx';n.style.cssText='left:'+(x-3)+'%;top:'+(y-6)+'%;width:6%;height:12%';n.innerHTML='<span class="fb"></span>';pic.appendChild(n);e.stopPropagation();}
+},true);
+// swipe
+var sx=null;document.addEventListener('pointerdown',function(e){var st=e.target.closest('.vw .stage');sx=st?{x:e.clientX,v:st.closest('.vw')}:null;});
+document.addEventListener('pointerup',function(e){if(!sx)return;var dx=e.clientX-sx.x;if(Math.abs(dx)>40){var p=sx.v.querySelector('.pic');renderView(sx.v,+sx.v.dataset.i+(dx<0?1:-1));}sx=null;});
+document.addEventListener('keydown',function(e){var v=document.querySelector('#pscreen .vw');if(!v)return;if(e.key==='ArrowRight')renderView(v,+v.dataset.i+1);if(e.key==='ArrowLeft')renderView(v,+v.dataset.i-1);});
+
+go('start');
+})();
+</script>
+
+</body></html>
