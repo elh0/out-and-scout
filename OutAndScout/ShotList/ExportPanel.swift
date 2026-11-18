@@ -320,6 +320,7 @@ struct ExportPanel: View {
                     error = "Couldn't pin the PDF. Try again."
                 }
             }
+            OPill(label: "How the lock-screen button works", size: .small) { ShootDay.shared.showHowTo() }
             Spacer(minLength: 20)
             HStack(spacing: 8) {
                 OPill(label: "Edit again", caps: true) { made = nil }
