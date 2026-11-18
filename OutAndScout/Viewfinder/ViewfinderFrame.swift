@@ -108,7 +108,8 @@ struct ViewfinderFrame: View {
                         // drag the time: then the sun stays the one mark, so nothing jumps.
                         moon: sun.elevation < -1 && store.plannedMinutes == nil ? moon : nil,
                         time: planned,
-                        projector: Projector(heading: heading, elevation: motion.cameraElevation, hfov: 2 * atan(tan(camera.previewHFOV * .pi / 360) * shrink) * 360 / .pi, size: size)
+                        projector: Projector(heading: heading, elevation: motion.cameraElevation, hfov: 2 * atan(tan(camera.previewHFOV * .pi / 360) * shrink) * 360 / .pi, size: size),
+                        area: fullBleed ? nil : frame
                     )
                 }
 
@@ -541,6 +542,9 @@ struct SunPathOverlay: View {
     /// The chosen time, written beside the sun so it moves with it as you scrub.
     var time: Date?
     let projector: Projector
+    /// The frame window. On the paper viewfinder everything is drawn inside it, so a white
+    /// line never lands on white paper and no label runs off the edge (Elliot, 18 Nov).
+    var area: CGRect? = nil
 
     /// 1.1 (Elliot, 18 Nov: "buggy", "could be cleaner"): the compass and tilt are smoothed and
     /// small wobbles ignored, so the path sits still on the scene instead of shivering.
@@ -556,6 +560,13 @@ struct SunPathOverlay: View {
 
     var body: some View {
         canvas(view)
+            .mask(alignment: .topLeading) {
+                if let area {
+                    Rectangle().frame(width: area.width, height: area.height).offset(x: area.minX, y: area.minY)
+                } else {
+                    Rectangle()
+                }
+            }
             .onAppear { steady = (projector.heading, projector.elevation) }
             .onChange(of: projector.heading) { follow() }
             .onChange(of: projector.elevation) { follow() }
@@ -577,7 +588,7 @@ struct SunPathOverlay: View {
 
     private func canvas(_ projector: Projector) -> some View {
         Canvas { ctx, size in
-            let bounds = CGRect(origin: .zero, size: size)
+            let bounds = area ?? CGRect(origin: .zero, size: size)
             if let day = sunDay {
                 // Runs of on-screen points, every ten minutes, drawn as smooth curves.
                 var arcRuns: [[CGPoint]] = [[]]
@@ -647,9 +658,9 @@ struct SunPathOverlay: View {
                     let label = ctx.resolve(Text(Format.time(time)).font(.osNumSmall).foregroundColor(Palette.onPicture))
                     let m = label.measure(in: size)
                     let pill = CGSize(width: m.width + 12, height: m.height + 6)
-                    let above = p.y - r - 6 - pill.height > 4
+                    let above = p.y - r - 6 - pill.height > bounds.minY + 4
                     let cy = above ? p.y - r - 6 - pill.height / 2 : p.y + r + 6 + pill.height / 2
-                    let cx = min(max(p.x, pill.width / 2 + 4), size.width - pill.width / 2 - 4)
+                    let cx = min(max(p.x, bounds.minX + pill.width / 2 + 4), bounds.maxX - pill.width / 2 - 4)
                     let box = CGRect(x: cx - pill.width / 2, y: cy - pill.height / 2, width: pill.width, height: pill.height)
                     ctx.fill(Path(roundedRect: box, cornerRadius: pill.height / 2), with: .color(Palette.onPictureInk.opacity(0.6)))
                     ctx.draw(label, at: CGPoint(x: cx, y: cy), anchor: .center)
@@ -657,8 +668,8 @@ struct SunPathOverlay: View {
             } else {
                 // Off-screen: arrow at the edge pointing the way to turn.
                 let left = Bearing.difference(sun.azimuth, projector.heading) < 0
-                let y = size.height / 2
-                let x: CGFloat = left ? 14 : size.width - 14
+                let y = bounds.midY
+                let x: CGFloat = left ? bounds.minX + 14 : bounds.maxX - 14
                 var tri = Path()
                 if left {
                     tri.move(to: CGPoint(x: x - 6, y: y)); tri.addLine(to: CGPoint(x: x + 4, y: y - 6)); tri.addLine(to: CGPoint(x: x + 4, y: y + 6))
@@ -692,11 +703,11 @@ struct SunPathOverlay: View {
     /// The moon where it is, lit to its phase, with "Moon · Waxing gibbous · 78% lit"; an arrow
     /// at the edge when it's out of frame; a quiet line when it hasn't risen.
     private func drawMoon(_ moon: MoonInfo, in ctx: inout GraphicsContext, size: CGSize) {
-        let bounds = CGRect(origin: .zero, size: size)
+        let bounds = area ?? CGRect(origin: .zero, size: size)
         let label = "Moon · \(moon.summary)"
         guard moon.position.elevation > -0.5 else {
             ctx.draw(Text("Moon below the horizon · \(moon.summary)").font(.osDataSmall).foregroundColor(Palette.onPicture.opacity(0.8)),
-                     at: CGPoint(x: size.width / 2, y: 14), anchor: .top)
+                     at: CGPoint(x: bounds.midX, y: bounds.minY + 14), anchor: .top)
             return
         }
         if let p = projector.point(azimuth: moon.position.azimuth, elevation: moon.position.elevation),
@@ -721,13 +732,13 @@ struct SunPathOverlay: View {
             ctx.stroke(Path(ellipseIn: disc), with: .color(Palette.onPicture.opacity(0.6)), lineWidth: 0.75)
             let readout = ctx.resolve(Text(label).font(.osDataSmall).foregroundColor(Palette.onPicture))
             let w = readout.measure(in: size).width
-            let right = p.x + r + 5 + w < size.width - 6
-            let y = min(max(p.y, 12), size.height - 12)
-            ctx.draw(readout, at: CGPoint(x: right ? p.x + r + 5 : max(p.x - r - 5, w + 6), y: y), anchor: right ? .leading : .trailing)
+            let right = p.x + r + 5 + w < bounds.maxX - 6
+            let y = min(max(p.y, bounds.minY + 12), bounds.maxY - 12)
+            ctx.draw(readout, at: CGPoint(x: right ? p.x + r + 5 : max(p.x - r - 5, bounds.minX + w + 6), y: y), anchor: right ? .leading : .trailing)
         } else {
             let left = Bearing.difference(moon.position.azimuth, projector.heading) < 0
-            let y = size.height / 2
-            let x: CGFloat = left ? 14 : size.width - 14
+            let y = bounds.midY
+            let x: CGFloat = left ? bounds.minX + 14 : bounds.maxX - 14
             var tri = Path()
             if left {
                 tri.move(to: CGPoint(x: x - 6, y: y)); tri.addLine(to: CGPoint(x: x + 4, y: y - 6)); tri.addLine(to: CGPoint(x: x + 4, y: y + 6))
